@@ -78,28 +78,28 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GeistSans } from "geist/font/sans";
 import { At, Check, Lock } from "@phosphor-icons/react";
-import { Wordmark } from "./components/Wordmark";
-import { Soc } from "./components/figma";
-import { countWord } from "./components/blocks";
+import { Wordmark } from "../components/Wordmark";
+import { Soc } from "../components/figma";
+import { countWord } from "../components/blocks";
 import {
   MockCheck, MockField, MockPicks, MockRead, MockTerms, MockTiers, MockWhy, MoneyPanel, ShareScale,
   type MockCheckRow, type MockReadRow, type MockReadValue, type MockSignal,
-} from "./components/landing/Mocks";
-import { Run, type Step } from "./components/landing/Run";
-import { Constellation } from "./components/landing/Constellation";
-import { PEOPLE } from "./lib/mock/people";
-import { BRANDS } from "./lib/mock/brands";
-import { DRAFTS, READ_TASKS, fullReadFor, offersFor, profileFor, readIdFor, tools } from "./lib/agent/tools";
-import { CADENCES, chatPicks, wantsYou, type CreatorRead, type Platform } from "./lib/agent/types";
-import { bundleLine, MATCH_WORD } from "./lib/agent/model";
-import { costOf } from "./lib/agent/stream";
-import { chatCampaigns, chatCampaignsTitle } from "./lib/join";
-import { AGENTS } from "./lib/agent/agents";
-import { DEFAULT_AUTONOMY, useAccount, useActiveProfile } from "./lib/store";
-import { AccountSheet, dialFor } from "./components/AccountSheet";
-import { signIn } from "./lib/session";
-import { displayHandle, handleKey } from "./lib/handle";
-import { useReducedMotion, useReveal, useVisible } from "./lib/useReveal";
+} from "../components/landing/Mocks";
+import { Run, type Step } from "../components/landing/Run";
+import { Constellation } from "../components/landing/Constellation";
+import { PEOPLE } from "../lib/mock/people";
+import { BRANDS } from "../lib/mock/brands";
+import { DRAFTS, READ_TASKS, fullReadFor, offersFor, profileFor, readIdFor, tools } from "../lib/agent/tools";
+import { CADENCES, chatPicks, wantsYou, type CreatorRead, type Platform } from "../lib/agent/types";
+import { bundleLine, MATCH_WORD } from "../lib/agent/model";
+import { costOf } from "../lib/agent/stream";
+import { chatCampaigns, chatCampaignsTitle } from "../lib/join";
+import { AGENTS } from "../lib/agent/agents";
+import { DEFAULT_AUTONOMY, useAccount, useActiveProfile } from "../lib/store";
+import { AccountSheet, dialFor } from "../components/AccountSheet";
+import { signIn } from "../lib/session";
+import { displayHandle, handleKey } from "../lib/handle";
+import { useReducedMotion, useReveal, useVisible } from "../lib/useReveal";
 import { AudienceSwitch } from "@/app/_shared/AudienceSwitch";
 
 /* ------------------------------------------------------------------ */

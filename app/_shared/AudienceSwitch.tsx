@@ -1,6 +1,10 @@
 "use client";
 
-/* Brands or creators: the one control both landings share.
+/* Brands or creators: the one control both v1 landings share.
+ *
+ * The v1 landings live at /brands/v1 and /creators/v1, kept for
+ * comparison with the redesign at /brands and /creators, so the switch
+ * moves between the two v1 pages.
  *
  * The old site's hero toggle, redrawn in the landing's register. On a
  * light ground, the white thumb is held up by its shadow and a hairline,
@@ -24,7 +28,7 @@ import { useEffect, useRef, useState } from "react";
 export type Side = "brands" | "creators";
 
 const ORDER: Side[] = ["brands", "creators"];
-const HREF: Record<Side, string> = { brands: "/brands", creators: "/creators" };
+const HREF: Record<Side, string> = { brands: "/brands/v1", creators: "/creators/v1" };
 
 /* The slide, and how long the page waits for it before leaving. */
 const SLIDE_MS = 240;

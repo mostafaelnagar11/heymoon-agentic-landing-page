@@ -1,0 +1,6 @@
+/* The marketing site's tokens, apart from both product apps. */
+@config "../../tailwind.site.config.ts";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
