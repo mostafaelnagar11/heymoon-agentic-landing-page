@@ -1,1 +1,136 @@
-/* WP3 owns this file (§5.3). Use the §2.3 CSS variables; never @apply or theme() here. */
+/* WP3 Run stage (SPEC §5.3). Uses the §2.3 CSS variables only; never @apply or theme() here.
+   Two layouts share these classes: the sticky stage (≥768 wide, motion allowed, tall enough for the
+   list) and the stacked layout (server render, no JS, phone, reduced motion, short screens). */
+
+/* ── Head: H2 cols 1 to 6, sub cols 8 to 12 on the H2's last baseline (B4, B7). `end` is the
+      fallback where `last baseline` is not supported (the second declaration is dropped). ── */
+.head { align-items: end; align-items: last baseline; }
+
+/* ── Sticky stage ── */
+.outer { position: relative; height: calc(100svh + 3 * 60svh); }
+/* The stage is centred in a full viewport, which would leave ~180px under the head on the way in.
+   Pull the track up under the head's bottom: the inner box is transparent and the list is centred
+   lower, so nothing overlaps; the head simply scrolls away as the stage pins. */
+.outer { margin-top: -72px; }
+.inner { position: sticky; top: 0; height: 100svh; overflow: clip; padding-top: 96px; }
+
+/* The step list, natural row heights. The wrapper is the stacking context the card (z −1), the
+   rail (z 1) and the glyphs (z 2) share. */
+.listWrap {
+  --pad: 20px;      /* step padding (p-5) */
+  --gap: 8px;       /* between steps */
+  --row1: 16px;     /* the glyph and "01" row; the glyph centre sits at --row1 / 2 */
+  position: relative; isolation: isolate;
+}
+.list { display: grid; gap: var(--gap); list-style: none; margin: 0; padding: 0; }
+.item { position: relative; }
+
+/* The rail is three segments, one per step k < 4, from glyph k's centre to glyph k + 1's: top at
+   pad + row1 / 2, and 100% + gap tall (the next glyph sits exactly one step height plus the gap
+   lower). Pure CSS geometry, so each fill's keyframes are constants and stay accelerated, whatever
+   the copy's line count. The glyph is centred in its 16px column, so the 2px line sits at 7px
+   (centre 8: a whole pixel, crisp at DPR 1 and 2). The glyph discs hide the joins. */
+.seg {
+  position: absolute; z-index: 1; pointer-events: none;
+  inset-inline-start: 7px; width: 2px;
+  top: calc(var(--pad) + var(--row1) / 2); height: calc(100% + var(--gap));
+  background: rgb(18 21 27 / .08);
+}
+.fill {
+  position: absolute; inset: 0; background: var(--ink);
+  transform-origin: 50% 0; transform: scaleY(0);
+}
+
+/* ── One step: the glyph on the spine, then the content, which lifts onto the card while active.
+      The spine never crosses a card. ── */
+.step {
+  position: relative;                 /* no z-index: its layers join the list wrapper's stacking context */
+  display: grid; grid-template-columns: 16px minmax(0, 1fr); column-gap: 16px;
+  width: 100%; height: 100%; text-align: start; color: inherit; background: none; border-radius: 20px;
+}
+button.step { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* The focus ring goes on the card (the step's visible shape), not around the glyph column too. */
+button.step:focus-visible { outline: none; }
+
+.glyphCell { grid-column: 1; display: grid; justify-items: center; align-content: start; padding-top: var(--pad, 20px); }
+/* The glyph sits on the "01" row. Its paper disc hides the rail behind it. */
+.glyph {
+  position: relative; z-index: 2; display: grid; place-items: center;
+  width: 16px; height: var(--row1, 16px); transition: color .3s var(--ease-out);
+}
+.glyph::before {
+  content: ""; position: absolute; inset: -4px; z-index: -1; border-radius: 50%; background: var(--paper);
+}
+/* A "yours" ring carries its state in its stroke, as a Moon does in its phase: upcoming .30 (the
+   global default), done .72, active 1 (in brand). */
+.step[data-state="done"] .glyph :global(.moon-ring) { stroke-opacity: .72; }
+.step[data-state="active"] .glyph :global(.moon-ring) { stroke-opacity: 1; }
+.stack .step .glyph :global(.moon-ring) { stroke-opacity: .72; }
+
+.content { grid-column: 2; position: relative; display: block; padding: var(--pad, 20px); border-radius: 20px; }
+
+/* The active card is its own layer, so the 300ms cross-fade is opacity only (compositor). z −1 keeps
+   it under the text, inside the list wrapper's isolated context (so never under the paper). */
+.card {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgb(18 21 27 / .04), 0 1px 2px rgba(25, 18, 52, .04), 0 24px 48px -32px rgba(25, 18, 52, .22);
+  opacity: 0; transition: opacity .3s var(--ease-out);
+}
+.step[data-state="active"] .card { opacity: 1; }
+@media (hover: hover) {
+  button.step:not([data-state="active"]):hover .card { opacity: .5; }
+}
+button.step:focus-visible .card { opacity: 1; outline: 2px solid var(--v500); outline-offset: 3px; }
+
+.num, .title, .body, .credit { display: block; transition: color .3s var(--ease-out); }
+.num { line-height: var(--row1, 16px); }
+.title { margin-top: 10px; }
+.body { margin-top: 6px; max-width: 46ch; text-wrap: pretty; }
+.credit { margin-top: 14px; }
+
+/* Shorter desktops: the same layout, tighter. Below this the stage measures itself and falls back
+   to the stacked layout when the list cannot fit (RunStage). */
+@media (max-height: 880px) {
+  .listWrap { --pad: 16px; --gap: 4px; }
+  .title { margin-top: 8px; }
+  .body { margin-top: 4px; }
+  .credit { margin-top: 10px; }
+}
+@media (max-height: 800px) {
+  .inner { padding-top: 80px; }        /* the nav ends at 72px */
+  .panel { height: min(480px, calc(100svh - 80px - 48px)); }
+  .listWrap { --pad: 12px; --gap: 2px; }
+  .title { margin-top: 6px; }
+  .credit { margin-top: 8px; }
+}
+
+/* ── The panel (sticky) ── */
+.panel {
+  position: relative; overflow: hidden; border-radius: 24px;
+  height: min(480px, calc(100svh - 96px - 48px));
+  isolation: isolate;
+}
+/* The page's dot thread, low in the panel: the halftone the deep frame uses, quieter on light. */
+.dots { position: absolute; inset: 0; z-index: -1; opacity: .5; pointer-events: none; }
+
+/* Mocks place themselves (absolute, centred, inset-x-6 / sm:inset-x-8, §5.8). The slot is the
+   positioned box they resolve against; it also centres anything still in flow. */
+.slot { position: absolute; inset: 0; display: grid; place-items: center; padding-inline: 24px; }
+@media (min-width: 640px) { .slot { padding-inline: 32px; } }
+
+/* ── Stacked ── */
+.stack { list-style: none; margin: 0; padding: 0; display: grid; gap: 64px; }
+.pair { display: grid; gap: 24px; }
+@media (min-width: 768px) {
+  .stack { gap: 72px; }
+  .pair { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; align-items: center; }
+  .pair > :first-child { grid-column: 1 / span 5; }
+  .pair > :last-child { grid-column: 7 / span 6; }
+}
+.stack .step { height: auto; }         /* centred against its mock in the two-column pair */
+.stack .content, .stack .glyphCell { padding: 0; }
+@media (max-width: 639px) { .stack .step { column-gap: 12px; } }
+.mount {
+  position: relative; overflow: hidden; height: 300px; border-radius: 24px; isolation: isolate;
+}

@@ -1,1 +1,419 @@
-/* WP2 owns this file (§5.2). Use the §2.3 CSS variables; never @apply or theme() here. */
+/* WP2: the working window (SPEC §5.2). §2.3 CSS variables only; never @apply or theme() here.
+   Breakpoints: 640 (MQ.phone's edge, Tailwind sm) and 1024 (the window's two-column layout).
+   Every transition and animation sits under prefers-reduced-motion: no-preference (rule 2.4.6). */
+
+/* ───────────────────────── section head ───────────────────────── */
+.head { display: grid; gap: 16px; }
+.h2 { max-width: 16ch; }
+@media (min-width: 1024px) {
+  .head { grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; align-items: end; }
+  .h2 { grid-column: 1 / span 6; }
+  .sub { grid-column: 8 / span 5; align-self: end; align-self: last baseline; }
+}
+
+/* ───────────────────────── frame ───────────────────────── */
+.frame {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: flex; flex-direction: column;
+  width: calc(100vw - 24px); min-height: 660px; margin: 40px auto 0;
+  padding: 44px 12px 0;
+  border-radius: 24px; background: var(--deep);
+}
+@media (min-width: 640px) {
+  .frame { width: min(1232px, calc(100vw - 48px)); margin-top: 64px; padding: 56px 24px 0; border-radius: 28px; }
+}
+@media (min-width: 1024px) {
+  .frame { display: block; height: 720px; min-height: 0; padding: 0; }
+}
+.art { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.frameLabel { position: absolute; top: 16px; inset-inline-start: 12px; }
+@media (min-width: 640px) { .frameLabel { top: 20px; inset-inline-start: 24px; } }
+@media (min-width: 1024px) { .frameLabel { inset-inline-start: 56px; } }
+.sentinel { position: absolute; inset-inline: 0; bottom: 0; height: 1px; pointer-events: none; }
+
+/* The window's box: in flow below 1024, absolute (inset 56, flush to the bottom) from 1024. */
+.winWrap { position: relative; z-index: 1; flex: 1 1 auto; display: flex; flex-direction: column; }
+@media (min-width: 1024px) { .winWrap { position: absolute; inset: 56px 56px 0; } }
+
+/* ───────────────────────── the window ───────────────────────── */
+.win {
+  position: relative; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
+  overflow: hidden; contain: layout paint; background: #fff; border-radius: 18px 18px 0 0;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / .06), 0 40px 100px -30px rgb(0 0 0 / .8);
+}
+@media (min-width: 1024px) { .win { height: 100%; } }
+/* Hovered (paused): a 1px ink/20 ring, drawn over the content. */
+.win::after {
+  content: ""; position: absolute; inset: 0; z-index: 6; pointer-events: none;
+  border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(18 21 27 / 0);
+}
+.winWrap[data-hover="1"] .win::after { box-shadow: inset 0 0 0 1px rgb(18 21 27 / .2); }
+
+/* ── title bar: 48px plus a 32px status strip below 1024; one 52px bar from 1024 ── */
+.bar {
+  --side: 268px;
+  position: relative; flex: none; display: grid; align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 48px 32px;
+  grid-template-areas: "brand watch" "status prog";
+  column-gap: 12px; padding-inline: 14px 16px;
+  border-bottom: 1px solid var(--hair);
+}
+.bar::before {
+  content: ""; position: absolute; inset-inline: 0; top: 48px; bottom: 0;
+  border-top: 1px solid var(--hair); background: rgb(246 244 252 / .55);
+}
+.bar > * { position: relative; }
+.barBrand { grid-area: brand; display: flex; align-items: center; gap: 9px; min-width: 0; }
+.barStatus { grid-area: status; min-width: 0; display: flex; align-items: center; }
+.barStatusText {
+  display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 13px; line-height: 1.45; color: rgb(18 21 27 / .6);
+}
+.barProg { grid-area: prog; justify-self: end; display: flex; align-items: center; gap: 10px; }
+.barStatusAgent { font-weight: 500; color: rgb(18 21 27 / .72); }
+.barCount { grid-area: count; }
+.barWatch { grid-area: watch; justify-self: end; }
+.barMoon { grid-area: moon; display: flex; }
+@media (min-width: 1024px) {
+  .bar {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-rows: 52px;
+    grid-template-areas: "brand count watch moon";
+    column-gap: 14px; padding-inline: 20px;
+  }
+  .bar::before { display: none; }
+  .barProg { display: contents; }
+  .barStatus {
+    position: absolute; inset-block: 0; left: 50%; transform: translateX(-50%);
+    width: max-content; max-width: calc(100% - 2 * var(--side)); justify-content: center;
+  }
+  .barStatusText { font-size: 14px; letter-spacing: -0.003em; }
+  .barCount { margin-inline-end: 2px; }
+}
+
+/* ── stopwatch: the label, then the time; the label never leaves the time ── */
+.watch { display: inline-flex; align-items: baseline; gap: 7px; white-space: nowrap; }
+.watchLabel { font-size: 13px; line-height: 1.45; color: rgb(18 21 27 / .6); }
+.watchTime { display: inline-block; min-width: 5ch; text-align: start; color: var(--ink); }
+
+/* ── body ── */
+.body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+@media (min-width: 1024px) { .body { display: grid; grid-template-columns: 7fr 5fr; } }
+.listCol { position: relative; flex: none; min-width: 0; }
+@media (min-width: 1024px) { .listCol { padding-top: 8px; overflow: hidden; } }
+
+/* ───────────────────────── the chain ─────────────────────────
+   Row heights live here; ChainList.tsx mirrors the below-1024 numbers for its slide. */
+.list {
+  --row: 48px; --rh: 48px; --sum: 48px; --gap: 8px; --bh: 40px;
+  position: relative; overflow: hidden;
+  height: calc(var(--rh) + 5 * var(--row));
+}
+.list::before, .list::after {
+  content: ""; position: absolute; inset-inline: 0; z-index: 3; height: 32px; pointer-events: none; opacity: 0;
+}
+.list::before { top: 0; background: linear-gradient(#fff, rgb(255 255 255 / 0)); }
+.list::after { bottom: 0; background: linear-gradient(rgb(255 255 255 / 0), #fff); }
+.list[data-fade-top="1"]::before, .list[data-fade-bottom="1"]::after { opacity: 1; }
+.listInner { position: relative; transform: translateY(var(--list-y, 0px)); }
+@media (min-width: 1024px) {
+  .list { --row: 52px; --rh: 40px; --sum: 52px; height: auto; overflow: visible; }
+  .list[data-a="creators"] { --rh: 56px; }
+  .list::before, .list::after { display: none; }
+  .listInner { transform: none; }
+}
+
+/* the glide: one highlight under the working row(s) */
+.hl {
+  position: absolute; z-index: 0; top: 0; inset-inline: 8px;
+  height: calc(var(--hl-n, 1) * var(--row));
+  transform: translateY(var(--hl-top, 0px));
+  border-radius: 10px; background: rgb(243 239 252 / .6);
+  box-shadow: inset 0 0 0 1px rgb(77 47 176 / .05);
+  opacity: 0; pointer-events: none;
+}
+.hl[data-on="1"] { opacity: 1; }
+
+/* the read header, which becomes the summary row at the fold */
+.readHead, .buildHeadRow {
+  position: relative; z-index: 1; display: grid; align-items: baseline; align-content: center;
+  grid-template-columns: 15px minmax(0, 1fr) auto; column-gap: 12px;
+  padding-inline: 20px;
+}
+.readHead { height: var(--rh); }
+.headMeta { display: flex; align-items: baseline; justify-content: flex-end; }
+.list[data-folded="1"] .readHead { height: var(--sum); }
+.headGlyph { display: flex; align-self: center; color: var(--ink); }
+.headTitle { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.headTitleText {
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 14px; line-height: 1.35; font-weight: 600; letter-spacing: -0.006em; color: rgb(18 21 27 / .72);
+}
+.headSub {
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-height: 19px;
+  font-size: 13px; line-height: 1.45; color: rgb(18 21 27 / .6);
+}
+.list[data-folded="1"] .headSub { max-height: 0; opacity: 0; }
+.headCount { color: rgb(18 21 27 / .6); }
+.headTime { display: inline-flex; overflow: hidden; max-width: 0; opacity: 0; }
+.headTime > span { padding-inline-start: 10px; color: var(--ink); white-space: nowrap; }
+.list[data-folded="1"] .headTime { max-width: 72px; opacity: 1; }
+
+/* the build: a hairline, its header */
+.buildHead { position: relative; z-index: 1; height: 0; overflow: hidden; opacity: 0; }
+.buildHead[data-on="1"] { height: calc(var(--gap) + var(--bh)); opacity: 1; }
+.buildRule { position: relative; height: var(--gap); }
+.buildRule::after { content: ""; position: absolute; inset-inline: 20px; top: 3.5px; height: 1px; background: var(--hair); }
+.buildHeadRow { height: var(--bh); }
+.readRows, .buildRows { position: relative; z-index: 1; }
+
+/* ── rows ── */
+.rowWrap { height: var(--row); overflow: hidden; }
+.rowWrap[data-shown="0"] { height: 0; opacity: 0; }
+.row {
+  position: relative; z-index: 1; height: var(--row);
+  display: grid; grid-template-columns: 15px minmax(0, 1fr);
+  grid-template-areas: "glyph agent" "glyph text";
+  align-content: center; column-gap: 12px; row-gap: 2px;
+  padding-inline: 20px;
+}
+@media (min-width: 640px) {
+  .row { grid-template-columns: 15px 132px minmax(0, 1fr); grid-template-areas: "glyph agent text"; align-items: baseline; }
+}
+.glyph { grid-area: glyph; align-self: center; color: var(--ink); }
+.agent {
+  grid-area: agent; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10px; line-height: 1.2; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  color: rgb(18 21 27 / .6);
+}
+.text { grid-area: text; display: grid; min-width: 0; font-size: 13px; line-height: 1.35; letter-spacing: -0.003em; }
+@media (min-width: 640px) {
+  .agent { font-size: 11px; }
+  .text { font-size: 14px; }
+}
+.text > span { grid-area: 1 / 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.note { color: rgb(18 21 27 / .6); }
+.produces { color: rgb(18 21 27 / .88); opacity: 0; transform: translateY(4px); }
+.row[data-state="working"] .note, .cRow[data-state="working"] .note { color: rgb(18 21 27 / .88); }
+.row[data-state="working"] .note::after, .cRow[data-state="working"] .note::after { content: "…"; }
+.row[data-state="working"] .agent, .row[data-state="working"] .glyph,
+.cRow[data-state="working"] .agent, .cRow[data-state="working"] .glyph { color: var(--v700); }
+.row[data-state="done"] .note, .cRow[data-state="done"] .note { opacity: 0; transform: translateY(-4px); }
+.row[data-state="done"] .produces, .cRow[data-state="done"] .produces { opacity: 1; transform: none; }
+
+/* ───────────────────────── the artefact pane ───────────────────────── */
+.pane { position: relative; flex: none; height: 280px; background: var(--canvas); border-top: 1px solid var(--hair); }
+@media (min-width: 1024px) { .pane { height: auto; border-top: 0; border-inline-start: 1px solid var(--hair); } }
+/* The stage is centred by its own translate (an overflowing grid item would be start-aligned in some
+   engines and centred in others), then scaled about that centre to fit (Artefact.tsx Fit). */
+.fit { position: absolute; inset: 16px; }
+@media (min-width: 1024px) { .fit { inset: 32px 32px 88px; } }
+.fitInner {
+  position: absolute; left: 50%; top: 50%; width: min(360px, 100%);
+  translate: -50% -50%; scale: var(--fit, 1);
+}
+.stage { display: grid; width: 100%; }
+.stage > * { grid-area: 1 / 1; min-width: 0; }
+.ghost, .ghost * { visibility: hidden !important; pointer-events: none; }
+.layer { align-self: center; opacity: 0; visibility: hidden; transform: translateY(12px) scale(.985); }
+.layer[data-on="1"] { opacity: 1; visibility: visible; transform: none; }
+.layer[data-on="2"] { transform: translateY(-8px) scale(.985); }
+.layerTop { align-self: start; }
+
+/* WP8 mock mounts: a root carrying the spec'd absolute placement joins the flow at the stage's width. */
+.mount { position: relative; min-width: 0; }
+.mount > :global(.absolute) {
+  position: relative !important; inset: auto !important; transform: none !important; translate: none !important;
+  width: auto !important; margin: 0 !important;
+}
+
+/* the source card */
+.card {
+  width: 100%; overflow: hidden; background: #fff; border-radius: 16px;
+  box-shadow: 0 0 0 1px rgb(18 21 27 / .06), 0 2px 4px rgb(25 18 52 / .05), 0 20px 40px -16px rgb(25 18 52 / .22);
+}
+.cardHead { display: flex; align-items: center; gap: 8px; height: 44px; padding-inline: 16px; }
+.cardIcon { flex: none; color: rgb(18 21 27 / .6); }
+.tagsFold { display: grid; grid-template-rows: 0fr; opacity: 0; }
+.tagsFold[data-open="1"] { grid-template-rows: 1fr; opacity: 1; }
+.tagsClip { min-height: 0; overflow: hidden; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 14px 14px; border-top: 1px solid var(--hair); }
+.tag { display: inline-flex; max-width: 100%; }
+.tag[data-shown="0"] { display: none; }
+.tagFace {
+  display: inline-flex; align-items: center; max-width: 100%; height: 26px; padding-inline: 9px;
+  border-radius: 8px; background: rgb(18 21 27 / .06); box-shadow: inset 0 0 0 1px rgb(18 21 27 / 0);
+}
+.tagText {
+  display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 13px; line-height: 1; letter-spacing: -0.003em; color: transparent;
+}
+@media (max-width: 639px) {
+  .tags { gap: 5px; padding: 10px 12px 12px; }
+  .tagFace { height: 24px; padding-inline: 8px; border-radius: 7px; }
+  .tagText { font-size: 12px; }
+}
+.tag[data-landed="1"] .tagFace { background: var(--canvas); box-shadow: inset 0 0 0 1px var(--hair); }
+.tag[data-landed="1"] .tagText { color: rgb(18 21 27 / .72); }
+
+/* brands: the plan, then its phases (space reserved by the ghost) */
+.planStack { display: flex; flex-direction: column; gap: 12px; }
+.phases { opacity: 0; visibility: hidden; transform: translateY(8px); }
+.phases[data-on="1"] { opacity: 1; visibility: visible; transform: none; }
+
+/* creators: why, then the tiers. Stacked from 1024; one at a time below it. */
+.matchStack { display: grid; gap: 12px; }
+.why, .tiers { min-width: 0; opacity: 0; visibility: hidden; transform: translateY(8px); }
+.why[data-on="1"], .tiers[data-on="1"] { opacity: 1; visibility: visible; transform: none; }
+@media (max-width: 1023px) {
+  .matchStack { grid-template-areas: "a"; }
+  .why, .tiers { grid-area: a; align-self: center; }
+  .matchStack[data-tiers="1"] .why { opacity: 0; visibility: hidden; transform: translateY(-8px); }
+}
+
+/* ───────────────────────── controls (outside the aria-hidden window) ───────────────────────── */
+/* Below 1024 they sit at the foot of the rows' viewport (just above the 280px pane), over a deeper
+   white fade, so the finished plan keeps the whole pane. From 1024, at the window's bottom-end. */
+.controls {
+  position: absolute; z-index: 7; bottom: calc(280px + 14px); inset-inline-end: 14px;
+  display: flex; align-items: center; gap: 14px;
+  opacity: 0; transform: translateY(6px); pointer-events: none;
+}
+.controls[data-on="1"] { opacity: 1; transform: none; pointer-events: auto; }
+.winWrap[data-done="1"] .list::after { height: 88px; opacity: 1; background: linear-gradient(rgb(255 255 255 / 0), #fff 62%); }
+@media (min-width: 1024px) { .controls { bottom: 20px; inset-inline-end: 20px; gap: 18px; } }
+.try {
+  height: 40px; padding-inline: 18px; border-radius: 100px;
+  background: var(--ink); color: #fff; font-size: 14px; line-height: 1; font-weight: 600; letter-spacing: -0.003em;
+  white-space: nowrap; box-shadow: 0 1px 2px rgb(18 21 27 / .12), 0 8px 20px -10px rgb(18 21 27 / .5);
+}
+.try:hover { background: rgb(18 21 27 / .85); }
+.again { padding: 8px 2px; white-space: nowrap; border-radius: 6px; }
+.again:hover { color: var(--ink); }
+
+/* ───────────────────────── compact (WP7's thumbnail) ───────────────────────── */
+.compact {
+  position: relative; isolation: isolate; overflow: hidden;
+  width: 100%; aspect-ratio: 16 / 9; background: var(--deep);
+}
+@media (min-width: 640px) { .compact { width: 360px; height: 210px; aspect-ratio: auto; } }
+.cWin {
+  position: absolute; inset: 16px 16px 0; z-index: 1;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: #fff; border-radius: 12px 12px 0 0;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / .06), 0 24px 60px -24px rgb(0 0 0 / .8);
+}
+.cBar {
+  flex: none; height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding-inline: 10px 12px; border-bottom: 1px solid var(--hair);
+}
+.cBrand { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.cShown {
+  font-family: var(--font-geist-mono), ui-monospace, monospace; font-size: 11px; line-height: 1.2; font-weight: 500;
+  color: rgb(18 21 27 / .72);
+}
+.cWatch { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.cWatch .watchLabel { font-size: 11px; line-height: 1.2; }
+.cWatchTime {
+  font-family: var(--font-geist-mono), ui-monospace, monospace; font-size: 13px; line-height: 1;
+  font-weight: 500; letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+}
+.cBody { position: relative; flex: 1 1 auto; min-height: 0; }
+.cList { --row: 34px; position: absolute; inset-inline: 0; top: 50%; height: 136px; margin-top: -68px; overflow: hidden; }
+.cList[data-folded="1"] { opacity: 0; }
+.cListInner { transform: translateY(var(--c-y, 0px)); }
+.cRow {
+  position: relative; height: 34px; display: grid; align-items: baseline; align-content: center;
+  grid-template-columns: 11px 80px minmax(0, 1fr); grid-template-areas: "glyph agent text";
+  column-gap: 8px; padding-inline: 12px;
+}
+.cRow[data-state="working"] { background: rgb(243 239 252 / .6); }
+.cRow .agent { font-size: 9px; }
+.cRow .text { font-size: 11px; line-height: 1.3; }
+.cArt { position: absolute; inset: 0; overflow: hidden; opacity: 0; transform: translateY(14px); }
+.cArt[data-on="1"] { opacity: 1; transform: none; }
+.cArtInner { position: absolute; top: 12px; left: 50%; width: 360px; transform: translateX(-50%) scale(.72); transform-origin: 50% 0; }
+
+/* ───────────────────────── act rail ───────────────────────── */
+.rail { margin-top: 40px; }
+.railCols { display: none; }
+.railPhone { display: block; }
+@media (min-width: 640px) {
+  .railCols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .railPhone { display: none; }
+}
+.railItem {
+  display: flex; flex-direction: column; align-items: stretch; text-align: start;
+  padding: 0 0 4px; border-radius: 6px; cursor: pointer; color: inherit;
+}
+.track { position: relative; display: block; width: 100%; height: 2px; overflow: hidden; border-radius: 2px; background: rgb(18 21 27 / .08); }
+.fill { position: absolute; inset: 0; background: var(--ink); transform-origin: 0 50%; }
+:global([dir="rtl"]) .fill { transform-origin: 100% 50%; }
+.railMeta { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+.railGlyph { display: flex; color: var(--ink); }
+.railItem[data-state="active"] .railGlyph, .railStage .railGlyph { color: var(--v700); }
+.railTitle {
+  display: block; margin-top: 12px;
+  font-size: 20px; line-height: 1.25; letter-spacing: -0.02em; font-weight: 600; color: rgb(18 21 27 / .6);
+}
+.railItem[data-state="done"] .railTitle { color: rgb(18 21 27 / .72); }
+.railItem[data-state="active"] .railTitle, .railItem:hover .railTitle, .railTitle[data-state="active"] { color: var(--ink); }
+.keep { white-space: nowrap; }
+.railBody { display: block; margin-top: 8px; font-size: 14px; line-height: 1.45; letter-spacing: -0.003em; color: rgb(18 21 27 / .72); }
+.railTracks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.railTrackBtn { display: flex; align-items: center; height: 24px; padding: 0; cursor: pointer; border-radius: 4px; }
+.railStage { margin-top: 12px; }
+.railStageText { display: flex; flex-direction: column; }
+
+/* ───────────────────────── motion (opt-in) ───────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .win::after { transition: box-shadow .2s var(--ease-out); }
+  .barStatusText { animation: status-in .28s var(--ease-out) both; }
+  .watchLabel[data-stamped="1"] { animation: status-in .32s var(--ease-out) both; }
+
+  .listInner { transition: transform .3s var(--ease-out); }
+  .list::before, .list::after { transition: opacity .3s var(--ease-out); }
+  .hl { transition: transform .38s var(--ease-out), height .38s var(--ease-out), opacity .22s var(--ease-out); }
+  .hl[data-jump="1"] { transition: opacity .22s var(--ease-out); }
+
+  /* unfold: 300ms, 40ms a row; fold: 500ms together; the build arrives like the unfold */
+  .rowWrap { transition: height .3s var(--ease-out) calc(var(--k, 0) * 40ms), opacity .3s var(--ease-out) calc(var(--k, 0) * 40ms); }
+  .readRows .rowWrap[data-shown="0"] { transition-duration: .5s; transition-delay: 0s; }
+  .list[data-folded="0"] .readRows .rowWrap[data-shown="0"] { transition-duration: .3s; }
+  .readHead { transition: height .5s var(--ease-out); }
+  .headSub { transition: max-height .5s var(--ease-out), opacity .3s var(--ease-out); }
+  .headTime { transition: max-width .5s var(--ease-out), opacity .4s var(--ease-out) .15s; }
+  .buildHead { transition: height .3s var(--ease-out), opacity .3s var(--ease-out); }
+
+  .text > span { transition: opacity .2s var(--ease-out), transform .2s var(--ease-out), color .2s var(--ease-out); }
+  .agent, .glyph { transition: color .2s var(--ease-out); }
+  .cRow { transition: background-color .2s var(--ease-out); }
+
+  .fitInner { transition: scale .35s var(--ease-out); }
+  .layer { transition: opacity .45s var(--ease-out), transform .6s var(--ease-out-expo), visibility 0s linear .6s; }
+  .layer[data-on="1"] { transition: opacity .45s var(--ease-out) .1s, transform .6s var(--ease-out-expo) .1s, visibility 0s; }
+  .tagsFold { transition: grid-template-rows .3s var(--ease-out), opacity .3s var(--ease-out); }
+  .tag[data-shown="1"] { animation: tag-shown .3s var(--ease-out) calc(var(--k, 0) * 40ms) both; }
+  .tagFace { transition: background-color .3s var(--ease-out), box-shadow .3s var(--ease-out); }
+  .tag[data-landed="1"] .tagText { animation: tag-in .5s var(--ease-out-expo) both; }
+  .phases, .why, .tiers { transition: opacity .4s var(--ease-out), transform .5s var(--ease-out-expo), visibility 0s linear .5s; }
+  .phases[data-on="1"], .why[data-on="1"], .tiers[data-on="1"] { transition-delay: 0s; }
+  .matchStack[data-tiers="1"] .why { transition-delay: 0s, 0s, .5s; }
+
+  .controls { transition: opacity .3s var(--ease-out), transform .3s var(--ease-out); }
+  .try { transition: background-color .2s var(--ease-out); }
+  .again { transition: color .2s var(--ease-out); }
+
+  .cListInner { transition: transform .3s var(--ease-out); }
+  .cList { transition: opacity .4s var(--ease-out); }
+  .cArt { transition: opacity .5s var(--ease-out), transform .6s var(--ease-out-expo); }
+
+  .railTitle { transition: color .3s var(--ease-out); }
+  .railStageText { animation: status-in .4s var(--ease-out) both; }
+}
+
+@keyframes status-in { from { opacity: 0; transform: translateY(3px); } }
+@keyframes tag-shown { from { opacity: 0; } }
+@keyframes tag-in { from { opacity: 0; transform: translateY(4px); filter: blur(3px); } }

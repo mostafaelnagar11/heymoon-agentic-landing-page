@@ -1,1 +1,149 @@
-/* WP6 owns this file (§5.6). Use the §2.3 CSS variables; never @apply or theme() here. */
+/* WP6 (SPEC §5.6): Connects, the close (the fork) and the footer with its giant dotted wordmark.
+   Uses the §2.3 CSS variables only; never @apply or theme() here (no @config in a module). */
+
+/* ── Connects ─────────────────────────────────────────────────────────────────────────────────
+   One row on paper, one hairline above it inside the container, no box. Static by default
+   (rule 2.4.7): the server HTML carries no data-armed, so no-JS and in-view-at-mount show the final
+   state. Armed (below the viewport at mount) hides; data-in (once, on entry) plays: the hairline
+   draws from the start edge, the body and the marks rise in a short stagger after the H2's words. */
+.row {
+  position: relative;
+  display: flex; align-items: center; justify-content: space-between; gap: 48px;
+  padding-top: 64px;
+}
+.rule {
+  position: absolute; inset-inline: 0; top: 0; height: 1px; background: var(--hair);
+  transform-origin: 0 50%;
+}
+:global([dir="rtl"]) .rule { transform-origin: 100% 50%; }
+.copy { max-width: 480px; }
+.connectsH2 { text-wrap: balance; }
+.marks { display: flex; align-items: center; gap: 48px; flex: none; }
+/* The two platform squares read as one pair (app-icon spacing), not as two marks 48px apart. */
+.marks[data-kind="platforms"] { gap: 12px; }
+.body { text-wrap: pretty; }
+.mark { display: block; flex: none; }
+/* The store marks in one ink tone, so four brand palettes never compete with the page. Plain grayscale
+   leaves them in four greys (Shopify's black word against Zid's light purple); brightness then
+   contrast pushes every coloured fill to ink and keeps white knock-outs white (Shopify's S, Magento's
+   facets). .56 sits them a step quieter than the body text. Decorative tone, never text. */
+.store { filter: grayscale(1) brightness(.6) contrast(3); opacity: .56; }
+.square {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px;
+  background: var(--ink); color: #fff;
+}
+
+/* Below 1024 the four store marks (about 445px with their gaps) no longer fit beside a 480px text
+   column, so the row stacks: text, then the marks on one line. On phone they take a 2x2 grid. */
+@media (max-width: 1023px) {
+  .row { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 40px; }
+}
+@media (max-width: 639px) {
+  .marks { display: grid; grid-template-columns: repeat(2, max-content); justify-content: start;
+    align-items: center; column-gap: 48px; row-gap: 28px; }
+}
+
+.row[data-armed] .rule { transform: scaleX(0); }
+.row[data-armed] .rise { opacity: 0; transform: translateY(8px); }
+.row[data-armed][data-in] .rule { transform: none; transition: transform 1.1s var(--ease-out-expo); }
+.row[data-armed][data-in] .rise {
+  opacity: 1; transform: none;
+  transition: opacity .6s var(--ease-out), transform .6s var(--ease-out);
+  transition-delay: calc(140ms + var(--i, 0) * 60ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .row[data-armed] .rule { transform: none; }
+  .row[data-armed] .rise { transform: none; }
+  .row[data-armed][data-in] .rise { transition: opacity .2s var(--ease-out); transition-delay: 0s; }
+}
+
+/* ── Close ────────────────────────────────────────────────────────────────────────────────────
+   The hero's grid (§5.1.1) with the apex at 56svh: the field row is the horizon's origin, and the
+   Horizon sits in the same cell, so its vertical centre IS the apex. Tall content pushes the horizon
+   down instead of under the sheet. The section starts 32px under the sheet's rounded bottom (-mt-8):
+   night shows in the corners, and .top clears that overlap on short screens.
+   Height: the close and the footer end the page together, so at max scroll they ARE the last screen.
+   A full 100svh close put its top at -footer there (-221 at 1440x900): the switch rose under the
+   translucent nav and doubled its compact switch, and the 1fr row left a ~250px empty band above the
+   footer. So the minimum is the viewport less the footer (--foot-h mirrors .wmBox plus the 64px row),
+   plus 40px, which keeps the sheet's 32px overlap above the top edge at max scroll. The content still
+   governs when taller (the apex stays at 56svh of the section). lvh, not svh: when a phone's toolbar
+   collapses at the bottom of the page, the sheet's edge must still not peek in under the nav. */
+.close {
+  --field-h: 76px; --apex-pref: 56svh;
+  --foot-h: calc(64px + 22vw * .8 * .62);
+  min-height: calc(100lvh - var(--foot-h) + 40px);
+  display: grid; grid-template-columns: 100%;
+  grid-template-rows: minmax(calc(var(--apex-pref) - var(--field-h) / 2), max-content) var(--field-h) 1fr;
+}
+@media (max-width: 639px) { .close { --field-h: 64px; --foot-h: calc(64px + 23vw * .8 * .62); } }
+
+.top {
+  grid-area: 1 / 1; align-self: end; z-index: 2;
+  display: flex; flex-direction: column; align-items: center;
+  padding: calc(32px + 56px) 16px clamp(56px, 8svh, 96px);
+}
+.fieldRow { grid-area: 2 / 1; z-index: 2; display: grid; place-items: center; }
+.hzCell { grid-area: 2 / 1; }
+/* The close has no canvas, so its CSS horizon is what ships. (The sky below the apex and the ground
+   transparent outside the limb now come from globals.css, request 1a adopted.)
+   The limb meets the screen edges 12.02vw below the apex (R = 110vw: 110 - sqrt(110² - 50²)). WP0's
+   rim, earth and hair layers are 200px / 200px / 120px tall, so from about 1630px wide the rim stops
+   short of the edges and the earth glow ends on a straight line (1920: 231px). Tall enough here. */
+.hzCell > :global(.hz-rim), .hzCell > :global(.hz-earth) { height: max(200px, calc(12.1vw + 64px)); }
+.hzCell > :global(.hz-hair) { height: max(120px, calc(12.1vw + 64px)); }
+.bottom {
+  grid-area: 3 / 1; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 72px 16px clamp(48px, 8svh, 88px);
+}
+.bottom { transition: opacity .2s var(--ease-out), visibility .2s; }
+/* Phone: the field's error wraps to two lines and would sit 16px over the lock note, so the note and
+   the credit step aside while it shows (the hero does the same with its chips). No layout shift. */
+@media (max-width: 639px) {
+  .close:has([data-invalid="true"]) .bottom { opacity: 0; visibility: hidden; }
+}
+.closeH2 :global(.line) { white-space: nowrap; }
+/* The lock note: the glyph sits inline at the start of the first line, so a wrapped note stays one
+   centred paragraph (phone) instead of a glyph beside a two-line block, and it wraps only between
+   sentences ("Nothing is charged. Nothing is published." / "Not until you say so."). */
+.note { max-width: 36em; }
+.sentence { white-space: nowrap; }
+.noteIcon { display: inline-block; vertical-align: -1px; margin-inline-end: 8px; }
+
+/* The ignition replays once on entry (S7). Static by default: the server HTML and a close that is in
+   view at mount stay lit. A close below the viewport at mount is armed: its halo, sun and rim sit in
+   the ignition's own start state (the hz-*-in "from" keyframes), so adding data-ignite starts the
+   animation from exactly what is on screen. The ignition's fill (both) then holds the lit end state
+   over these, so they never matter again. Motion-safe only: under reduce there is no ignition. */
+@media (prefers-reduced-motion: no-preference) {
+  .close[data-armed] :global(.hz) > :global(.hz-rim) { clip-path: inset(0 50% 0 50%); opacity: .3; }
+  .close[data-armed] :global(.hz) > :global(.hz-halo) { opacity: .6; }
+  .close[data-armed] :global(.hz) > :global(.hz-sun) { opacity: .45; }
+  /* The lock note crossfades with the H2 when the audience changes (an inner node, keyed). */
+  .swapIn { animation: swap-in .45s var(--ease-out) .12s both; }
+}
+@keyframes swap-in { from { opacity: 0; transform: translateY(4px); } }
+
+/* ── Footer and the giant wordmark ────────────────────────────────────────────────────────────── */
+.links { display: flex; align-items: center; gap: 24px; }
+.link { transition: color .2s var(--ease-out); }
+
+/* About 62% of the cap height shows above the page bottom (B13). The container crops the line box;
+   --crop is the visible share of the 0.8em line box that puts the crop at 62% of Geist's cap height
+   (measured, see WP6.md). */
+/* Keep in step with .close's --foot-h (64px row + this box). */
+.wmBox { --wm-size: 22vw; --crop: .62; --dot: 6px; --dot-r: 1.1px; position: relative; overflow: hidden; height: calc(var(--wm-size) * .8 * var(--crop)); }
+/* Phone: 23vw, not 26vw. "HeyMoon" is 4.0em wide in Geist 600 at -0.06em, so 26vw (104% of the width)
+   overflows and the line start-aligns, cutting the final "n"; 23vw ends exactly on the 16px gutters.
+   The dot pitch drops to 4px with it, so the strokes stay about as many dots wide as on desktop. */
+@media (max-width: 639px) { .wmBox { --wm-size: 23vw; --dot: 4px; --dot-r: .75px; } }
+.wm {
+  display: block; font: 600 var(--wm-size) / 0.8 var(--font-geist-sans), system-ui, sans-serif;
+  letter-spacing: -0.06em; white-space: nowrap; text-align: center;
+  color: transparent; background: radial-gradient(circle, rgb(255 255 255 / .9) 0 var(--dot-r), transparent calc(var(--dot-r) + .4px)) 0 0 / var(--dot) var(--dot);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / .35) 55%, transparent 85%);
+          mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / .35) 55%, transparent 85%);
+  user-select: none;
+}

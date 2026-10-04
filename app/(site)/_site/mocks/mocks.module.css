@@ -1,1 +1,96 @@
-/* WP8 owns this file (§5.8). Use the §2.3 CSS variables; never @apply or theme() here. */
+/* WP8 mocks (SPEC §5.8). Only the §2.3 variables; never @apply or theme() here (a module has no @config).
+   Every state below is keyed by a data attribute the mock writes from its props, so the server HTML is
+   already the final picture and nothing moves until a prop changes. Transitions live only under
+   prefers-reduced-motion: no-preference. */
+
+/* ── Placement ─────────────────────────────────────────────────────────────────────────────────── */
+
+/* Tall mocks: centred while they fit their mount, pinned to the top with a short fade where they do
+   not (v1's FRAME_FIT). The frame is a size container, so a short mount (the 300px stacked mounts)
+   can set the sheet a little denser. The fade is no deeper than the frame's bottom padding, so on a
+   mount that fits it only ever lands on tint. */
+.fit {
+  container-type: size;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+          mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+}
+
+/* ── Shared states ─────────────────────────────────────────────────────────────────────────────── */
+
+/* A value and its skeleton share one cell, so a reveal never moves anything (MockPlan). */
+.swap { display: inline-grid; align-items: center; justify-items: end; }
+.swap > * { grid-area: 1 / 1; }
+.swap[data-align="start"] { justify-items: start; }
+.swap > [data-on="0"] { opacity: 0; }
+
+/* A row that keeps its place while it waits, then arrives (MockWhy, MockTiers, MockCheck). */
+.arrive[data-on="0"] { opacity: 0; transform: translateY(4px); }
+/* A card on the carousel rail fades up into its slot (MockPicks, 400ms). */
+.rise[data-on="0"] { opacity: 0; transform: translateY(8px); }
+
+/* Bars grow from the inline start (MockPhases). */
+.grow { transform-origin: left center; }
+:global([dir="rtl"]) .grow { transform-origin: right center; }
+.grow[data-on="0"] { transform: scaleX(0); }
+
+/* The skeleton a hidden field shows (§5.8: h-2 w-16 bg-ink/6 rounded). */
+.skel { display: block; height: 8px; width: 64px; border-radius: 4px; background: rgb(18 21 27 / .06); }
+
+/* ── MockRead: one line per row on a wide card, the agent over the label on a narrow one ────────── */
+.read { container-type: inline-size; }
+.readRow {
+  display: grid; grid-template-columns: 15px 118px minmax(0, 1fr); column-gap: 12px; align-items: center;
+  padding: 9px 16px;
+}
+.readRow > :last-child { min-width: 0; }
+@container (max-width: 400px) {
+  .readRow { grid-template-columns: 15px minmax(0, 1fr); row-gap: 3px; align-items: start; padding-block: 8px; }
+  .readRow > :first-child { grid-row: span 2; margin-top: 1px; }
+}
+@container (max-height: 360px) {
+  .readHead { padding-block: 10px; }
+}
+
+/* ── MockTerms: one list over the other; side by side only in a short, wide mount (the desktop
+      stacked mount, 524 × 300), where it saves the height the button needs (same type, same weight) ── */
+.termsLists { display: grid; row-gap: 14px; }
+@container (min-width: 480px) and (max-height: 360px) {
+  .termsLists { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 20px; }
+}
+
+/* ── MockCheck rows ─────────────────────────────────────────────────────────────────────────────── */
+.checkRow { padding-block: 10px; }
+.fix { margin-top: 6px; }
+@container (max-height: 360px) {
+  .checkRow { padding-block: 7px; }
+  .fix { margin-top: 4px; }
+}
+
+/* ── The carousel rail (MockPicks cards): the rail runs past the panel's own edge ───────────────── */
+.rail { display: flex; gap: 12px; width: max-content; }
+.pick { width: 256px; }
+.pickTile { height: 112px; }
+@container (max-height: 360px) { .pickTile { height: 92px; } }
+
+/* ── ShareScale: the figure fits its column (WP4 request 1). The root is the inline-size container. ─ */
+.share { container-type: inline-size; }
+.shareFigure { font-size: min(clamp(64px, 9vw, 132px), 23cqi); margin-inline-start: -0.05em; }
+/* The optical pull sets the tabular "1"'s side bearing on the eyebrow's edge (as WP4 does for its
+   figures); in RTL the figure's far edge is the "%", which needs none. */
+:global([dir="rtl"]) .shareFigure { margin-inline-start: 0; }
+.dot { opacity: 0; transform: translateY(3px); }
+.dot[data-on="1"] { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .swap > * { transition: opacity .3s var(--ease-out); }
+  .arrive { transition: opacity .3s var(--ease-out), transform .3s var(--ease-out); }
+  .arrive[data-slow] { transition-duration: .4s; }
+  .rise { transition: opacity .4s var(--ease-out), transform .4s var(--ease-out); }
+  .grow { transition: transform .6s var(--ease-out); transition-delay: var(--d, 0ms); }
+  .enter { animation: mk-enter .3s var(--ease-out) both; }
+  .dot { transition: opacity .3s var(--ease-out), transform .3s var(--ease-out); transition-delay: var(--d, 0ms); }
+  /* PayoutRail: a glyph waxes into its phase rather than cutting to it. */
+  .payout :global(.moon circle) { transition: fill-opacity .32s var(--ease-out); }
+}
+
+@keyframes mk-enter { from { opacity: 0; transform: translateY(4px); } }

@@ -1,7 +1,21 @@
-/* STUB (WP0). WP8 replaces the body (§5.8); keep the export name and props (DiscsProps).
-   Mocks take props only, may import copy.ts LABELS, and never import DEMO. */
+/* Discs (SPEC §5.8, C10): the plan's creators as abstract discs, never faces. `count` is bound; the
+   colours cycle #A78BFA, #7C5CE0, #4D2FB0. Each has a 2px white ring and overlaps the one before by
+   6px at 20px (margin-inline-start, so the stack mirrors in RTL with no extra rule). */
 import type { DiscsProps } from "../contracts";
 
+const FILLS = ["var(--v300)", "var(--v500)", "var(--v700)"] as const;
+
 export function Discs({ count, size = 20 }: DiscsProps) {
-  return <div data-stub="Discs" aria-hidden className="inline-flex h-5 items-center rounded-full border border-dashed border-ink/16 px-2 text-[10px] text-ink/60" style={{ minWidth: count * (size - 6) + 6 }}>Discs · {count}</div>;
+  const overlap = Math.round(size * 0.3);
+  return (
+    <span aria-hidden className="inline-flex items-center">
+      {Array.from({ length: Math.max(0, count) }, (_, i) => (
+        <span
+          key={i}
+          className="block shrink-0 rounded-full ring-2 ring-white"
+          style={{ width: size, height: size, background: FILLS[i % FILLS.length], marginInlineStart: i ? -overlap : 0 }}
+        />
+      ))}
+    </span>
+  );
 }

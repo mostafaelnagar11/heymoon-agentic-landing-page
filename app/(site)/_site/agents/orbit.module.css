@@ -1,1 +1,220 @@
-/* WP5 owns this file (§5.5). Use the §2.3 CSS variables; never @apply or theme() here. */
+/* WP5 owns this file (§5.5). Uses the §2.3 CSS variables; never @apply or theme() here.
+   Geometry lives in design units (desktop 640x560, phone 358x300). The stage is a size container, so
+   every position is a cqw length and scales with the stage without any measuring. Physical left/top
+   on purpose: the orbit is a picture. Under dir="rtl" it mirrors through --flip, and JS multiplies by
+   the same sign (rule 2.4.5). */
+
+/* ── Band layout ─────────────────────────────────────────────────────────────────────────────── */
+
+.dust {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle, rgb(255 255 255 / .05) 1px, transparent 1.4px) 0 0 / 8px 8px;
+}
+
+/* Desktop: the copy group is centred on the stage's height, the stage spans every row. */
+.layout {
+  position: relative; width: 100%; max-width: 1120px; margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  grid-template-rows: 1fr auto auto auto 1fr;
+  grid-template-areas: ". stage" "head stage" "readout stage" "locks stage" ". stage";
+  column-gap: 24px;
+}
+.head { grid-area: head; }
+.stageCol { grid-area: stage; align-self: center; min-width: 0; }
+.readoutArea { grid-area: readout; }
+.locksArea { grid-area: locks; }
+.h2 { text-wrap: balance; }
+
+/* Below 1024: copy, then the stage centred at up to 640, then the readout, then the locks. */
+@media (max-width: 1023px) {
+  .layout { display: flex; flex-direction: column; }
+  /* The tilted orbit fills the middle half of the stage; its empty top and bottom bands (8% of the
+     width each) tuck into the spacing around it. % margins resolve against the column's width. */
+  .stageCol { margin-top: calc(40px - 8%); margin-bottom: -8%; width: 100%; }
+  /* Creators: the static fence reaches past the nodes (its top lock nearly to the stage edge), so
+     only half as much tucks in at either end. */
+  .stageCol[data-fence] { margin-top: calc(40px - 4%); margin-bottom: -4%; }
+  .readoutArea { margin-top: 24px; max-width: 560px; }
+  .locksArea { max-width: 560px; }
+}
+/* Phone: the 358x300 stage reaches 16px into the panel's padding on each side. Its top and bottom
+   bands are empty sky once the orbit tilts (ry 58 of 150), so they tuck into the spacing around it. */
+@media (max-width: 639px) {
+  .stageCol {
+    margin-top: 0; margin-bottom: -28px;
+    width: min(358px, calc(100% + 32px));
+    margin-inline: calc((100% - min(358px, calc(100% + 32px))) / 2);
+  }
+  /* Creators: the fence sits 28 units below the nodes, so the readout hairline clears the static
+     fence (bottom at 278 of 300) and keeps the same air under the tilted one as brands has under its
+     front node. */
+  .stageCol[data-fence] { margin-bottom: -8px; }
+  .readoutArea { margin-top: 0; }
+}
+
+/* ── Stage ───────────────────────────────────────────────────────────────────────────────────── */
+
+.stage {
+  --flip: 1;
+  position: relative; width: 100%; max-width: 640px; margin-inline-start: auto;
+  aspect-ratio: 640 / 560;
+  container-type: inline-size;
+}
+[dir="rtl"] .stage { --flip: -1; }
+@media (max-width: 1023px) { .stage { margin-inline: auto; } }
+@media (max-width: 639px) { .stage { max-width: none; aspect-ratio: 358 / 300; } }
+
+.svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 0; }
+.onPhone { display: none; }
+@media (max-width: 639px) {
+  .onDesk { display: none; }
+  .onPhone { display: block; }
+}
+
+.ring { fill: none; stroke-width: 1.5; stroke-dasharray: 0 8; stroke-linecap: round; }
+.inner { fill: none; stroke: rgb(255 255 255 / .07); stroke-width: 1; stroke-dasharray: 0 6; stroke-linecap: round; }
+.fence { fill: none; stroke: rgb(255 255 255 / .14); stroke-width: 1.25; stroke-dasharray: 0 6; stroke-linecap: round; }
+
+.beam { opacity: 0; transition: opacity .4s var(--ease-out); }
+.beam[data-on] { opacity: 1; transition-duration: .12s; }
+.tether { fill: none; stroke: #fff; stroke-width: 1; opacity: 0; }
+.comet { fill: none; stroke: #fff; stroke-linecap: round; }
+
+/* The moonlight around the core: white only, never the brand gradient (§2.4.2). */
+.coreGlow {
+  position: absolute; left: 50%; top: 50%; z-index: 0; pointer-events: none;
+  width: 92cqw; height: 58cqw; translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / .065), rgb(255 255 255 / .022) 46%, transparent);
+}
+
+.coreWrap {
+  position: absolute; inset: 0; margin: auto; z-index: 2; pointer-events: none;
+  width: 15cqw; height: 15cqw;                       /* 96 of 640 */
+}
+@media (max-width: 639px) { .coreWrap { width: calc(100cqw * 60 / 358); height: calc(100cqw * 60 / 358); } }
+.core {
+  position: absolute; inset: 0; border-radius: 50%;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 40%, rgb(255 255 255 / .10), rgb(255 255 255 / .02)), var(--deep);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .10);
+}
+.star { width: 37.5%; height: 37.5%; color: #fff; filter: drop-shadow(0 0 24px rgb(255 255 255 / .35)); }
+.ripple { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 1px rgb(255 255 255 / .5); opacity: 0; }
+/* A hairline corona, 12% out: the core reads as a body with an atmosphere, not a button. */
+.coreWrap::before {
+  content: ""; position: absolute; inset: -12%; border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .06);
+  background: radial-gradient(closest-side, transparent 80%, rgb(255 255 255 / .035));
+}
+
+/* ── Nodes ───────────────────────────────────────────────────────────────────────────────────── */
+
+.node {
+  position: absolute; left: 50%; top: 50%; z-index: 3;
+  width: 40px; height: 40px; margin: -20px 0 0 -20px; padding: 0;
+  border: 0; border-radius: 50%; background: none; color: inherit; font: inherit;
+  cursor: default; -webkit-tap-highlight-color: transparent;
+  transform: translate3d(calc(var(--dx) * var(--flip) * 1cqw), calc(var(--dy) * 1cqw), 0);
+}
+.stage[data-live] .node { will-change: transform; }
+@media (max-width: 639px) {
+  .node { width: 44px; height: 44px; margin: -22px 0 0 -22px;
+    transform: translate3d(calc(var(--px) * var(--flip) * 1cqw), calc(var(--py) * 1cqw), 0); }
+}
+
+/* The glyph is always FULL; its state is its brightness (ruling 35). */
+.glyph {
+  position: absolute; left: 50%; top: 50%; width: 24px; height: 24px; margin: -12px 0 0 -12px;
+  display: grid; place-items: center;
+  color: rgb(255 255 255 / .56);
+  transition: color .45s var(--ease-out);
+}
+.glyph > svg { position: relative; }
+.node[data-state="waiting"] .glyph { color: rgb(255 255 255 / .32); }
+.node[data-state="working"] .glyph { color: #fff; }
+/* Working: moonlight behind the glyph. */
+.glyph::before {
+  content: ""; position: absolute; inset: -16px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / .34), rgb(255 255 255 / .09) 55%, transparent);
+  opacity: 0; transition: opacity .6s var(--ease-out);
+}
+.node[data-state="working"] .glyph::before { opacity: 1; }
+/* Held by the pointer: a hairline ring (focus draws the outline instead). */
+.glyph::after {
+  content: ""; position: absolute; inset: -7px; border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .22);
+  opacity: 0; transition: opacity .2s var(--ease-out);
+}
+.node[data-held]:not(:focus-visible) .glyph::after { opacity: 1; }
+
+/* The label sits on the side of its glyph away from the core: below a front node (12 + 8 px), above
+   a back one (12 + 6 px), with the name always next to the glyph. Near the ends of the ellipse it
+   leans inward (--lean, ±1 at the ends): its outer edge stops 6 px past the glyph centre. Live, JS
+   writes the same transform with the glyph's depth scale. */
+.label {
+  --lx: calc(-50% - var(--lean, 0) * var(--flip) * (50% - 6px));
+  position: absolute; left: 50%; top: 50%;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  white-space: nowrap; text-align: center;
+  transform: translate(var(--lx), 20px);
+  transition: opacity .25s var(--ease-out);
+}
+.label[data-up] { flex-direction: column-reverse; transform: translate(var(--lx), calc(-100% - 18px)); }
+/* Hidden deep at the back; or fading out for 140 ms before it changes side at an end of the ellipse. */
+.label[data-hidden], .label[data-flip] { opacity: 0; pointer-events: none; }
+.label[data-flip] { transition-duration: .14s; }
+.name { color: rgb(255 255 255 / .56); transition: color .3s var(--ease-out); }
+.node[data-state="working"] .name, .node[data-held] .name { color: rgb(255 255 255 / .92); }
+.role { color: rgb(255 255 255 / .56); line-height: 1.2; transition: opacity .25s var(--ease-out); }
+/* A back label on the tilted orbit shows the name only (a depth cue). */
+.label[data-far] .role { opacity: 0; }
+/* A stage under 520 px (the 1024 split) is too tight for two-line labels: names only. */
+@container (max-width: 520px) { .role { display: none; } }
+@media (max-width: 639px) { .label { display: none; } }
+
+/* Creators: the three locks on the fence. A deep disc knocks the dotted fence out behind each. */
+.lock {
+  position: absolute; left: 50%; top: 50%; z-index: 1;
+  width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--deep); color: rgb(255 255 255 / .56);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .10);
+  transform: translate3d(calc(var(--dx) * var(--flip) * 1cqw), calc(var(--dy) * 1cqw), 0);
+  transition: color .3s var(--ease-out), box-shadow .3s var(--ease-out), opacity .25s var(--ease-out);
+}
+.lock[data-hi] { z-index: 4; color: rgb(255 255 255 / .88); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .30), 0 0 0 5px rgb(255 255 255 / .04); }
+/* The fence runs behind the orbit: while a label passes over a lock, the lock steps back. A lock
+   brightened from its row always stays on top. */
+.lock[data-under]:not([data-hi]) { opacity: .14; }
+@media (max-width: 639px) {
+  .lock { width: 22px; height: 22px; margin: -11px 0 0 -11px;
+    transform: translate3d(calc(var(--px) * var(--flip) * 1cqw), calc(var(--py) * 1cqw), 0); }
+}
+
+/* ── Readout ─────────────────────────────────────────────────────────────────────────────────── */
+
+.readout { border-top: 1px solid rgb(255 255 255 / .08); padding-top: 20px; }
+.fade { display: grid; }
+.fade > * { grid-area: 1 / 1; min-width: 0; }
+/* Two lines held, so a wrap never moves the copy; a two-line note splits evenly, never leaving one word. */
+.note { min-height: calc(2em * 1.45); text-wrap: balance; }
+.out { opacity: 0; }
+
+/* ── Locks ───────────────────────────────────────────────────────────────────────────────────── */
+
+.locks { border-bottom: 1px solid rgb(255 255 255 / .08); }
+.lockRow { cursor: default; transition: background-color .2s var(--ease-out); }
+.lockRow:focus-visible { outline-offset: -2px; border-radius: 8px; }
+.lockLabel { text-wrap: pretty; }
+.lockIcon { color: rgb(255 255 255 / .56); transition: color .2s var(--ease-out); }
+.lockRow[data-hi] .lockIcon { color: rgb(255 255 255 / .88); }
+
+/* 300 ms in all: the outgoing line lifts away first, the new one rises in after it, so two notes
+   never sit on top of each other at full strength. */
+@media (prefers-reduced-motion: no-preference) {
+  .in { animation: ro-in .26s var(--ease-out) .08s both; }
+  .out { animation: ro-out .14s var(--ease-out); }
+}
+@keyframes ro-in { from { opacity: 0; transform: translateY(5px); } }
+@keyframes ro-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-5px); } }

@@ -1,1 +1,46 @@
 /* WP4 owns this file (§5.4). Use the §2.3 CSS variables; never @apply or theme() here. */
+
+/* ── Lunar divider. The glyph dots ease between lit and unlit, so the 60 ms sequence reads as the
+      moon waxing rather than as nine cuts. Static under reduced motion. ── */
+.divider :global(.moon circle) { transition: fill-opacity .32s var(--ease-out); }
+
+/* ── The 2px rule grows from the start edge (scaleX, 600 ms --ease-out, §5.4). Static by default:
+      the server HTML carries data-entry="final". ── */
+.rule { transform-origin: left center; }
+:global([dir="rtl"]) .rule { transform-origin: right center; }
+.rule[data-entry="armed"] { transform: scaleX(0); }
+.rule[data-entry="in"] { transition: transform .6s var(--ease-out); }
+
+/* ── Rows. Below 768 the two columns stack. In the figure rows (guarantee, paid) the figure column
+      sits on the copy column's cap line: the eyebrow's cap top meets the H2's (measured at 1440: H2
+      caps start .168em below its box, the 11px mono caps 2px below theirs), so the offset follows the
+      H2's own clamp. The chart rows (ROAS, share) centre their mock on the copy instead. ── */
+.row { align-items: start; }
+.figureCol { margin-top: 48px; }
+@media (max-width: 639px) { .figureCol { margin-top: 56px; } }
+@media (min-width: 768px) {
+  .figureCol { margin-top: 0; }
+  .capLine { padding-top: calc(clamp(30px, 3.3vw, 48px) * .168 - 2px); }
+}
+
+/* Optical edge: at figure size Geist's "W" carries about .04em of side bearing and the tabular "$"
+   about .06em, so each figure is pulled back onto the column edge it shares with the eyebrow and the
+   note. Set on the element that carries text-figure, so the em is the figure's. */
+.figure { margin-inline-start: -0.04em; }
+.figureUsd { margin-inline-start: -0.06em; }
+/* Under RTL the start edge is the figure's last glyph, which carries no such bearing. */
+:global([dir="rtl"]) .figure, :global([dir="rtl"]) .figureUsd { margin-inline-start: 0; }
+
+/* ── Creators: "Weekly" sets in at figure size (S5): out of a soft blur, rising a seventh of an em,
+      once it is 60% in view. Transitions, not animations (rule 2.4.6). ── */
+.weekly[data-entry="armed"] { opacity: 0; filter: blur(10px); transform: translateY(.14em); }
+.weekly[data-entry="in"] {
+  transition: opacity .7s var(--ease-out), filter .8s var(--ease-out), transform 1s var(--ease-out-expo);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .divider :global(.moon circle) { transition: none; }
+  .rule[data-entry] { transform: none; transition: none; }
+  .weekly[data-entry] { filter: none; transform: none; }
+  .weekly[data-entry="in"] { transition: opacity .2s var(--ease-out); }
+}

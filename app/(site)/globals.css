@@ -112,14 +112,25 @@ html.lenis, html.lenis body { height: auto; }
   .hz { position: relative; z-index: 0; pointer-events: none; align-self: stretch; justify-self: stretch; }
   .hz > * { position: absolute; left: 50%; width: 100vw; translate: -50% 0; }
   .hz-tint { position: absolute; inset: 0; border-radius: inherit; }
-  .hz-sky { bottom: 50%; height: 150svh;
-    background: linear-gradient(to top, var(--deep) 0, var(--night-1) calc(var(--apex-pref, 60svh) * .62)); }
-  /* The halo is "the glow behind the field" (D3): 38% wide, so it fades out about 29% of the width from the centre. */
+  /* The sky runs on below the apex (deep), and the ground paints only the planet disc, transparent outside it:
+     the light behind the field then shows between the apex line and the limb, so it falls off around the
+     limb instead of ending in a horizontal edge at the apex (WP1 fix; the shader models the same layers). */
+  .hz-sky { top: calc(50% - 150svh); height: 300svh;
+    background: linear-gradient(to bottom, var(--night-1) calc(150svh - var(--apex-pref, 60svh) * .62), var(--deep) 150svh); }
+  /* The halo is "the glow behind the field" (D3): 38% wide, so it fades out about 29% of the width from the centre.
+     Its alpha follows A·(1 − t²)² (t = radius / 75%), sampled every 7.5%: the same .42/.16 at 0/45% as before, but
+     with no slope break at the stops and a zero slope where it ends, so there is no visible ring (sky/shader.ts). */
   .hz-halo { top: 50%; height: min(50svh, 440px); translate: -50% -50%; opacity: 1; }
   .hz-halo > [data-tint="brands"] {
-    background: radial-gradient(38% 50% at 50% 50%, rgb(124 92 224 / .42), rgb(77 47 176 / .16) 45%, transparent 75%); }
+    background: radial-gradient(38% 50% at 50% 50%, rgb(124 92 224 / .42) 0%, rgb(116 84 216 / .412) 7.5%,
+      rgb(108 77 208 / .387) 15%, rgb(100 70 200 / .348) 22.5%, rgb(93 62 192 / .296) 30%, rgb(85 54 184 / .236) 37.5%,
+      rgb(77 47 176 / .172) 45%, rgb(77 47 176 / .109) 52.5%, rgb(77 47 176 / .054) 60%, rgb(77 47 176 / .015) 67.5%,
+      rgb(77 47 176 / 0) 75%); }
   .hz-halo > [data-tint="creators"] {
-    background: radial-gradient(38% 50% at 50% 50%, rgb(240 85 157 / .38), rgb(124 92 224 / .16) 45%, transparent 75%); }
+    background: radial-gradient(38% 50% at 50% 50%, rgb(240 85 157 / .38) 0%, rgb(221 86 168 / .372) 7.5%,
+      rgb(201 87 179 / .35) 15%, rgb(182 88 190 / .315) 22.5%, rgb(163 90 202 / .268) 30%, rgb(143 91 213 / .214) 37.5%,
+      rgb(124 92 224 / .156) 45%, rgb(124 92 224 / .099) 52.5%, rgb(124 92 224 / .049) 60%, rgb(124 92 224 / .014) 67.5%,
+      rgb(124 92 224 / 0) 75%); }
   .hz-sun { top: 50%; width: min(1100px, 130vw); height: min(280px, 34svh); translate: -50% -50%;
     border-radius: 50%; filter: blur(44px); opacity: .7; }
   .hz-sun > [data-tint="brands"] {
@@ -128,7 +139,7 @@ html.lenis, html.lenis body { height: auto; }
     background: radial-gradient(50% 50% at 50% 50%, rgb(255 255 255 / .55) 0%, rgb(244 168 216 / .55) 22%, rgb(240 85 157 / .30) 45%, transparent 70%); }
   .hz-ground { top: 50%; height: 150svh;
     background: radial-gradient(circle var(--limb-r) at 50% var(--limb-r),
-      var(--night-0) calc(var(--limb-r) - .75px), var(--deep) calc(var(--limb-r) + .75px)); }
+      var(--night-0) calc(var(--limb-r) - .75px), rgb(0 2 17 / 0) calc(var(--limb-r) + .75px)); }
   .hz-earth { top: 50%; height: 200px;
     background: radial-gradient(circle var(--limb-r) at 50% var(--limb-r),
       transparent calc(var(--limb-r) - 36px), rgb(124 92 224 / .10) calc(var(--limb-r) - 1px), transparent var(--limb-r)); }
@@ -142,12 +153,14 @@ html.lenis, html.lenis body { height: auto; }
     background: linear-gradient(90deg, rgb(var(--rim-hue) / .15) 0%, rgb(var(--rim-hue) / .45) 20%,
       rgb(255 255 255 / .85) 50%, rgb(var(--rim-hue) / .45) 80%, rgb(var(--rim-hue) / .15) 100%); }
   .hz-rim > [data-tint="creators"] { --rim-hue: 240 85 157; }
+  /* The hair's ring is 1.5px at the base (was 1px) at .20 (was .30): the same light, but every pixel row it
+     crosses gets some of it, so at DPR 1 it is one line instead of a row of dashes (WP1). */
   .hz-hair { top: calc(50% - 8px); height: 120px;
-    background: linear-gradient(90deg, transparent 10%, rgb(255 255 255 / .30) 50%, transparent 90%);
+    background: linear-gradient(90deg, transparent 10%, rgb(255 255 255 / .20) 50%, transparent 90%);
     -webkit-mask: radial-gradient(circle calc(var(--limb-r) + 12px) at 50% calc(var(--limb-r) + 8px),
-      transparent calc(var(--limb-r) + 2.5px), #000 calc(var(--limb-r) + 3px), transparent calc(var(--limb-r) + 3.5px));
+      transparent calc(var(--limb-r) + 2.25px), #000 calc(var(--limb-r) + 3px), transparent calc(var(--limb-r) + 3.75px));
             mask: radial-gradient(circle calc(var(--limb-r) + 12px) at 50% calc(var(--limb-r) + 8px),
-      transparent calc(var(--limb-r) + 2.5px), #000 calc(var(--limb-r) + 3px), transparent calc(var(--limb-r) + 3.5px)); }
+      transparent calc(var(--limb-r) + 2.25px), #000 calc(var(--limb-r) + 3px), transparent calc(var(--limb-r) + 3.75px)); }
   .hz-dawn { top: -150svh; height: 300svh; background: var(--canvas); opacity: 0; }
   .hz[data-gl="on"] > :not(.hz-dawn) { visibility: hidden; }   /* set after the canvas fade completes */
 }
