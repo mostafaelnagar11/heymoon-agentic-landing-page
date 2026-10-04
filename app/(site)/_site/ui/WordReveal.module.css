@@ -1,0 +1,24 @@
+/* WordReveal and Reveal (WP0). Static by default: the server HTML carries neither attribute, so
+   no-JS and in-view-at-mount show the final state. data-armed (set at mount only when the element is
+   below the viewport) hides; data-in (set once at the threshold) plays. */
+.word { display: inline-block; }
+
+.root[data-armed] .word { opacity: 0; filter: blur(8px); transform: translateY(.3em); }
+.root[data-armed][data-in] .word {
+  opacity: 1; filter: blur(0); transform: none;
+  transition: opacity .6s var(--ease-out), filter .6s var(--ease-out), transform .6s var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 35ms);
+}
+
+.block[data-armed] { opacity: 0; transform: translateY(8px); }
+.block[data-armed][data-in] {
+  opacity: 1; transform: none;
+  transition: opacity .6s var(--ease-out), transform .6s var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root[data-armed] .word { filter: none; transform: none; }
+  .root[data-armed][data-in] .word { transition: opacity .2s var(--ease-out); transition-delay: 0s; }
+  .block[data-armed] { transform: none; }
+  .block[data-armed][data-in] { transition: opacity .2s var(--ease-out); }
+}

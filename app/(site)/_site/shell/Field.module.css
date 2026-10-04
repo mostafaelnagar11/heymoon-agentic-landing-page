@@ -1,0 +1,15 @@
+/* Field (WP0). The typed hint is the input's next sibling: CSS hides it as soon as the input holds a
+   value, with or without JS (the input's placeholder attribute is always a single space). */
+.input:not(:placeholder-shown) + .hint { visibility: hidden; }
+.root:focus-within .caret { visibility: hidden; }
+
+/* The two icons are both rendered and cross-fade with y 4px over 200ms. */
+.icon { transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); }
+.icon[data-on="false"] { opacity: 0; transform: translateY(4px); }
+@media (prefers-reduced-motion: reduce) { .icon[data-on="false"] { transform: none; } }
+
+/* Invalid: a 2px danger ring before the field shadow. */
+.form { transition: box-shadow .2s var(--ease-out); }
+.root[data-invalid="true"] .form {
+  box-shadow: 0 0 0 2px #D70015, 0 0 0 1px rgba(255,255,255,.7), 0 24px 64px -24px rgba(0,0,0,.8);
+}

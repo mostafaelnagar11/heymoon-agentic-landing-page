@@ -4,15 +4,20 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3004",
+    "predev": "npm run bind",
     "build": "next build",
+    "prebuild": "npm run bind",
     "start": "next start -p 3004",
-    "lint": "next lint"
+    "lint": "next lint",
+    "bind": "node scripts/bind-demo.cjs",
+    "measure": "node scripts/measure.cjs",
+    "check:site": "node scripts/check-site.cjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "geist": "^1.7.2",
-    "lenis": "^1.3.26",
-    "motion": "^12.43.0",
+    "lenis": "1.3.26",
+    "motion": "12.43.0",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18"

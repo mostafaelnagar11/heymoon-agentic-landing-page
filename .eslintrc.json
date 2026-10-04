@@ -1,3 +1,22 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "overrides": [{
+    "files": ["app/[(]site[)]/**/*.{ts,tsx}"],
+    "rules": {
+      "no-restricted-imports": ["error", {
+        "paths": [
+          { "name": "motion/react", "importNames": ["motion"], "message": "Use m from motion/react-m (LazyMotion strict)." },
+          { "name": "framer-motion", "message": "Import from motion/react or motion/react-m." },
+          { "name": "@phosphor-icons/react", "message": "Import from _site/ui/icons.ts (deep imports)." },
+          { "name": "lenis/dist/lenis.css", "message": "Rules live in globals.css." },
+          { "name": "next/link", "message": "Plain <a> only. After a switch, next/link desyncs the URL and the audience (rule 2.4.11). Every other route the site links to is in another root layout, so it is a full load anyway." }
+        ],
+        "patterns": [
+          { "group": ["**/(brands)/**", "**/(creators)/**", "@/app/(brands)/**", "@/app/(creators)/**", "@/app/_shared/**", "**/_shared/**"],
+            "message": "The site never imports product code (decisions 2 and 4)." },
+          { "group": ["gsap", "gsap/*", "three", "three/*", "ogl", "@react-three/*"], "message": "Not in the stack (decision 5)." }
+        ]
+      }]
+    }
+  }]
 }

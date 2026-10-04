@@ -2985,6 +2985,8 @@ These lines appear in the toasts, the window status line and the rows. Each row 
 
 ### 7.1 Budgets
 
+> **Lead ruling, 4 Oct (after WP0).** motion + lenis is **≤ 44 kB**, attributed by module (WP0-NOTES D13): 26 kB was below the floor of §5.0.1's own imports. First load stays **≤ 160 kB**, and to keep it, **everything below the hero loads through `next/dynamic`** in `Landing.tsx` (SSR kept, so the sections paint styled before their JS arrives). Those chunks are budgeted together as **lazy site chunks ≤ 110 kB** and are deny-scanned like first-load chunks. The hero is the only builder code on the first load, with about 6.5 kB of headroom: WP1 loads `Toasts` (desktop only) through `next/dynamic` too, and keeps the sky in its own `import()` chunk.
+
 All sizes are gzip, as reported by `npm run measure`.
 
 | Item | Budget | How it is checked |

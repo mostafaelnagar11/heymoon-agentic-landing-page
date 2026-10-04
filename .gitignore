@@ -34,3 +34,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# npm run measure (its own distDir and lockfile)
+/.next-measure*/
+.next-measure.lock

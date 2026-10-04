@@ -1,0 +1,19 @@
+/* Deep Phosphor re-exports (§4.4): the barrel is lint-banned in the site, so only these ship. */
+export { Globe } from "@phosphor-icons/react/dist/csr/Globe";
+export { At } from "@phosphor-icons/react/dist/csr/At";
+export { Check } from "@phosphor-icons/react/dist/csr/Check";
+export { Lock } from "@phosphor-icons/react/dist/csr/Lock";
+export { Pause } from "@phosphor-icons/react/dist/csr/Pause";
+export { Play } from "@phosphor-icons/react/dist/csr/Play";
+export { X } from "@phosphor-icons/react/dist/csr/X";
+export { InstagramLogo } from "@phosphor-icons/react/dist/csr/InstagramLogo";
+export { TiktokLogo } from "@phosphor-icons/react/dist/csr/TiktokLogo";
+export { Storefront } from "@phosphor-icons/react/dist/csr/Storefront";
+export { UserFocus } from "@phosphor-icons/react/dist/csr/UserFocus";
+export { UsersThree } from "@phosphor-icons/react/dist/csr/UsersThree";
+export { Handshake } from "@phosphor-icons/react/dist/csr/Handshake";
+export { ShieldCheck } from "@phosphor-icons/react/dist/csr/ShieldCheck";
+export { PenNib } from "@phosphor-icons/react/dist/csr/PenNib";
+export { Megaphone } from "@phosphor-icons/react/dist/csr/Megaphone";
+export { ChartLineUp } from "@phosphor-icons/react/dist/csr/ChartLineUp";
+export { Brain } from "@phosphor-icons/react/dist/csr/Brain";

@@ -1,0 +1,675 @@
+{
+  "agents": [
+    {
+      "name": "MoonShot AI",
+      "role": "Intake"
+    },
+    {
+      "name": "MoonMatch AI",
+      "role": "Matching"
+    },
+    {
+      "name": "MoonSearch AI",
+      "role": "Safety"
+    },
+    {
+      "name": "MoonWriter AI",
+      "role": "Creative"
+    },
+    {
+      "name": "MoonLive AI",
+      "role": "Activation"
+    },
+    {
+      "name": "MoonScore AI",
+      "role": "Optimization"
+    },
+    {
+      "name": "MoonLearning AI",
+      "role": "Learning"
+    }
+  ],
+  "brands": {
+    "build": {
+      "agentWord": "five",
+      "agents": [
+        "MoonShot AI",
+        "MoonMatch AI",
+        "MoonSearch AI",
+        "MoonScore AI",
+        "MoonWriter AI"
+      ],
+      "opener": "MoonShot AI · Starting from your store details",
+      "sizes": [
+        {
+          "atMs": 0,
+          "total": 7
+        }
+      ],
+      "sub": null,
+      "title": "Five agents on your plan",
+      "totalMs": 10768,
+      "totalText": "10.8s",
+      "units": [
+        {
+          "agent": "MoonShot AI",
+          "endMs": 1524,
+          "key": "markets",
+          "note": "Setting the campaign goals and the markets to run in",
+          "produces": "The markets Phase 1 runs in",
+          "role": "Intake",
+          "startMs": 0,
+          "stream": "markets"
+        },
+        {
+          "agent": "MoonMatch AI",
+          "endMs": 3454,
+          "key": "audience",
+          "note": "Reading your audience off your own channels",
+          "produces": "Who the creators will be talking to",
+          "role": "Matching",
+          "startMs": 1524,
+          "stream": "audience"
+        },
+        {
+          "agent": "MoonMatch AI",
+          "endMs": 5640,
+          "key": "creators",
+          "note": "Matching creators whose audience is in your markets",
+          "produces": "The creators who fit your brand",
+          "role": "Matching",
+          "startMs": 3454,
+          "stream": "creators"
+        },
+        {
+          "agent": "MoonSearch AI",
+          "endMs": 5640,
+          "key": "safety",
+          "note": "Vetting every match for brand and fraud risk",
+          "produces": "Competitors excluded, overlaps declared",
+          "role": "Safety",
+          "startMs": 3454,
+          "stream": "creators"
+        },
+        {
+          "agent": "MoonScore AI",
+          "endMs": 7493,
+          "key": "pricing",
+          "note": "Sizing the warm-up crew against the $1,000 Phase 1 budget",
+          "produces": "Who the warm-up briefs, and the sales HeyMoon guarantees",
+          "role": "Optimization",
+          "startMs": 5640,
+          "stream": "pricing"
+        },
+        {
+          "agent": "MoonWriter AI",
+          "endMs": 9700,
+          "key": "brief",
+          "note": "Drafting the brief from your own product copy",
+          "produces": "What every creator must say, and must not say",
+          "role": "Creative",
+          "startMs": 7493,
+          "stream": "brief"
+        },
+        {
+          "agent": "MoonScore AI",
+          "endMs": 10768,
+          "key": "ladder",
+          "note": "Laying out Phases 2 and 3 behind the warm-up",
+          "produces": "The whole campaign: three phases, one at a time",
+          "role": "Optimization",
+          "startMs": 9700,
+          "stream": "ladder"
+        }
+      ]
+    },
+    "checkout": {
+      "budget": {
+        "text": "$1,000",
+        "value": 1000
+      },
+      "last4": "4629",
+      "total": {
+        "text": "$1,050",
+        "value": 1050
+      },
+      "vat": {
+        "text": "$50",
+        "value": 50
+      }
+    },
+    "guarantee": {
+      "budget": {
+        "text": "$12,500",
+        "value": 12500
+      },
+      "revenue": {
+        "text": "$63,050",
+        "value": 63050
+      },
+      "roas": 5,
+      "roasText": "5x"
+    },
+    "ladder": [
+      {
+        "budget": {
+          "text": "$1,000",
+          "value": 1000
+        },
+        "label": "Phase 1 · Warm-up",
+        "multiple": 1,
+        "multipleText": "1x",
+        "phaseNo": 1,
+        "width": 0.16
+      },
+      {
+        "budget": {
+          "text": "$4,000",
+          "value": 4000
+        },
+        "label": "Phase 2 · Scale",
+        "multiple": 3.7,
+        "multipleText": "3.7x",
+        "phaseNo": 2,
+        "width": 0.5333333333333333
+      },
+      {
+        "budget": {
+          "text": "$7,500",
+          "value": 7500
+        },
+        "label": "Phase 3 · Peak",
+        "multiple": 6.3,
+        "multipleText": "6.3x",
+        "phaseNo": 3,
+        "width": 1
+      }
+    ],
+    "plan": {
+      "creatorCount": 3,
+      "creatorWord": "three",
+      "markets": [
+        "UAE",
+        "KSA",
+        "Kuwait"
+      ],
+      "pay": {
+        "text": "$1,000",
+        "value": 1000
+      },
+      "phaseLabel": "Phase 1 · Warm-up"
+    },
+    "promoAgentWord": "five",
+    "read": {
+      "agentWord": "four",
+      "agents": [
+        "MoonShot AI",
+        "MoonMatch AI",
+        "MoonWriter AI",
+        "MoonScore AI"
+      ],
+      "opener": "MoonShot AI · Opening yourstore.com",
+      "sizes": [
+        {
+          "atMs": 0,
+          "total": 4
+        },
+        {
+          "atMs": 6048,
+          "total": 9
+        }
+      ],
+      "sub": null,
+      "title": "Four agents read your store",
+      "totalMs": 15022,
+      "totalText": "15.0s",
+      "units": [
+        {
+          "agent": "MoonShot AI",
+          "endMs": 905,
+          "key": "identity",
+          "note": "Reading the homepage",
+          "produces": "Name and positioning",
+          "role": "Intake",
+          "startMs": 0,
+          "stream": "identity"
+        },
+        {
+          "agent": "MoonShot AI",
+          "endMs": 2514,
+          "key": "category",
+          "note": "Walking the navigation and the designer index",
+          "produces": "What you actually sell",
+          "role": "Intake",
+          "startMs": 905,
+          "stream": "category"
+        },
+        {
+          "agent": "MoonMatch AI",
+          "endMs": 3983,
+          "key": "socials",
+          "note": "Following the footer links to live profiles",
+          "produces": "Your own channels and their reach",
+          "role": "Matching",
+          "startMs": 2514,
+          "stream": "socials"
+        },
+        {
+          "agent": "MoonShot AI",
+          "endMs": 6048,
+          "key": "priceBand",
+          "note": "Sampling 60 product pages",
+          "produces": "Price band and median order value",
+          "role": "Intake",
+          "startMs": 3983,
+          "stream": "priceBand"
+        },
+        {
+          "agent": "MoonWriter AI",
+          "endMs": 8620,
+          "key": "voice",
+          "note": "Counting the words your store repeats",
+          "produces": "The register a creator has to match",
+          "role": "Creative",
+          "startMs": 6048,
+          "stream": "voice"
+        },
+        {
+          "agent": "MoonShot AI",
+          "endMs": 9924,
+          "key": "markets",
+          "note": "Checking delivery promises and currencies",
+          "produces": "Markets, ranked by how you serve them",
+          "role": "Intake",
+          "startMs": 8620,
+          "stream": "markets"
+        },
+        {
+          "agent": "MoonShot AI",
+          "endMs": 11953,
+          "key": "bestsellers",
+          "note": "Ranking by shelf position and restocks",
+          "produces": "The products worth putting behind creators",
+          "role": "Intake",
+          "startMs": 9924,
+          "stream": "bestsellers"
+        },
+        {
+          "agent": "MoonShot AI",
+          "endMs": 13510,
+          "key": "seasonality",
+          "note": "Reading last year's campaign pages",
+          "produces": "When your demand peaks",
+          "role": "Intake",
+          "startMs": 11953,
+          "stream": "seasonality"
+        },
+        {
+          "agent": "MoonScore AI",
+          "endMs": 15022,
+          "key": "eligibility",
+          "note": "Checking traffic against the guarantee floor",
+          "produces": "Whether HeyMoon can guarantee sales",
+          "role": "Optimization",
+          "startMs": 13510,
+          "stream": "eligibility"
+        }
+      ]
+    },
+    "roasScale": {
+      "max": 12,
+      "min": 1
+    },
+    "shownUrl": "yourstore.com",
+    "unlockPct": 80
+  },
+  "creators": {
+    "build": {
+      "agentWord": "three",
+      "agents": [
+        "MoonShot AI",
+        "MoonSearch AI",
+        "MoonMatch AI"
+      ],
+      "opener": null,
+      "sizes": [
+        {
+          "atMs": 0,
+          "total": 4
+        }
+      ],
+      "sub": null,
+      "title": "Three agents building your profile",
+      "totalMs": 7193,
+      "totalText": "7.2s",
+      "units": [
+        {
+          "agent": "MoonShot AI",
+          "endMs": 1641,
+          "key": "authority",
+          "note": "Setting what you are known for",
+          "produces": "Your category",
+          "role": "Intake",
+          "startMs": 0,
+          "stream": "authority"
+        },
+        {
+          "agent": "MoonShot AI",
+          "endMs": 3031,
+          "key": "avail",
+          "note": "Setting how much work you can take",
+          "produces": "Your availability",
+          "role": "Intake",
+          "startMs": 1641,
+          "stream": "avail"
+        },
+        {
+          "agent": "MoonSearch AI",
+          "endMs": 5108,
+          "key": "safety",
+          "note": "Blocking the categories you cannot take",
+          "produces": "Your no-list",
+          "role": "Safety",
+          "startMs": 3031,
+          "stream": "safety"
+        },
+        {
+          "agent": "MoonMatch AI",
+          "endMs": 7193,
+          "key": "match",
+          "note": "Matching you to live campaigns",
+          "produces": "The campaigns that fit you",
+          "role": "Matching",
+          "startMs": 5108,
+          "stream": "match"
+        }
+      ]
+    },
+    "check": {
+      "brand": "Maison Dune",
+      "checkCount": 7,
+      "dueIn": "4 days",
+      "misses": [
+        {
+          "fix": "One line to camera: the price, and the word linen.",
+          "label": "Price transparency"
+        },
+        {
+          "fix": "Put it in the caption and hold it on screen once.",
+          "label": "Code visibility"
+        },
+        {
+          "fix": "Paste the link from the brief into your caption.",
+          "label": "Link distribution"
+        }
+      ],
+      "product": "Linen resort set"
+    },
+    "locks": [
+      "Post to your accounts",
+      "Join a campaign, or sign anything",
+      "Report a post as live"
+    ],
+    "match": {
+      "levelWord": "Pre-qualified",
+      "reasons": [
+        {
+          "key": "market",
+          "label": "Where your audience is",
+          "lit": true
+        },
+        {
+          "key": "authenticity",
+          "label": "How much of your grid is advertising",
+          "lit": true
+        },
+        {
+          "key": "consistency",
+          "label": "How consistently you post",
+          "lit": true
+        },
+        {
+          "key": "audience",
+          "label": "Who the brand asked for",
+          "lit": true
+        }
+      ]
+    },
+    "picks": {
+      "countWord": "three",
+      "items": [
+        {
+          "brand": "Nabati Home",
+          "campaign": "The Room After Maghrib",
+          "enterMs": 343,
+          "levelWord": "Pre-qualified",
+          "paceBig": "4 ads",
+          "paceSmall": "at your own pace",
+          "product": "Soy wax candle, oud and fig",
+          "sharePct": 12
+        },
+        {
+          "brand": "Tide Trace",
+          "campaign": "Six Scents, No Gift Sets",
+          "enterMs": 667,
+          "levelWord": "Pre-qualified",
+          "paceBig": "5 ads",
+          "paceSmall": "at your own pace",
+          "product": "Eau de parfum, six scents",
+          "sharePct": 12
+        },
+        {
+          "brand": "Marhaba Kitchen",
+          "campaign": "Dinner In Twenty",
+          "enterMs": 911,
+          "levelWord": "Pre-qualified",
+          "paceBig": "1 a week",
+          "paceSmall": "4 ads over 30 days",
+          "product": "Weeknight meal kits",
+          "sharePct": 11
+        }
+      ],
+      "title": "Your top three, Pre-qualified"
+    },
+    "platforms": [
+      "Instagram",
+      "TikTok"
+    ],
+    "prequalifiedCap": 3,
+    "read": {
+      "agentWord": "five",
+      "agents": [
+        "MoonShot AI",
+        "MoonMatch AI",
+        "MoonWriter AI",
+        "MoonScore AI",
+        "MoonSearch AI"
+      ],
+      "opener": "MoonShot AI · Opening @yourhandle",
+      "sizes": [
+        {
+          "atMs": 0,
+          "total": 4
+        },
+        {
+          "atMs": 6738,
+          "total": 9
+        }
+      ],
+      "sub": "@yourhandle · five agents",
+      "title": null,
+      "totalMs": 16242,
+      "totalText": "16.2s",
+      "units": [
+        {
+          "agent": "MoonShot AI",
+          "endMs": 1055,
+          "key": "identity",
+          "note": "Opening the profile",
+          "produces": "Who you are, in your own words",
+          "role": "Intake",
+          "startMs": 0,
+          "stream": "identity"
+        },
+        {
+          "agent": "MoonShot AI",
+          "endMs": 2630,
+          "key": "accounts",
+          "note": "Finding every account you hold",
+          "produces": "Where you publish",
+          "role": "Intake",
+          "startMs": 1055,
+          "stream": "accounts"
+        },
+        {
+          "agent": "MoonMatch AI",
+          "endMs": 4500,
+          "key": "niche",
+          "note": "Reading your last thirty posts",
+          "produces": "What you are known for",
+          "role": "Matching",
+          "startMs": 2630,
+          "stream": "niche"
+        },
+        {
+          "agent": "MoonWriter AI",
+          "endMs": 6738,
+          "key": "voice",
+          "note": "Learning how you talk on camera",
+          "produces": "The register a brief has to be written in",
+          "role": "Creative",
+          "startMs": 4500,
+          "stream": "voice"
+        },
+        {
+          "agent": "MoonMatch AI",
+          "endMs": 8951,
+          "key": "audience",
+          "note": "Finding where your audience actually is",
+          "produces": "The markets you reach",
+          "role": "Matching",
+          "startMs": 6738,
+          "stream": "audience"
+        },
+        {
+          "agent": "MoonScore AI",
+          "endMs": 11048,
+          "key": "reach",
+          "note": "Reading how your posts perform",
+          "produces": "What your posts tend to do",
+          "role": "Optimization",
+          "startMs": 8951,
+          "stream": "reach"
+        },
+        {
+          "agent": "MoonShot AI",
+          "endMs": 12552,
+          "key": "cadence",
+          "note": "Timing your posts and your turnarounds",
+          "produces": "How consistent you are",
+          "role": "Intake",
+          "startMs": 11048,
+          "stream": "cadence"
+        },
+        {
+          "agent": "MoonSearch AI",
+          "endMs": 14054,
+          "key": "conflicts",
+          "note": "Vetting your grid, and the brands already in it",
+          "produces": "Whether anything blocks a campaign",
+          "role": "Safety",
+          "startMs": 12552,
+          "stream": "conflicts"
+        },
+        {
+          "agent": "MoonMatch AI",
+          "endMs": 16242,
+          "key": "standing",
+          "note": "Checking which brands want somebody like you",
+          "produces": "Whether HeyMoon can place you",
+          "role": "Matching",
+          "startMs": 14054,
+          "stream": "standing"
+        }
+      ]
+    },
+    "readerWord": "five",
+    "requests": {
+      "next": {
+        "brand": "Dune Run",
+        "sharePct": 11
+      },
+      "rest": 12
+    },
+    "shares": {
+      "counts": [
+        {
+          "count": 2,
+          "pct": 10
+        },
+        {
+          "count": 2,
+          "pct": 11
+        },
+        {
+          "count": 4,
+          "pct": 12
+        },
+        {
+          "count": 2,
+          "pct": 13
+        },
+        {
+          "count": 3,
+          "pct": 14
+        },
+        {
+          "count": 2,
+          "pct": 15
+        },
+        {
+          "count": 1,
+          "pct": 16
+        }
+      ],
+      "list": [
+        12,
+        15,
+        10,
+        12,
+        14,
+        14,
+        13,
+        16,
+        12,
+        11,
+        13,
+        15,
+        14,
+        12,
+        10,
+        11
+      ],
+      "liveCount": 16,
+      "max": 16,
+      "min": 10
+    },
+    "shownHandle": "@yourhandle",
+    "terms": {
+      "brand": "Nabati Home",
+      "commits": [
+        "1 Reel, 3 Stories, at 3 posts per week."
+      ],
+      "needsApproval": false,
+      "notCommits": [
+        "Nothing exclusive.",
+        "No usage past 90 days.",
+        "No say over your other posts, paid or not.",
+        "Nothing about a minimum."
+      ],
+      "sharePct": 12
+    }
+  },
+  "hash": "7db478b9980ecffc4d1133350874f4cac949bee0",
+  "version": 1
+}
