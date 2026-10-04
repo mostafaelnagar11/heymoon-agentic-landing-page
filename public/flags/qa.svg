@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="180px" height="180px" viewBox="0 0 180 180" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 3.8.3 (29802) - http://www.bohemiancoding.com/sketch -->
+    <title>qatar</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="flags" transform="translate(-990.000000, -4770.000000)">
+            <g id="qatar" transform="translate(990.000000, 4770.000000)">
+                <circle id="white" fill="#FFFFFF" cx="90" cy="90" r="90"></circle>
+                <path d="M63.5935199,3.93547497 C71.9431487,1.37684722 80.8094083,0 89.9972382,0 C139.701343,0 179.994476,40.2943701 179.994476,90 C179.994476,139.70563 139.701343,180 89.9972382,180 C80.8094083,180 71.9431487,178.623153 63.5935199,176.064525 L83,170 L51,160 L83,150 L51,140 L83,130 L51,120 L83,110 L51,100 L83,90 L51,80 C51,80 83.0003949,70.0002997 83,70 L51,60 L83,50 L51,40 L83,30 L51,20 L83,10 L63.5935199,3.93547497 L63.5935199,3.93547497 Z" id="red-purple" fill="#AA3751"></path>
+            </g>
+        </g>
+    </g>
+</svg>

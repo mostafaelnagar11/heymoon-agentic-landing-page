@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="180px" height="180px" viewBox="0 0 180 180" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 3.8.3 (29802) - http://www.bohemiancoding.com/sketch -->
+    <title>kuwait</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="flags" transform="translate(-720.000000, -3150.000000)">
+            <g id="kuwait" transform="translate(720.000000, 3150.000000)">
+                <ellipse id="while" fill="#FFFFFF" cx="89.9972382" cy="90" rx="89.9972382" ry="90"></ellipse>
+                <path d="M174.873467,120 L50,120 L12.1266129,135.149355 C27.7087043,161.968031 56.7472386,180 89.9972382,180 C129.182603,180 162.51875,154.955772 174.873463,120 L174.873467,120 Z" id="red" fill="#E94B35"></path>
+                <path d="M174.873467,60 L50,60 L12.1266129,44.8506451 C27.7087043,18.0319689 56.7472386,0 89.9972382,0 C129.182603,0 162.51875,25.0442275 174.873463,59.9999996 L174.873467,60 Z" id="green" fill="#1AAF5D"></path>
+                <path d="M12.1266129,44.8506451 L50,60 L50,120 L12.1266129,135.149355 C4.4156543,121.877856 0,106.45461 0,90 C0,73.54539 4.4156543,58.1221436 12.1266129,44.8506451 L12.1266129,44.8506451 Z" id="black" fill="#262626"></path>
+            </g>
+        </g>
+    </g>
+</svg>

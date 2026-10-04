@@ -1,0 +1,355 @@
+/* This side's own tokens. Brands and creators share a project but not a
+   design system: see tailwind.brands.config.ts. */
+@config "../../tailwind.brands.config.ts";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ══════════════════════════════════════════════════════════════════
+   Base
+   ══════════════════════════════════════════════════════════════════ */
+
+html, body {
+  background: #F6F4FC;
+  /* The creator app's black, and this app's now. */
+  color: #12151B;
+  -webkit-font-smoothing: antialiased;
+  font-family: var(--font-figtree), system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+button { font: inherit; cursor: pointer; }
+input, textarea, select { font: inherit; }
+
+/* The current app sets `input:focus, button:focus { outline: none }` with a
+   replacement ring for inputs only, which leaves every button, tab and menu
+   row in the product invisible to a keyboard. Here the outline is removed
+   ONLY for pointer focus, and a visible ring is guaranteed for keyboard
+   focus on everything. */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid #4D2FB0;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.dark-surface :focus-visible { outline-color: #ffffff; }
+
+/* ══════════════════════════════════════════════════════════════════
+   THE CREATOR APP'S GRADIENTS
+   Its Figma paints the header, the primary button and the bonus card
+   as radial gradient images; these are the CSS equivalents, at the
+   stops that export reported. Copied whole rather than approximated,
+   because a button that is nearly the same purple as the other
+   product's button is worse than one that is plainly a different
+   colour: the eye reads the near-miss as a mistake.
+   ══════════════════════════════════════════════════════════════════ */
+
+.g-header {
+  background:
+    radial-gradient(120% 90% at 85% -10%, rgba(166, 95, 237, 0.55), transparent 60%),
+    radial-gradient(90% 70% at 10% 110%, rgba(59, 35, 144, 0.9), transparent 60%),
+    linear-gradient(160deg, #6848D1 0%, #4D2FB0 55%, #3E2597 100%);
+}
+.g-button {
+  background: radial-gradient(140% 220% at 85% 0%, #6848D1 0%, #4D2FB0 45%, #4D2FB0 100%);
+}
+.g-button:hover { filter: brightness(1.06); }
+.g-button:active { transform: scale(0.99); }
+.g-bonus {
+  background: linear-gradient(120deg, #4D2FB0 0%, #7A47CE 50%, #A65FED 100%);
+}
+/* The faint sheen the file lays over the bonus card and the medallion. */
+.g-sheen::after {
+  content: "";
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(60% 80% at 20% 0%, rgba(255,255,255,0.28), transparent 60%);
+  mix-blend-mode: soft-light;
+}
+@media (prefers-reduced-motion: reduce) {
+  .g-button:active { transform: none; }
+}
+
+/* Except a text box, which shows focus with its caret and its own
+   border. Two reasons the brand outline does not belong on one. It is
+   the loudest colour in the palette and it landed around whichever box
+   you happened to be filling, so working down a form made the form
+   flash. And `:focus-visible` cannot help here: a text input matches it
+   on a mouse CLICK too, by spec, so it fired for everybody, including
+   the people who never needed the hint.
+
+   The border darkening is the replacement affordance, set here so a
+   field gets one whether or not its own classes bothered. Every other
+   control — buttons, tabs, menu rows, links — keeps the outline, which
+   is the whole reason this block is scoped to three selectors rather
+   than turned off wholesale the way the current app does it. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: rgba(77, 47, 176, 0.5);
+}
+
+/* Arabic gets its own stack; the layout swaps `dir` and the font together. */
+[lang="ar"], [lang="ar"] body { font-family: var(--font-ar), var(--font-figtree), system-ui, sans-serif; }
+
+/* ══════════════════════════════════════════════════════════════════
+   The landing page
+   ══════════════════════════════════════════════════════════════════
+
+   Off-white ground, black headings in the interface grotesque, grey
+   body, and ONE accent gradient. The gradient is never a background
+   wash: it appears as a blurred glow behind the field, as a 2px rule,
+   and on a single line of type. Spent that way it reads as a brand;
+   spread across a hero it reads as a template.
+
+   There is no display serif here any more. A serif running through the
+   headings made the page read as a magazine rather than as software,
+   which is the note this rebuild answers. */
+
+.hm-grad-text {
+  background: linear-gradient(95deg, #4D2FB0 0%, #7C5CE0 45%, #F0559D 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hm-grad-rule { background: linear-gradient(90deg, #4D2FB0, #7C5CE0 50%, #F0559D); }
+
+/* The glow under the field. Blurred colour with nothing drawn on it,
+   so the white card sits in light rather than on a painted panel. */
+.hm-glow {
+  background:
+    radial-gradient(38% 60% at 30% 50%, rgba(77,47,176,0.30), transparent 70%),
+    radial-gradient(38% 60% at 70% 50%, rgba(240,85,157,0.22), transparent 70%),
+    radial-gradient(44% 70% at 50% 50%, rgba(124,92,224,0.26), transparent 72%);
+  filter: blur(52px);
+}
+
+/* The open step's timer, which is really the timer. */
+@keyframes run-fill { from { width: 0% } to { width: 100% } }
+@media (prefers-reduced-motion: reduce) { .hm-grad-rule { animation: none !important; width: 100% !important } }
+
+/* A card's media area: a soft tint for a product mock to float on. */
+.hm-media { background: linear-gradient(150deg, #EFEAFB 0%, #FBFAFD 45%, #FDEEF5 100%); }
+
+/* Inside the dark band, the same light at low strength. */
+.hm-glow-dark {
+  background:
+    radial-gradient(40% 60% at 35% 55%, rgba(124,92,224,0.55), transparent 70%),
+    radial-gradient(38% 58% at 68% 45%, rgba(240,85,157,0.38), transparent 70%);
+  filter: blur(56px);
+}
+
+/* Every digit in both locales: tabular and left to right, so $1,000,
+   3.5x and 80% never reorder inside Arabic. It no longer pins a face:
+   the app is Figtree and the landing is Geist, and a figure should be
+   set in whichever one the text around it is. */
+.num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+
+/* Motion is one attribute. `useReveal` sets data-in the first time a
+   fifth of the element is on screen; these two classes read it. */
+.reveal { opacity: 0; transform: translateY(10px); transition: opacity .5s ease-out, transform .5s cubic-bezier(.2,.8,.2,1); }
+.reveal[data-in], [data-in] .reveal { opacity: 1; transform: none; }
+.rule-draw { transform: scaleX(0); transform-origin: 0 50%; transition: transform .6s cubic-bezier(.2,.8,.2,1); }
+[dir="rtl"] .rule-draw { transform-origin: 100% 50%; }
+.rule-draw[data-in], [data-in] .rule-draw { transform: scaleX(1); }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .rule-draw { transform: none; transition: none; }
+}
+
+/* A drawn line and a swept dial. `pathLength="1"` on the path lets one
+   rule draw any shape: the dash and the offset are both the whole line.
+   `data-drawn` rather than `data-in` on purpose, because these fire off
+   the figure's own observer and not its section's: a tall section is in
+   view long before the chart at the bottom of it is. */
+.draw { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1.2s cubic-bezier(.22,.8,.2,1); }
+[data-drawn] .draw { stroke-dashoffset: 0; }
+.draw-fill { opacity: 0; transition: opacity .8s ease-out .45s; }
+[data-drawn] .draw-fill { opacity: 1; }
+.dial-dot { transform-box: view-box; transform-origin: 100px 100px; transition: transform 1.2s cubic-bezier(.22,.8,.2,1); }
+[data-drawn] .dial-dot { transform: rotate(var(--sweep)); }
+@media (prefers-reduced-motion: reduce) {
+  .draw { stroke-dashoffset: 0; transition: none; }
+  .draw-fill { opacity: 1; transition: none; }
+  .dial-dot { transform: rotate(var(--sweep)); transition: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   THE CONSTELLATION IS RUNNING
+   The diagram of the seven agents was a correct, completely still
+   picture. What it describes is a system that dispatches work, so it
+   dispatches: a pulse leaves the core along one spoke at a time and
+   lands on the agent at the far end, and the ring turns slowly under
+   all of it. Nothing here is decoration for its own sake; every motion
+   is the thing the diagram already claimed, happening.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* A short dash travelling the length of a spoke. The spoke is 37 units
+   long, so the dash pattern sums to 37 and one full period of travel
+   lands the pattern exactly where it started: the loop is seamless and
+   the pulse always re-enters at the core. */
+@keyframes hm-spoke {
+  0%   { stroke-dashoffset: 0;   opacity: 0 }
+  6%   { opacity: 0.95 }
+  24%  { stroke-dashoffset: -37; opacity: 0 }
+  100% { stroke-dashoffset: -37; opacity: 0 }
+}
+.hm-spoke { stroke-dasharray: 5 32; animation: hm-spoke 3.6s linear infinite; }
+
+/* The far end lights when the pulse arrives, a beat after it leaves. */
+@keyframes hm-node {
+  0%, 18% { box-shadow: 0 0 0 0 rgba(124,92,224,0) }
+  26%     { box-shadow: 0 0 0 5px rgba(160,130,255,0.18) }
+  46%     { box-shadow: 0 0 0 12px rgba(160,130,255,0) }
+  100%    { box-shadow: 0 0 0 0 rgba(160,130,255,0) }
+}
+.hm-node { animation: hm-node 3.6s ease-out infinite; }
+
+/* The ring turns once a minute: too slow to watch, fast enough to feel. */
+@keyframes hm-ring { to { transform: rotate(360deg) } }
+.hm-ring { transform-box: view-box; transform-origin: 50px 50px; animation: hm-ring 60s linear infinite; }
+
+/* The core breathes, and its star turns against the ring. */
+@keyframes hm-breathe { 0%, 100% { opacity: 0.8 } 50% { opacity: 1 } }
+.hm-breathe { animation: hm-breathe 4.8s ease-in-out infinite; }
+@keyframes hm-star { to { transform: rotate(360deg) } }
+.hm-star { animation: hm-star 28s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-spoke, .hm-node, .hm-ring, .hm-breathe, .hm-star { animation: none !important; }
+  .hm-spoke { opacity: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   THE SIGNATURE MARKS
+   Shared byte-for-byte with the current web app and the HeyMoon mobile
+   app, so all three clients draw the phased model the same way.
+
+   In the current app this mark is drawn three different ways — the
+   shared classes here, a flat inline reimplementation on the dashboard,
+   and a third instrument on the phase page. Here there is one.
+   ══════════════════════════════════════════════════════════════════ */
+
+.keyline-grad {
+  background: linear-gradient(90deg, #4D2FB0 0%, #9B7BF0 55%, #F4A8D8 100%);
+}
+
+/* The 80% unlock line. Not crossed: a grey pin standing ahead of the fill.
+   Crossed: a white cut through the keyline gradient.
+   `inset-inline-start` rather than `left`, so it lands on the correct end
+   of the track under RTL. */
+.unlock-notch {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 80%;
+  height: 10px;
+  width: 2px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: #c9c6d6;
+  pointer-events: none;
+}
+[dir="rtl"] .unlock-notch { transform: translate(50%, -50%); }
+.unlock-notch--crossed {
+  background: #ffffff;
+  box-shadow: 0 0 0 0.5px rgba(25, 18, 52, 0.14);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bar-fill {
+    transform-origin: left center;
+    animation: bar-reveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) var(--bd, 0.25s) both;
+  }
+  [dir="rtl"] .bar-fill { transform-origin: right center; }
+}
+@keyframes bar-reveal { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Legibility guard for white type over photography. */
+.ad-shadow { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Streaming
+   The agent's work arrives in layers. These are the marks that say
+   "still arriving" — none of them is a fixed-duration choreography;
+   they loop until the stream actually stops.
+   ══════════════════════════════════════════════════════════════════ */
+
+.skeleton {
+  background: linear-gradient(90deg, #EDE9FB, #E6E0FF);
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton { animation: skeleton 1.3s ease-in-out infinite; }
+  .stream-caret::after { animation: caret 1s step-end infinite; }
+}
+.stream-caret::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-inline-start: 2px;
+  vertical-align: -0.15em;
+  background: #4D2FB0;
+}
+
+/* A layer of the read landing. Reduced-motion users get it instantly and
+   in place; everyone else gets a short rise. */
+@media (prefers-reduced-motion: no-preference) {
+  .layer-in { animation: layer-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+}
+
+/* The working ring on the dock and the monitor: a real indeterminate
+   spinner, shown only while a stream is open. */
+.working-ring {
+  border: 2px solid rgba(77, 47, 176, 0.18);
+  border-top-color: #4D2FB0;
+  border-radius: 9999px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .working-ring { animation: spin-slow 0.9s linear infinite; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Controls
+   ══════════════════════════════════════════════════════════════════ */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  height: 8px;
+}
+input[type="range"]::-webkit-slider-runnable-track { background: transparent; height: 8px; border-radius: 9999px; }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 18px; width: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #4D2FB0;
+  margin-top: -5px;
+  box-shadow: 0 1px 4px rgba(16, 12, 40, 0.3);
+}
+input[type="range"]::-moz-range-track { background: transparent; height: 8px; border-radius: 9999px; }
+input[type="range"]::-moz-range-thumb {
+  height: 18px; width: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #4D2FB0;
+  box-shadow: 0 1px 4px rgba(16, 12, 40, 0.3);
+}
+
+/* Hide a scrollbar without hiding the scroll. */
+.no-bar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-bar::-webkit-scrollbar { display: none; }
+
+/* ══════════════════════════════════════════════════════════════════
+   Evidence
+   Every claim the agent makes carries one of these. The dotted underline
+   is the affordance: it says "this came from somewhere, and you can see
+   where".
+   ══════════════════════════════════════════════════════════════════ */
+
+.sourced {
+  border-block-end: 1px dotted rgba(77, 47, 176, 0.45);
+  cursor: help;
+}
+.sourced:hover { border-block-end-color: #4D2FB0; }

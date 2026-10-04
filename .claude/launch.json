@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "heymoon-agentic-landing-page",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "/Users/mostafaaelnagar/Documents/heymoon-agentic-landing-page"
+      ],
+      "port": 3004
+    }
+  ]
+}

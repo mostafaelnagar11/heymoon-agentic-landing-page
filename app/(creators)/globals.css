@@ -1,0 +1,320 @@
+/* This side's own tokens. Brands and creators share a project but not a
+   design system: see tailwind.creators.config.ts. */
+@config "../../tailwind.creators.config.ts";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ══════════════════════════════════════════════════════════════════
+   Base
+   ══════════════════════════════════════════════════════════════════ */
+
+html, body {
+  background: #ffffff;
+  color: #12151B;
+  -webkit-font-smoothing: antialiased;
+  font-family: var(--font-figtree), system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+button { font: inherit; cursor: pointer; }
+input, textarea, select { font: inherit; }
+
+/* Keyboard focus is visible on every control; pointer focus is not. A
+   text box shows focus with its caret and border instead. */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid #4D2FB0;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: none;
+  border-color: rgba(77, 47, 176, 0.5);
+}
+
+/* Every digit tabular and left to right, so $1,100, 3d 5h and 12% keep
+   their shape in a row of cards. */
+.num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+
+/* ══════════════════════════════════════════════════════════════════
+   The three gradients the Figma paints as images
+   ══════════════════════════════════════════════════════════════════
+
+   The header, the primary button and the early-bird card are all
+   rendered in the file as radial gradient images. These are their
+   nearest CSS equivalents, colour-matched at the stops the export
+   reported: 77,47,176 → 104,72,209 → 77,47,176 for the button, and
+   77,47,176 → 122,71,206 → 166,95,237 for the bonus card. */
+
+.g-header {
+  background:
+    radial-gradient(120% 90% at 85% -10%, rgba(166, 95, 237, 0.55), transparent 60%),
+    radial-gradient(90% 70% at 10% 110%, rgba(59, 35, 144, 0.9), transparent 60%),
+    linear-gradient(160deg, #6848D1 0%, #4D2FB0 55%, #3E2597 100%);
+}
+.g-button {
+  background: radial-gradient(140% 220% at 85% 0%, #6848D1 0%, #4D2FB0 45%, #4D2FB0 100%);
+}
+.g-button:hover { filter: brightness(1.06); }
+.g-button:active { transform: scale(0.99); }
+.g-bonus {
+  background: linear-gradient(120deg, #4D2FB0 0%, #7A47CE 50%, #A65FED 100%);
+}
+/* The faint sheen the file lays over the bonus card and the medallion. */
+.g-sheen::after {
+  content: "";
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(60% 80% at 20% 0%, rgba(255,255,255,0.28), transparent 60%);
+  mix-blend-mode: soft-light;
+}
+
+/* The approved medallion: lilac disc, purple ring, a check inside. */
+.medallion {
+  background: radial-gradient(circle at 30% 25%, #A65FED 0%, #7A47CE 45%, #4D2FB0 100%);
+  box-shadow: 0 0 0 10px #F3EFFC;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Streaming marks — none is a fixed-duration choreography
+   ══════════════════════════════════════════════════════════════════ */
+
+.skeleton {
+  background: linear-gradient(90deg, #F3EFFC, #E9E2FA);
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton { animation: skeleton 1.3s ease-in-out infinite; }
+  .stream-caret::after { animation: caret 1s step-end infinite; }
+  .layer-in { animation: layer-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .working-ring { animation: spin-slow 0.9s linear infinite; }
+}
+.stream-caret::after {
+  content: "";
+  display: inline-block;
+  width: 2px; height: 1em;
+  margin-inline-start: 2px;
+  vertical-align: -0.15em;
+  background: #4D2FB0;
+}
+.working-ring {
+  border: 2px solid rgba(77, 47, 176, 0.18);
+  border-top-color: #4D2FB0;
+  border-radius: 9999px;
+}
+
+/* Every claim the agent makes carries a source. The dotted underline is
+   the affordance: this came from somewhere, and you can see where. */
+.sourced { border-block-end: 1px dotted rgba(77, 47, 176, 0.45); cursor: help; }
+.sourced:hover { border-block-end-color: #4D2FB0; }
+
+/* Hide a scrollbar without hiding the scroll. */
+.no-bar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-bar::-webkit-scrollbar { display: none; }
+
+/* Legibility guard for white type over photography. */
+.ad-shadow { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); }
+
+/* The yellow progress fill grows in, once. */
+@media (prefers-reduced-motion: no-preference) {
+  .bar-fill { transform-origin: left center; animation: bar-reveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both; }
+}
+@keyframes bar-reveal { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ONE MEASURE RULE. The dashboard shell has advertised this class in a
+   comment since it was widened and it never existed, while three inline
+   `max-w-[Nch]` literals did its job by hand. */
+.dash-measure { max-width: 76ch; }
+
+/* RESERVED. The same three colours as `.g-header`, re-placed for a wide
+   short box rather than a tall phone one. It applies only when
+   GradientHeader also carries `g-band`, and the two-class selector
+   beats `.g-header` on specificity whatever the source order. This is
+   the escape hatch if the 196px masthead reads flat at width; nothing
+   sets `g-band` today.
+@media (min-width: 768px) {
+  .g-header.g-band {
+    background:
+      radial-gradient(45% 200% at 10% 50%, rgba(166, 95, 237, 0.5), transparent 65%),
+      radial-gradient(55% 220% at 95% 60%, rgba(59, 35, 144, 0.85), transparent 70%),
+      linear-gradient(100deg, #6848d1 0%, #4d2fb0 52%, #3e2597 100%);
+  }
+}
+*/
+
+/* ══════════════════════════════════════════════════════════════════
+   The landing page
+   ══════════════════════════════════════════════════════════════════
+
+   Ported from the brands landing so the two front doors read as one
+   company: off-white ground, black headings in Geist, grey body, and
+   ONE accent gradient. The gradient is never a background wash: it
+   appears as a blurred glow behind the field, as a 2px rule, and on a
+   single line of type. Spent that way it reads as a brand; spread
+   across a hero it reads as a template.
+
+   Nothing here touches a product screen. Every class is `hm-` or a
+   motion hook the product does not use, and the landing's ground and
+   face come from its own root (`bg-ground font-geist`), not from here.
+
+   NOT PORTED: the brands `.num`. It sets a font family, and this
+   app's `.num` above deliberately sets none, so digits inherit Geist
+   on the landing and Figtree everywhere else. Nor the brands
+   `.dial-dot`, whose dial this page does not draw.
+
+   These sit outside any @layer, after the utilities, exactly as on
+   brands, so they win ties with a utility on the same element. One
+   consequence carried over as is: `.rule-draw`'s `transition`
+   shorthand resets an arbitrary `[transition-duration:…]` placed
+   beside it, so the signature rule draws in .6s on both apps. */
+
+.hm-grad-text {
+  background: linear-gradient(95deg, #4D2FB0 0%, #7C5CE0 45%, #F0559D 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hm-grad-rule { background: linear-gradient(90deg, #4D2FB0, #7C5CE0 50%, #F0559D); }
+
+/* The glow under the field. Blurred colour with nothing drawn on it,
+   so the white card sits in light rather than on a painted panel. */
+.hm-glow {
+  background:
+    radial-gradient(38% 60% at 30% 50%, rgba(77,47,176,0.30), transparent 70%),
+    radial-gradient(38% 60% at 70% 50%, rgba(240,85,157,0.22), transparent 70%),
+    radial-gradient(44% 70% at 50% 50%, rgba(124,92,224,0.26), transparent 72%);
+  filter: blur(52px);
+}
+
+/* The open step's timer, which is really the timer.
+
+   SCOPED TO `.run-timer`, not `.hm-grad-rule` as brands has it. The
+   brands rule stretches every gradient rule to full width under
+   reduced motion, the 200px signature included. Only the Run's bar is
+   a timer; the `!important`s are there to beat its inline animation
+   and width. */
+@keyframes run-fill { from { width: 0% } to { width: 100% } }
+@media (prefers-reduced-motion: reduce) { .run-timer { animation: none !important; width: 100% !important } }
+
+/* A card's media area: a soft tint for a product mock to float on. */
+.hm-media { background: linear-gradient(150deg, #EFEAFB 0%, #FBFAFD 45%, #FDEEF5 100%); }
+
+/* Inside the dark band, the same light at low strength. */
+.hm-glow-dark {
+  background:
+    radial-gradient(40% 60% at 35% 55%, rgba(124,92,224,0.55), transparent 70%),
+    radial-gradient(38% 58% at 68% 45%, rgba(240,85,157,0.38), transparent 70%);
+  filter: blur(56px);
+}
+
+/* THE PRODUCT'S MOTION HAD NO KEYFRAMES. `.working-ring`, `.skeleton`
+   and `.layer-in` above name keyframes from tailwind.config.ts, but
+   Tailwind only emits a config keyframe beside an `animate-*` utility
+   that uses it, and nothing does — so every working ring in the chat and
+   the dashboard stood still, a loader that looked frozen. Declared here
+   once, with the config's names and values, so the rules above work on
+   every screen, the landing's likenesses included. */
+@keyframes spin-slow { to { transform: rotate(360deg) } }
+@keyframes skeleton { 0%, 100% { opacity: 1 } 50% { opacity: 0.45 } }
+@keyframes layer-in { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
+
+/* NEW HERE. A tall mock is pinned to the top of its media rather than
+   centred, so its header always shows, and its rows run off a fading
+   bottom edge instead of stopping at a hard crop. The fade is what
+   makes a cut row read as "there is more" and not as a layout bug. */
+.hm-crop {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent);
+}
+
+/* Motion is one attribute. `useReveal` sets data-in the first time a
+   fifth of the element is on screen; these two classes read it. */
+.reveal { opacity: 0; transform: translateY(10px); transition: opacity .5s ease-out, transform .5s cubic-bezier(.2,.8,.2,1); }
+.reveal[data-in], [data-in] .reveal { opacity: 1; transform: none; }
+.rule-draw { transform: scaleX(0); transform-origin: 0 50%; transition: transform .6s cubic-bezier(.2,.8,.2,1); }
+[dir="rtl"] .rule-draw { transform-origin: 100% 50%; }
+.rule-draw[data-in], [data-in] .rule-draw { transform: scaleX(1); }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .rule-draw { transform: none; transition: none; }
+}
+
+/* A drawn line, a filled shape and a swept rail. `pathLength="1"` on
+   a path lets one rule draw any shape: the dash and the offset are
+   both the whole line. `data-drawn` rather than `data-in` on purpose,
+   because these fire off the figure's own observer and not its
+   section's: a tall section is in view long before the chart at the
+   bottom of it is.
+
+   `.draw-x` is new here: the paid panel's money path is a straight
+   rail, so it sweeps out from the start edge with a scale rather than
+   a dash, and flips its origin under RTL the way `.rule-draw` does. */
+.draw { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1.2s cubic-bezier(.22,.8,.2,1); }
+[data-drawn] .draw { stroke-dashoffset: 0; }
+.draw-fill { opacity: 0; transition: opacity .8s ease-out .45s; }
+[data-drawn] .draw-fill { opacity: 1; }
+.draw-x { transform: scaleX(0); transform-origin: 0 50%; transition: transform 1.2s cubic-bezier(.22,.8,.2,1); }
+[dir="rtl"] .draw-x { transform-origin: 100% 50%; }
+[data-drawn] .draw-x { transform: scaleX(1); }
+@media (prefers-reduced-motion: reduce) {
+  .draw { stroke-dashoffset: 0; transition: none; }
+  .draw-fill { opacity: 1; transition: none; }
+  .draw-x { transform: none; transition: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   THE CONSTELLATION IS RUNNING
+   The diagram of the seven agents describes a system that dispatches
+   work, so it dispatches: a pulse leaves the core along one spoke at
+   a time and lands on the agent at the far end, and the ring turns
+   slowly under all of it. Every motion is the thing the diagram
+   already claimed, happening.
+
+   Use these as bare classes. Brands writes `motion-safe:hm-ring` and
+   friends, but a plain class outside @layer gets no Tailwind variant,
+   so on brands the ring, the breath and the star never run. The
+   reduced-motion block at the end is what stops them here.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* A short dash travelling the length of a spoke. The spoke is 37 units
+   long, so the dash pattern sums to 37 and one full period of travel
+   lands the pattern exactly where it started: the loop is seamless and
+   the pulse always re-enters at the core. */
+@keyframes hm-spoke {
+  0%   { stroke-dashoffset: 0;   opacity: 0 }
+  6%   { opacity: 0.95 }
+  24%  { stroke-dashoffset: -37; opacity: 0 }
+  100% { stroke-dashoffset: -37; opacity: 0 }
+}
+.hm-spoke { stroke-dasharray: 5 32; animation: hm-spoke 3.6s linear infinite; }
+
+/* The far end lights when the pulse arrives, a beat after it leaves. */
+@keyframes hm-node {
+  0%, 18% { box-shadow: 0 0 0 0 rgba(124,92,224,0) }
+  26%     { box-shadow: 0 0 0 5px rgba(160,130,255,0.18) }
+  46%     { box-shadow: 0 0 0 12px rgba(160,130,255,0) }
+  100%    { box-shadow: 0 0 0 0 rgba(160,130,255,0) }
+}
+.hm-node { animation: hm-node 3.6s ease-out infinite; }
+
+/* The ring turns once a minute: too slow to watch, fast enough to feel. */
+@keyframes hm-ring { to { transform: rotate(360deg) } }
+.hm-ring { transform-box: view-box; transform-origin: 50px 50px; animation: hm-ring 60s linear infinite; }
+
+/* The core breathes, and its star turns against the ring. */
+@keyframes hm-breathe { 0%, 100% { opacity: 0.8 } 50% { opacity: 1 } }
+.hm-breathe { animation: hm-breathe 4.8s ease-in-out infinite; }
+@keyframes hm-star { to { transform: rotate(360deg) } }
+.hm-star { animation: hm-star 28s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-spoke, .hm-node, .hm-ring, .hm-breathe, .hm-star { animation: none !important; }
+  .hm-spoke { opacity: 0; }
+}
+
+/* THE CALCULATOR'S SLIDER. A 24px thumb with a ring, on a track that
+   fills to the value (the fill is an inline gradient), so it reads as a
+   control rather than a hairline. */
+.hm-range { -webkit-appearance: none; appearance: none; height: 8px; border-radius: 999px; outline: none; cursor: pointer; }
+.hm-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 999px; background: #fff; border: 3px solid #4D2FB0; box-shadow: 0 2px 6px rgba(77, 47, 176, 0.35); }
+.hm-range::-moz-range-thumb { width: 24px; height: 24px; border-radius: 999px; background: #fff; border: 3px solid #4D2FB0; box-shadow: 0 2px 6px rgba(77, 47, 176, 0.35); }
+.hm-range::-moz-range-track { background: transparent; }
+.hm-range:focus-visible::-webkit-slider-thumb { outline: 3px solid rgba(77, 47, 176, 0.35); outline-offset: 2px; }
