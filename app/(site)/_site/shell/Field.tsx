@@ -222,7 +222,8 @@ export function Field({ id, placement }: FieldProps) {
         </p>
         <button
           type="submit"
-          className="absolute end-2.5 top-1/2 inline-flex h-12 -translate-y-1/2 items-center gap-2 rounded-control bg-ink px-5 text-small font-semibold text-white transition-colors hover:bg-ink/85 sm:h-11"
+          /* An even 10px all round (Mostafa, 5 Oct): 44px in the 64px phone field, 56px in the 76px one, end-2.5. */
+          className="absolute end-2.5 top-1/2 inline-flex h-11 -translate-y-1/2 items-center gap-2 rounded-control bg-ink px-5 text-small font-semibold text-white transition-colors hover:bg-ink/85 sm:h-14"
         >
           {going ? <><Moon working size={15} className="text-white" />{copy.going}</> : copy.cta}
         </button>
