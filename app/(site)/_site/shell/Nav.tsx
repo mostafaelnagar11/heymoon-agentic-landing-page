@@ -176,7 +176,11 @@ export function Nav() {
       </div>
 
       <div className="ms-auto flex items-center gap-2">
-        <PauseToggle surface={night ? "night" : "paper"} />
+        {/* Hidden from view (Mostafa, 5 Oct: "hide this from nav"), but kept for keyboard users: it is the page's
+            pause for motion over 5s (WCAG 2.2.2), so like a skip link it takes no space until it is focused. */}
+        <span className="sr-only focus-within:not-sr-only">
+          <PauseToggle surface={night ? "night" : "paper"} />
+        </span>
         <a
           href={copy.dashboardHref}
           className={`inline-flex h-10 items-center rounded-pill text-small font-medium transition-colors duration-[250ms] max-md:group-data-[at-hero=false]:hidden ${
