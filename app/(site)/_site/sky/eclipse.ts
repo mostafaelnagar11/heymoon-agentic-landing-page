@@ -32,7 +32,7 @@
    - Debug (SKY_DEBUG, ?skydebug or the dev server): window.__sky and window.__skyHandle; ?skyslow=N. */
 
 import {
-  AGENT_ORDER, ATLAS, atlasCell, AVATARS, BEAD_REST_RAD, CLUSTER_R, COMET_MS, DPR_CAP, FOCUS, GLINT_DEG, glintUv, initialTier,
+  AGENT_ORDER, ATLAS, atlasCell, AVATARS, ICON_SLOTS, PLATFORM_ICONS, BEAD_REST_RAD, CLUSTER_R, COMET_MS, DPR_CAP, FOCUS, GLINT_DEG, glintUv, initialTier,
   LAUNCH, LIGHT_FADE, NIGHT1, PHONE_MQ, PLANE_TO_S, POSTER_TIER, RELEASE_FALLBACK_MS, REST, REST_AGENTS, RING,
   RING_SLOTS, RINGS, RINGS_AUDIENCE, ringsPresence, SKY_DEBUG, SWAY_IN_S, swayAt, SWITCH, SWITCH_FRAME_CAP_MS,
   TIERS, tierSteps, WATCHDOG,
@@ -173,6 +173,9 @@ vec3 corona(vec2 q,bool hq){
   col+=vec3(1.,.95,1.)*exp(-ad*1.8)*exp(-(r-1.)*(r-1.)/(w*w*9.))*sv*2.8;
   float dc=length(q-vec2(cos(ca),sin(ca))*RM)/RM;col+=mix(tint,vec3(1.),.6)*(.0009/(dc*dc+.0004))*sv;}}
  return col*B.z;}
+vec3 lookIcon(vec3 c){c=min(c,vec3(.94))*.92;c=mix(vec3(dot(c,vec3(.2126,.7152,.0722))),c,.9);
+ return mix(c,vec3(${LOOK.tint.map((v) => fl(v / 255)).join(",")}),.06);}
+float isIcon(float i){return ${Object.keys(ICON_SLOTS).map((k) => `(1.-step(.5,abs(i-${fl(Number(k))})))`).join("+")};}
 vec3 look(vec3 c){c=min(c,vec3(${fl(LOOK.highlight)}))*${fl(LOOK.gain)};
  c=mix(vec3(dot(c,vec3(.2126,.7152,.0722))),c,${fl(LOOK.saturation)});
  return mix(c,vec3(${LOOK.tint.map((v) => fl(v / 255)).join(",")}),${fl(LOOK.tintMix)});}
@@ -188,7 +191,8 @@ vec3 rings(vec2 q){
  if(cv<=0.)return vec3(0.);
  float i=mod(k+.5,n)-.5+(o?${fl(RI.count)}:0.);
  vec2 st=clamp(.5+vec2(dq.x,-dq.y)/(2.*ra),R.w,1.-R.w);
- vec3 x=(o?${fl(RO.alpha)}:${fl(RI.alpha)})*(1.-smoothstep(RF0,RF1,rs))*cv*R.x*look(texture2D(uAt,(vec2(floor(mod(i+.5,AC)),floor((i+.5)/AC))+st)/vec2(AC,AR)).rgb);
+ vec3 tc=texture2D(uAt,(vec2(floor(mod(i+.5,AC)),floor((i+.5)/AC))+st)/vec2(AC,AR)).rgb;
+ vec3 x=(o?${fl(RO.alpha)}:${fl(RI.alpha)})*(1.-smoothstep(RF0,RF1,rs))*cv*R.x*mix(look(tc),lookIcon(tc),isIcon(i));
  return -log(max(1.-pow(x,vec3(2.2)),1e-4))/1.15;}
 vec3 env(vec3 p,vec3 d){vec3 c=studio(d);
  if(d.z<-.02){float t=(-DZ-p.z)/d.z;c+=corona(p.xy+d.xy*t,false);}return c;}
@@ -304,14 +308,14 @@ function mul(a: M3, b: M3): M3 {
 }
 
 /** One avatar, fetched at low priority with async decoding and never placed in the DOM; one retry. */
-function avatar(i: number, retry = true): Promise<HTMLImageElement> {
+function avatar(i: number, retry = true, src = AVATARS.src(i)): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
     const im = new Image();
     im.decoding = "async";
     im.setAttribute("fetchpriority", "low");
     im.onload = () => res(im);
-    im.onerror = () => (retry ? avatar(i, false).then(res, rej) : rej(new Error(`eclipse: avatar ${i}`)));
-    im.src = AVATARS.src(i);
+    im.onerror = () => (retry ? avatar(i, false, src).then(res, rej) : rej(new Error(`eclipse: ring image ${src}`)));
+    im.src = src;
   });
 }
 /** The rings' atlas (ATLAS): one cell per RING_SLOTS entry, mirrored and cropped, upright. RINGS.look is applied in
@@ -323,7 +327,7 @@ function atlasCanvas(ims: HTMLImageElement[], cell: number): HTMLCanvasElement {
   const x = c.getContext("2d")!;
   x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high";
   RING_SLOTS.forEach((sl, i) => {
-    const im = ims[sl.img], w = im.naturalWidth, h = im.naturalHeight, side = Math.min(w, h) / sl.zoom;
+    const im = sl.icon >= 0 ? ims[AVATARS.count + sl.icon] : ims[sl.img], w = im.naturalWidth, h = im.naturalHeight, side = Math.min(w, h) / sl.zoom;
     const sx = (w - side) / 2, sy = clamp((h - side) / 2 + sl.dy * h, 0, h - side);
     x.save();
     x.translate((i % ATLAS.cols) * cell + (sl.flip ? cell : 0), Math.floor(i / ATLAS.cols) * cell);
@@ -483,7 +487,7 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
     atlasWant = cell;
     if (atlasBusy) return Promise.resolve();
     atlasBusy = true;
-    ims ??= Promise.all(Array.from({ length: AVATARS.count }, (_, i) => avatar(i)));
+    ims ??= Promise.all([...Array.from({ length: AVATARS.count }, (_, i) => avatar(i)), ...PLATFORM_ICONS.names.map((_, i) => avatar(i, true, PLATFORM_ICONS.src(i)))]);
     return ims.then((list) => {
       atlasBusy = false;
       if (destroyed || lost) return;

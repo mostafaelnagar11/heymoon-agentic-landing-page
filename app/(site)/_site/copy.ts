@@ -42,7 +42,7 @@ export const COPY = {
       invalid: "Paste a store link, like yourstore.com.", icon: "globe", action: "/brands/c", param: "read", inputMode: "url",
     },
     chips: ["No forms to fill in", "No brief to write", "No agency to manage"],                              // [A1]
-    nav: { dashboard: "Dashboard", dashboardHref: "/brands/dashboard", start: "Start" },                      // [A1]; Start [NEW on brands]
+    nav: { dashboard: "Login", dashboardHref: "/brands/dashboard", start: "Start" },                          // [CHANGE] Mostafa 5 Oct: "Login"; Start [NEW on brands]
     work: {
       h2: "One link. The whole campaign.",                                                                  // [A2]
       sub: "Paste your store link. HeyMoon builds a complete creator campaign around what you sell, and guarantees the sales.", // [A2]
@@ -105,7 +105,7 @@ export const COPY = {
       invalid: "Paste your Instagram or TikTok handle, or the link to your profile.", icon: "at", action: "/creators/c", param: "h", inputMode: "text",
     },
     chips: ["No sign-up to start", "No agency in the middle", "Paid on time"],                              // [A5]
-    nav: { dashboard: "Dashboard", dashboardHref: "/creators/login", start: "Start" },                        // [A5]
+    nav: { dashboard: "Login", dashboardHref: "/creators/login", start: "Start" },                            // [CHANGE] Mostafa 5 Oct: "Login"
     work: {
       h2: "One handle. Every campaign that fits.",                                                          // [A5]
       sub: "Paste your Instagram or TikTok handle. HeyMoon reads your work and brings the live campaigns that fit. Each pays a share of every order you bring in.", // [A5]

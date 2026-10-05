@@ -87,9 +87,8 @@ function EclipseHero({}: HeroProps) {
   const content = reduced ? undefined : lift.content;
   return (
     <section data-slot="hero" data-surface="night" aria-labelledby="hero-h1" className={`${s.hero} ${s.eclipse}`}>
-      {/* The copy comes first in the DOM (its grid areas place both on every layout): on phones the star sits in the
-          row under the copy, so a frame painted while the HTML is still parsing (the copy not in yet) would show the
-          star 170 px higher and then jump down. In this order a partial frame only lacks the star. */}
+      {/* The copy comes first in the DOM; grid areas place both on every layout. On phones the star's row (above the
+          copy) has a reserved height (hero.module.css), so a frame painted mid-parse never shifts the copy. */}
       <div className={s.copy}>
         <m.div className={s.eTop} data-lift="" data-probe-scroll="" style={content}>
           <div className="dawn-fade motion-safe:animate-nav-in [animation-delay:120ms]">

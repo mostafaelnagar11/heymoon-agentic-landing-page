@@ -159,8 +159,12 @@ export const FOCUS = { rate: 3, swayDamp: 0.85, pointerDamp: 0.7, yaw0: -0.12, p
 
 /** The ONLY faces the hero may show: the anonymised copies of the 10 consented profile pictures (192 px WebP).
     Fetched by the renderer at low priority with async decoding, never placed in the DOM, never the LCP. */
+/* 26 faces since 5 Oct (Mostafa: "replace the repeated creator profile pictures with some other from web based in
+   MENA and you can add some men"): c01 to c10 are the 10 consented profile pictures, c11 to c26 are 16 Unsplash
+   portraits (8 women, 8 men; free Unsplash licence, commercial use, no attribution; sources in
+   docs/redesign/INPUTS.md), so every face circle shows a different person and nothing repeats. */
 export const AVATARS = {
-  count: 10,
+  count: 26,
   srcPx: 192,
   src: (i: number): string => `/hero/creators/c${String(i + 1).padStart(2, "0")}.webp`,
 } as const;
@@ -190,10 +194,10 @@ export interface RingSpec { count: number; r: number; a: number; alpha: number; 
       the faces near them, and the disc replaces them inside RING.
     - The rings live on the eclipse plane at depth DZ: the main view and every refracted ray through the glass
       (env(), on tiers whose ringsInGlass is true) see the same rings. Never in screen space. */
-/* Ring opacity pinned by Mostafa (5 Oct, "increase it by 10%"): inner 50%, outer 35%, before the radial fade. */
+/* Ring opacity pinned by Mostafa (5 Oct: "increase it by 10%", then "by another 10%"): inner 60%, outer 45%, before the radial fade. */
 export const RINGS = {
-  inner: { count: 14, r: 0.39, a: 0.07, alpha: 0.5, driftDegPerS: 0.8, phaseDeg: 90 } as RingSpec,
-  outer: { count: 17, r: 0.552, a: 0.077, alpha: 0.35, driftDegPerS: -0.6, phaseDeg: 90 + 180 / 17 } as RingSpec,
+  inner: { count: 14, r: 0.39, a: 0.07, alpha: 0.6, driftDegPerS: 0.8, phaseDeg: 90 } as RingSpec,
+  outer: { count: 17, r: 0.552, a: 0.077, alpha: 0.45, driftDegPerS: -0.6, phaseDeg: 90 + 180 / 17 } as RingSpec,
   fade: [0.52, 0.64] as const,
   look: { highlight: 0.82, gain: 0.78, saturation: 0.5, tint: [26, 20, 77] as const, tintMix: 0.3 },
 } as const;
@@ -206,19 +210,32 @@ export const CLUSTER_VISIBLE_R = 0.59;
 /** One circle. ring 0 inner, 1 outer; index within its ring; deg its centre's angle at drift 0; img the AVATARS
     index; flip mirrors it horizontally; zoom > 1 crops into its centre (the circle shows 1/zoom of the image's
     width), dy shifts that crop up (−) or down (+) as a fraction of the image. */
-export interface RingSlot { ring: 0 | 1; index: number; deg: number; img: number; flip: boolean; zoom: number; dy: number }
-/** Image offset of the outer ring: measured, it keeps every face at least 40.8 degrees from the same face in the
-    other ring at rest ($SP/w2b-arch/slots.js). Within a ring no two neighbours ever repeat (count ≥ 10). */
-const OUTER_IMG_OFFSET = 2;
+export interface RingSlot { ring: 0 | 1; index: number; deg: number; img: number; flip: boolean; zoom: number; dy: number; icon: number }
+
+/** The platform icons that stand in for five faces (Mostafa, 5 Oct: "replace 5 creators profile pictures with these
+    icons randomly"). Round brand marks, 192 px WebP, recreated from simple-icons glyphs on their brand colours. */
+export const PLATFORM_ICONS = {
+  names: ["facebook", "instagram", "snapchat", "tiktok", "youtube"] as const,
+  src: (i: number): string => `/hero/platforms/${PLATFORM_ICONS.names[i]}.webp`,
+} as const;
+/** Which slots (RING_SLOTS index: inner 0..13, outer 14..30) show an icon, and which. Spread round both rings at
+    uneven gaps (16, 141, 185, 228 and 296 degrees at rest) and clear of the star's four tips, so they read as
+    scattered among the faces. */
+export const ICON_SLOTS: Readonly<Record<number, number>> = { 2: 1, 8: 3, 18: 4, 20: 2, 27: 0 };
+/** The face circles in ring order (inner then outer, icons skipped) take AVATARS in this order: every one of the 26
+    exactly once, alternating men and women where the set allows, the original ten spread among the new sixteen. */
+const FACE_ORDER: readonly number[] = [16, 0, 10, 18, 1, 11, 19, 2, 12, 21, 3, 13, 22, 4, 14, 23, 5, 15, 24, 6, 17, 25, 7, 20, 8, 9];
 /** The 31 circles, inner ring first. The u-th use of an image (u = 0, 1, 2, ...) is mirrored when u is odd and
     cropped by CROPS[u % 4], so no repeat ever looks like a copy. */
 const CROPS: readonly { zoom: number; dy: number }[] = [{ zoom: 1, dy: 0 }, { zoom: 1.14, dy: -0.04 }, { zoom: 1.08, dy: 0.03 }, { zoom: 1.2, dy: -0.06 }];
 export const RING_SLOTS: readonly RingSlot[] = /*#__PURE__*/ (() => {
   const out: RingSlot[] = [], uses = new Array<number>(AVATARS.count).fill(0);
+  let face = 0;
   ([RINGS.inner, RINGS.outer] as const).forEach((spec, ring) => {
     for (let index = 0; index < spec.count; index++) {
-      const img = (index + (ring ? OUTER_IMG_OFFSET : 0)) % AVATARS.count, u = uses[img]++;
-      out.push({ ring: ring as 0 | 1, index, deg: (spec.phaseDeg + (index * 360) / spec.count) % 360, img, flip: u % 2 === 1, ...CROPS[u % CROPS.length] });
+      const icon = ICON_SLOTS[out.length] ?? -1;
+      const img = icon < 0 ? FACE_ORDER[face++ % FACE_ORDER.length] : 0, u = icon < 0 ? uses[img]++ : 0;
+      out.push({ ring: ring as 0 | 1, index, deg: (spec.phaseDeg + (index * 360) / spec.count) % 360, img, flip: icon < 0 && u % 2 === 1, ...CROPS[icon < 0 ? u % CROPS.length : 0], icon });
     }
   });
   return out;
@@ -264,6 +281,12 @@ export const HERO_EDGE = { navBottom: 72, padTop: 88, padBottom: 88, peek: 64 } 
     mid-word; 408 leaves 11 px for other platforms' text rasterisation. At 1024 to 1920 the card still starts right of
     the copy column (1024: 592, column end 529; 1440: 872, column end 662). */
 export const CARD = { widthPx: 408, heightPx: 44, padInlinePx: 14, gapPx: 8, radiusPx: 14 } as const;
+/** THE CARD, REDRAWN (Mostafa, 5 Oct: "make this in two lines, remove the border stroke, make the background faded and
+    align it to the right bottom of the star"): line 1 the moon-dot glyph and the agent's name, line 2 the note;
+    no stroke; a faint translucent fill; its right and bottom edges sit on the star stage's right and bottom edges
+    (measured in Agents.tsx), so it hugs the star's bottom-right corner, clear of the disc. CARD and CARD_CSS above
+    describe the earlier one-row card and stay only for reference. */
+export const CARD2 = { widthPx: 300, padInlinePx: 14, padBlockPx: 11, gapPx: 8, lineGapPx: 5, radiusPx: 14, shiftRight: 0.22 } as const;
 export const CARD_CSS = {
   insetInlineEnd: "max(var(--gutter), calc((100% - 1120px) / 2))",
   bottom: `${HERO_EDGE.padBottom}px`,
@@ -458,7 +481,7 @@ export const POSTER = {
     poster, grew about 110 ms at 1.6 Mbps); 960 raised to 15 / 36 kB, the smallest tried that passes the restored
     p99 ≤ 6 on every row with headroom (max 5.65; 13 / 34 kB still gave 6.05). On phones the LCP is the H1. */
 export const POSTER_CAPS: Readonly<Record<number, Readonly<Record<PosterFormat, number>>>> = {
-  960: { avif: 15 * 1024, webp: 36 * 1024 },
+  960: { avif: 15 * 1024, webp: 42 * 1024 },   // webp 36 to 42 kB (5 Oct): the platform icons need the extra quality to hold p99 6
   2240: { avif: 26 * 1024, webp: 96 * 1024 },
 };
 /** Pixel width (= height) of a band's file: 960 (phone) and 2240 (desktop). */

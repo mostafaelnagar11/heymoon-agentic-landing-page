@@ -27,7 +27,7 @@ import { els, useSignal } from "../lib/signals";
 import { useTimeline } from "../lib/timeline";
 import { Moon } from "../ui/Moon";
 import {
-  AGENT_ORDER, AGENTS_DOM, CARD, CARD_AUDIENCE, CARD_CSS, CARD_MQ, LAUNCH_AGENTS, LEVEL, REPLAY, REST_AGENTS, SWITCH,
+  AGENT_ORDER, AGENTS_DOM, CARD2, CARD_AUDIENCE, CARD_MQ, LAUNCH_AGENTS, LEVEL, REPLAY, REST_AGENTS, SWITCH,
   dotOpacity, glintPoint, replayAt, replayOf, statesAt, typingAgents,
   type AgentStates, type AgentsProps, type Replay, type ReplayItem,
 } from "../sky/eclipse-api";
@@ -168,6 +168,7 @@ export function Agents({ stage, handle, gl, mountKey, card }: AgentsProps) {
         {cardOn && cur && (
           <AgentCard
             key="card"
+            stage={host}
             item={cur.item}
             landed={cur.landed}
             working={playing && !cur.landed}
@@ -184,20 +185,42 @@ export function Agents({ stage, handle, gl, mountKey, card }: AgentsProps) {
     with the opener, out on a switch to creators) and the dawn fade (dawn-fade's 300 ms transition: Chrome starts no
     transition on a property a running animation drives, so on the card itself, under the heroExit binding, the dawn
     would cut instead of fade). The card fills the box: the dark glass and the heroExit fade (data-lift,
-    ViewTimeline-accelerated), so its own backdrop blur is never under a fading ancestor while the sheet lifts. One row: glyph, name, note. A new run crossfades the whole row (each layer is laid
+    ViewTimeline-accelerated), so its own backdrop blur is never under a fading ancestor while the sheet lifts. Two lines (CARD2): glyph and name, then the note. A new run crossfades the whole row (each layer is laid
     out on its own, so nothing slides); inside a run only the note crossfades. */
-function AgentCard({ item, landed, working, row, reduced }: {
-  item: ReplayItem; landed: boolean; working: boolean; row: string; reduced: boolean;
+function AgentCard({ stage, item, landed, working, row, reduced }: {
+  stage: HTMLElement | null; item: ReplayItem; landed: boolean; working: boolean; row: string; reduced: boolean;
 }) {
   const heroExit = useHeroExit();
   const opacity = useTransform(heroExit, [0, 1], [1, LIFT.contentOpacity]);
   const fade = reduced ? NONE : FADE;
   const text = landed && item.land !== null ? item.land : item.text;
+  /* The star's bottom-right corner (CARD2): the card's right and bottom edges sit on the stage box's, measured
+     against the hero section that holds the card, and kept there on every resize. Hidden until measured. */
+  const box = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
+  useIsoLayoutEffect(() => {
+    const el = box.current, hero = el?.offsetParent as HTMLElement | null;
+    if (!el || !hero || !stage) return;
+    /* Shifted right by CARD2.shiftRight of the stage's width (Mostafa: "bring it more to the right"), into the empty
+       space beside the star's lower-right edge, but never closer than the page gutter to the screen's edge. */
+    const place = () => {
+      const h = hero.getBoundingClientRect(), r = stage.getBoundingClientRect();
+      const gutter = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--gutter")) || 24;
+      const right = Math.max(gutter + h.right - window.innerWidth, h.right - r.right - CARD2.shiftRight * r.width);
+      setAt({ right: Math.round(right), bottom: Math.round(h.bottom - r.bottom) });
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(stage); ro.observe(hero);
+    window.addEventListener("resize", place);
+    return () => { ro.disconnect(); window.removeEventListener("resize", place); };
+  }, [stage]);
   return (
     <m.div
+      ref={box}
       aria-hidden
       className="dawn-fade pointer-events-none absolute z-content"
-      style={{ insetInlineEnd: CARD_CSS.insetInlineEnd, bottom: CARD_CSS.bottom, width: CARD_CSS.width, height: CARD.heightPx }}
+      style={{ right: at?.right ?? 0, bottom: at?.bottom ?? 0, width: `min(${CARD2.widthPx}px, 40vw)`, visibility: at ? "visible" : "hidden" }}
       initial={HIDE}
       animate={SHOW}
       exit={HIDE}
@@ -211,14 +234,16 @@ function AgentCard({ item, landed, working, row, reduced }: {
         aria-hidden
         data-lift=""
         data-probe-scroll=""
-        className={`${s.card} absolute inset-0 grid grid-cols-1`}
-        style={{ paddingInline: CARD.padInlinePx, borderRadius: CARD.radiusPx, ...(reduced ? null : { opacity }) }}
+        className={`${s.card} relative grid grid-cols-1`}
+        style={{ padding: `${CARD2.padBlockPx}px ${CARD2.padInlinePx}px`, borderRadius: CARD2.radiusPx, ...(reduced ? null : { opacity }) }}
       >
         <AnimatePresence initial={false}>
-          <m.div key={row} className="flex min-w-0 items-center" style={{ gridArea: "1 / 1", gap: CARD.gapPx }} initial={HIDE} animate={SHOW} exit={HIDE} transition={fade}>
-            <Moon working={working} size={13} className="text-white" />
-            <span className="mono-caps flex-none whitespace-nowrap text-white/80">{item.agent}</span>
-            <span className="grid min-w-0 flex-1 grid-cols-1">
+          <m.div key={row} className="flex min-w-0 flex-col" style={{ gridArea: "1 / 1", gap: CARD2.lineGapPx }} initial={HIDE} animate={SHOW} exit={HIDE} transition={fade}>
+            <span className="flex items-center" style={{ gap: CARD2.gapPx }}>
+              <Moon working={working} size={13} className="text-white" />
+              <span className="mono-caps whitespace-nowrap text-white/80">{item.agent}</span>
+            </span>
+            <span className="grid min-w-0 grid-cols-1">
               <AnimatePresence initial={false}>
                 <m.span key={`${item.key}:${landed ? "land" : "work"}`} className="truncate text-small text-white/88" style={{ gridArea: "1 / 1" }} initial={HIDE} animate={SHOW} exit={HIDE} transition={fade}>
                   {text}

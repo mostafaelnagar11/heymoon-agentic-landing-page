@@ -181,16 +181,7 @@ export function Nav() {
         <span className="sr-only focus-within:not-sr-only">
           <PauseToggle surface={night ? "night" : "paper"} />
         </span>
-        <a
-          href={copy.dashboardHref}
-          className={`inline-flex h-10 items-center rounded-pill text-small font-medium transition-colors duration-[250ms] max-md:group-data-[at-hero=false]:hidden ${
-            startShown
-              ? `px-2 ${night ? "text-white/72 hover:text-white" : "text-ink/72 hover:text-ink"}`
-              : `px-4 ${night ? "bg-white/8 text-white/92 hover:bg-white/12" : "bg-ink text-white hover:bg-ink/85"}`
-          }`}
-        >
-          {copy.dashboard}
-        </a>
+        {/* Start, then Login (Mostafa, 5 Oct: "switch the login and start"). */}
         <span
           className={`grid overflow-hidden transition-[grid-template-columns,opacity,transform] duration-200 ease-out max-md:group-data-[at-hero=true]:hidden ${
             startShown ? "grid-cols-[1fr] opacity-100" : "pointer-events-none grid-cols-[0fr] scale-[.96] opacity-0"
@@ -208,6 +199,16 @@ export function Nav() {
             {copy.start}
           </button>
         </span>
+        <a
+          href={copy.dashboardHref}
+          className={`inline-flex h-10 items-center rounded-pill text-small font-medium transition-colors duration-[250ms] max-md:group-data-[at-hero=false]:hidden ${
+            startShown
+              ? `px-2 ${night ? "text-white/72 hover:text-white" : "text-ink/72 hover:text-ink"}`
+              : `px-4 ${night ? "bg-white/8 text-white/92 hover:bg-white/12" : "bg-ink text-white hover:bg-ink/85"}`
+          }`}
+        >
+          {copy.dashboard}
+        </a>
       </div>
     </header>
   );

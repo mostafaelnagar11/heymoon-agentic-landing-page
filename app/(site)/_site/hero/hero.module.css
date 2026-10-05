@@ -122,16 +122,23 @@
    120 px floor it starts .129 S + 4 px under the row's top (the cluster clears the chips) and runs under the sheet.
    The stack starts 20 px under the nav pill, so the hero's switch never reads as a second bar glued to the nav. */
 @media (max-width: 767px) {
-  .hero.eclipse {
-    grid-template-columns: 100%; grid-template-rows: auto minmax(0, 1fr); align-content: start; row-gap: 4px;
-    padding: calc(var(--nav-top) + var(--nav-h) + 20px) var(--gutter) 76px;
+  /* THE STAR ON TOP (Mostafa, 5 Oct: "in phone the star should be above the tab"): the star and its rings first,
+     then the switch, the H1, the field and the chips. The star is sized so the field and chips stay above the fold
+     with the 40px sheet peek at 390x844 and 360x740; the rings reach 0.129 S above the stage, so that much padding
+     sits on top of it and they never pass under the nav. */
+  .hero.eclipse { --s: max(120px, min(220px, 56vw, 26svh));
+    /* Row 1 is reserved at its final height (the rings' 0.129 S above the stage, then the stage), so the copy sits
+       in place from the first frame whatever order the HTML arrives in. */
+    /* row-gap (Mostafa: "add a padding between the star and the tab"): the rings' 0.129 S below the stage plus 8px,
+       so the switch clears the ring of faces too. */
+    grid-template-columns: 100%; grid-template-rows: calc(var(--s) * 1.129) auto; align-content: start; row-gap: calc(var(--s) * .129 + 8px);
+    padding: calc(var(--nav-top) + var(--nav-h) + 8px) var(--gutter) 76px;
   }
-  .copy { grid-area: 1 / 1; align-items: center; text-align: center; }
-  .starRow { display: grid; grid-area: 2 / 1; align-self: stretch; justify-items: center; container-type: size; min-height: 0; }
-  .stage { --s: max(120px, min(240px, 62vw, calc((100cqh - 8px) / 1.258)));
-    grid-area: 1 / 1; align-self: start; width: var(--s); margin-top: max(calc((100cqh - var(--s)) / 2), calc(var(--s) * .129 + 4px)); }
+  .starRow { display: grid; grid-area: 1 / 1; justify-items: center; padding-top: calc(var(--s) * .129); }
+  .copy { grid-area: 2 / 1; align-items: center; text-align: center; }
+  .stage { grid-area: 1 / 1; align-self: start; width: var(--s); margin-top: 0; }
   .eTop { align-items: center; }
-  .eHeadline.eHeadline { margin-top: 20px; text-align: center; font-size: min(clamp(34px, 9.8vw, 46px), 12.6cqw); }
+  .eHeadline.eHeadline { margin-top: 16px; text-align: center; font-size: min(clamp(34px, 9.8vw, 46px), 12.6cqw); }
   .eField { margin-top: 24px; max-width: 580px; display: grid; place-items: center; }
   .eBottom { margin-top: 20px; }
   .eChips.eChips { justify-content: center; }

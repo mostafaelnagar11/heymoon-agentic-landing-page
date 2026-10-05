@@ -1,5 +1,7 @@
 /* The agent card's dark glass (Agents.tsx). It loads with the lazy Agents chunk (next/dynamic with ssr: false does
    not link it in the static HTML), so it is never first-paint CSS: layout comes from existing utilities, the
    contract's metrics and the DOM glints are inline, and only what has no utility lives here. */
-.card { border: 1px solid rgb(255 255 255 / .1); background: rgb(1 3 23 / .62);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+/* No stroke and a faded fill (Mostafa, 5 Oct): a faint white wash that thins toward the bottom right, over a light
+   blur, so the card reads as part of the night rather than a box on it. Its text stays white/80 and white/88. */
+.card { border: 0; background: linear-gradient(160deg, rgb(255 255 255 / .075), rgb(255 255 255 / .02) 70%, rgb(255 255 255 / 0));
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }

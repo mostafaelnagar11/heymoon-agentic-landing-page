@@ -1,5 +1,5 @@
 {
-  "rendererHash": "3faf9fb606143cf524d165d60951604b4f981610",
+  "rendererHash": "3942bff7eaaebd4e10c5bde1c1329bfe465d7c5b",
   "box": 2,
   "feather": [
     0.98,
@@ -14,26 +14,26 @@
     {
       "path": "/hero/poster-brands-960.avif",
       "width": 960,
-      "bytes": 15288,
-      "sha1": "1d192f5b95edb48452a0b4a177dbf555fcd86cba"
+      "bytes": 14858,
+      "sha1": "87998278874443f31ac509a9b00d26fa9c4fcb89"
     },
     {
       "path": "/hero/poster-brands-960.webp",
       "width": 960,
-      "bytes": 36222,
-      "sha1": "45c6a779f924c24e5ad8fd86fe8cb088876d3c31"
+      "bytes": 42834,
+      "sha1": "7a832c225255e13325abc6fd0ca41caadfb201ec"
     },
     {
       "path": "/hero/poster-brands-2240.avif",
       "width": 2240,
-      "bytes": 25571,
-      "sha1": "370376c186b34baec077500f5b570c0f36bca3c2"
+      "bytes": 25553,
+      "sha1": "13b6e2334e176d10fc9d61b6154ed8ea1e7386bf"
     },
     {
       "path": "/hero/poster-brands-2240.webp",
       "width": 2240,
-      "bytes": 94878,
-      "sha1": "f149f9bc9cd24f7285616cfe8335b58a4d569907"
+      "bytes": 95914,
+      "sha1": "68b7b4215a00c18884a00aa58792402d73e9a652"
     },
     {
       "path": "/hero/poster-creators-960.avif",
@@ -44,8 +44,8 @@
     {
       "path": "/hero/poster-creators-960.webp",
       "width": 960,
-      "bytes": 35506,
-      "sha1": "b7a179cb85a47403c32d57f1b7eb8936a8429eae"
+      "bytes": 42084,
+      "sha1": "67934f1806c83a8f328e02e1493f4bbfe4ff23a8"
     },
     {
       "path": "/hero/poster-creators-2240.avif",

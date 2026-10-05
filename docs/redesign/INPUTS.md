@@ -65,3 +65,15 @@ flash into the other material, the diamond-ring bead travelling half the rim wit
 corona warming violet to pink (and back).
 Ring opacity, pinned (Mostafa: "increase it by 10%"): the inner ring of creator pictures at 50% opacity,
 the outer ring at 35%, both still fading to nothing toward the cluster's edge with the radial mask.
+
+**More faces, and the platform icons (5 Oct).** "Replace 5 creators profile pictures with these icons randomly":
+five circles now show Facebook, Instagram, Snapchat, TikTok and YouTube marks (public/hero/platforms, recreated
+from simple-icons glyphs on brand colours). "Replace the repeated creator profile pictures with some other from web
+based in MENA and you can add some men": he approved downloading 16 Unsplash portraits (free Unsplash licence:
+commercial use, no attribution required; it does not allow implying the people endorse HeyMoon, so they are never
+named or described as HeyMoon creators). Every face circle now shows a different person. Sources, as
+public/hero/creators file -> unsplash.com/photos/<id>:
+c11 ZBdKvfexoh0 · c12 f49XhYbpiA0 · c13 fLxvz8EjCoQ · c14 dvtRiyRaebk · c15 PuJlKSPNaS8 · c16 ctClE19woNI ·
+c17 1w9I6H4aftw · c18 lVhZ0aNzCWg · c19 ruWf1KGPPsY · c20 yQA11IaTA58 · c21 ny0LoUeptkI · c22 KD2h-E98RkM ·
+c23 prBNzhikrDo · c24 mtjZgt_PU_8 · c25 W2ux-aiCKpU · c26 tnQuaiP9njQ.
+Ring opacity raised again ("by another 10%"): inner 60%, outer 45%. The nav button reads "Login".
