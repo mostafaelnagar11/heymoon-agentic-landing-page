@@ -54,3 +54,14 @@ permission to appear on the marketing site". This overrides RESEARCH D7 for thes
 on the marketing site, faces only: never a name, handle, link, location or figure beside them. The site
 uses anonymised copies, public/hero/creators/c01.webp to c10.webp (192 px), so no handle reaches the
 HTML or the JS (check:site and measure still deny every handle and name).
+
+**Scope (same day):** "this is only for brands, for influencers we will do something else". The rings
+and the agent card are the brands hero only; the creators hero keeps today's eclipse until its own
+concept. The creators-only items (the cut wedge, the creators material) are deferred.
+Also dropped: the star's light reaching toward the field ("you can delete this"). Focus still turns the star to face the visitor.
+Locked: the switch animation stays exactly as it is ("keep the star flip animation", "keep the eclipse
+animation while switching tab"): the star's tumble through an edge-on liquid sliver with a dispersion
+flash into the other material, the diamond-ring bead travelling half the rim with its trail, and the
+corona warming violet to pink (and back).
+Ring opacity, pinned (Mostafa: "increase it by 10%"): the inner ring of creator pictures at 50% opacity,
+the outer ring at 35%, both still fading to nothing toward the cluster's edge with the radial mask.

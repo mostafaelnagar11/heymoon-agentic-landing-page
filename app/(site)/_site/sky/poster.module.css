@@ -1,8 +1,15 @@
 /* The eclipse poster (EclipsePoster.tsx, HERO-V2 §8.3). The root is the poster box: 2 S square, centred on
    the stage (POSTER_BOX). */
 .root { position: absolute; inset: -50%; pointer-events: none; user-select: none; -webkit-user-select: none; }
-.layer { position: absolute; inset: 0; display: block; }
-.layer > img { display: block; width: 100%; height: 100%; }
+.layer, .paint { position: absolute; inset: 0; }
+.layer img { display: block; width: 100%; height: 100%; }
+.paint { display: none; width: 100%; height: 100%; }
+/* Phones (PHONE_MQ, W2-3): once the inline script has marked the root, the layer shows its canvas and the <img>
+   it was painted from is 1 x 1 px and transparent, so the H1 stays the LCP. Without JS there is no mark. */
+@media (max-width: 767px) {
+  .root[data-paint] img { width: 1px; height: 1px; opacity: 0; }
+  .root[data-paint] .paint { display: block; }
+}
 
 /* The switch with GL off: the incoming layer fades in over 900 ms while the outgoing one holds, then leaves
    under or over it, so the crossfade never dips toward the night between the two stars. */

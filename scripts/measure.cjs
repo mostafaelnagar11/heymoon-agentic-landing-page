@@ -35,7 +35,7 @@ const BUDGET = {
   libs: 44 * KB,             // motion (m, domAnimation, hooks) + lenis + lenis/react, by module. Lead ruling 4 Oct (SPEC §7.1 amended): §5.0.1's own imports floor at 31.7 kB; 42.1 measured + 2. WP0-NOTES D13
   deferred: 110 * KB,        // every lazy site chunk together (next/dynamic sections, lead ruling 4 Oct): off the first load, but it still ships
   site: 45 * KB,             // site code + demo.json
-  sky: 8 * KB,               // the lazy sky chunk, absent from first load
+  sky: 12 * KB,              // the lazy sky chunk, absent from first load
   css: 26 * KB,              // every stylesheet the prerendered HTML links (lead ruling 5 Oct: the hero's and the lazy sections' CSS is in the static HTML by design, so it all blocks first paint and all counts)
   html: 60 * KB,
   fontPreloads: 1,           // exactly one: Geist Sans

@@ -19,10 +19,13 @@
 
    What it does, per audience and band (POSTER.stage: phone 240, desktop 560 CSS px)
      A canvas of POSTER_BOX x S CSS px on NIGHT1, with the S x S stage centred in it; mountEclipse(canvas, stage,
-     { audience, capture: { dpr: POSTER.dpr, onFrame } }) draws one REST frame and reads it back. The page applies
-     the feather (alpha x 1 - smoothstep(POSTER_FEATHER[0] S, POSTER_FEATHER[1] S, r)) and returns a lossless PNG.
-     Pillow encodes it: AVIF from quality 60 (speed 4), WebP from quality 80 (method 6), both with alpha, stepping
-     quality down by 5 until each file is under its cap (HERO-V2 §9; floors AVIF 35, WebP 55). Over the cap at the
+     { audience, tier: POSTER_TIER[band], capture: { dpr: POSTER.dpr, onFrame } }) draws one REST frame and reads
+     it back (on brands after the creator rings' atlas has loaded from public/hero/creators, so onFrame is awaited).
+     The page applies the feather (alpha x 1 - smoothstep(POSTER_FEATHER[0] S, POSTER_FEATHER[1] S, r)) and returns
+     a lossless PNG. Pillow encodes it at the highest quality whose file fits its cap (eclipse-api.ts POSTER_CAPS),
+     found by bisection: AVIF 4:4:4 at speed 0 (quality 35 to 80; 4:2:0 smears the thin dispersion fringes, and at
+     the same bytes 4:4:4 halves the error: measured on the brands phone frame, mean dE 0.96 against 1.51), WebP at
+     method 6 with alpha quality 30 (quality 55 to 95; the alpha is only the feather ring). Over the cap at the
      floor: exit 1.
 
    Outputs (public/hero/)
@@ -33,10 +36,16 @@
    --check (HERO-V2 A-F1, A-F2), exit 1 on any failure
      1. poster.json's rendererHash equals the current sources.
      2. Live frames at DPR 1, 1.5 and 2 against the committed AVIF and WebP (decoded by Chromium, drawn on NIGHT1 at
-        the live frame's size): inside 0.98 S mean dE76 <= 1.5, p99 <= 6, |mean L* difference| <= 0.5, the centroid
-        of the L* > 60 pixels within 0.5 CSS px; outside 0.98 S every live pixel is NIGHT1 +-1.
-     3. The held frame (normal mode, no capture): screenshots at onReady +0, +1 and +10 rAF are byte-identical; after
-        release() the bright centroid moves <= 1 px over the first 300 ms of the released clock. */
+        the live frame's size): inside 0.98 S mean dE76 <= 1.5, p99 <= 6, |mean L* difference| <= 0.5, the bright
+        centroid within 0.5 CSS px; outside 0.98 S every live pixel is NIGHT1 +-1. The bright centroid is taken on
+        L* low-passed by a 16 CSS px box on both images (the L* > 60 pixels, each weighted by L* - 60): it measures
+        where the light is, not how a 1x point-sampled frame and a resampled 2x file render thin lines. Raw, a
+        lossless poster already misses by 2.3 px (phone) and 4.6 px (desktop) at DPR 1; low-passed (the box is
+        shift-equivariant) it is within 0.13 px, and a deliberate 1 CSS px shift of the poster reads 0.91 to 0.99 px.
+     3. The held frame (normal mode, no capture, the band's POSTER_TIER): every draw is read back in its own task
+        (readPixels hash and bright centroid). From onReady to +1, +2 and +10 rAF the renderer draws nothing or only
+        frame 0's exact pixels, and the hold is still on (well inside RELEASE_FALLBACK_MS); after release() every
+        frame in the first 300 ms of the released clock keeps the bright centroid within 1 CSS px of frame 0. */
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -54,10 +63,11 @@ const ORIGIN = "http://poster.test";
 const FLAGS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"];
 const NPX_PW = "/Users/mostafaaelnagar/.npm/_npx/f0a362733743bae2/node_modules/playwright-core";
 const KB = 1024;
-/* HERO-V2 §9 byte caps, by file width. */
-const CAPS = { 960: { avif: 10 * KB, webp: 16 * KB }, 2240: { avif: 26 * KB, webp: 40 * KB } };
-const ENC = { avif: { q0: 60, floor: 35 }, webp: { q0: 80, floor: 55 } };
+const ENC = { avif: { q0: 80, floor: 35 }, webp: { q0: 95, floor: 55 } };
+const LOWPASS_CSS_PX = 16;
 const LIMIT = { meanDE: 1.5, p99: 6, dL: 0.5, centroid: 0.5, outside: 1, heldMove: 1 };
+/* p99 is 6 on every row (HERO-V2 A-F1). The integration's 6.5 for the phone file below DPR 2 was the integrator's
+   ruling, not the lead's; the wave-2 fixes restored 6 and raised POSTER_CAPS[960] instead. */
 
 const argv = process.argv.slice(2);
 const arg = (k) => { const i = argv.indexOf(`--${k}`); return i < 0 ? null : argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[i + 1] : true; };
@@ -91,7 +101,10 @@ const api = (() => {
   vm.runInNewContext(cjs, { module: mod, exports: mod.exports, require: () => ({}) });
   return mod.exports;
 })();
-const { POSTER, POSTER_BOX, POSTER_FEATHER, posterWidth, posterSrc } = api;
+const { POSTER, POSTER_BOX, POSTER_FEATHER, POSTER_TIER, posterWidth, posterSrc } = api;
+/* The byte caps, by file width (eclipse-api.ts POSTER_CAPS, wave 2). */
+const CAPS = api.POSTER_CAPS;
+const KB_ = (n) => `${(n / KB).toFixed(1)} kB`;
 const AUDIENCES = ["brands", "creators"].filter((a) => !ONLY || a === ONLY);
 const BANDS = ["phone", "desktop"].filter((b) => !BAND || b === BAND);
 
@@ -100,6 +113,7 @@ const HTML = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{
 <body><script type="module" src="/harness.js"></script></body></html>`;
 const HARNESS = `import { mountEclipse } from "./eclipse.js";
 import { NIGHT1, POSTER_FEATHER } from "./eclipse-api.js";
+const LOWPASS = ${LOWPASS_CSS_PX};
 let last = null, handle = null;
 function box(S) {
   handle?.destroy(); handle = null;
@@ -112,18 +126,17 @@ function box(S) {
   b.append(canvas, stage); document.body.append(b);
   return { canvas, stage };
 }
-/* One REST frame in capture mode; kept in the page for the PNG and the comparisons. */
-window.__frame = (audience, S, dpr) => {
+/* One REST frame in capture mode (asynchronous on brands: the rings' atlas); kept for the PNG and the comparisons. */
+window.__frame = (audience, S, dpr, tier) => new Promise((res, rej) => {
   const { canvas, stage } = box(S);
-  let f = null, failed = false;
   const t0 = performance.now();
-  const h = mountEclipse(canvas, stage, { audience, onFail: () => { failed = true; }, capture: { dpr, onFrame: (x) => { f = x; } } });
-  if (!h) throw new Error("no WebGL context");
-  h.destroy();
-  if (failed || !f) throw new Error("the renderer failed (compile or link)");
-  last = f;
-  return { width: f.width, height: f.height, dpr: f.dpr, stage: f.stage, ms: Math.round(performance.now() - t0) };
-};
+  const h = mountEclipse(canvas, stage, { audience, tier, onFail: (r) => rej(new Error("the renderer failed: " + r)), capture: { dpr, onFrame: (f) => {
+    last = f;
+    res({ width: f.width, height: f.height, dpr: f.dpr, stage: f.stage, ms: Math.round(performance.now() - t0) });
+  } } });
+  if (!h) rej(new Error("no WebGL context"));
+  handle = h;
+});
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 /* The feathered PNG of the last frame. */
 window.__png = () => {
@@ -160,15 +173,26 @@ window.__outside = () => {
   }
   return { bad, worst };
 };
-function centroid(d, W, H, dpr, S) {
-  const o = [0, 0, 0];
-  let n = 0, sx = 0, sy = 0;
+/* L* of an RGBA buffer, optionally low-passed by a separable box of radius r px. */
+function lstar(d, W, H, r) {
+  const o = [0, 0, 0], L = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) { lab(d, i * 4, o); L[i] = o[0]; }
+  if (!r) return L;
+  const t = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) { let s = 0, n = 0; for (let i = -r; i < W + r; i++) { if (i + r < W) { s += L[y * W + i + r]; n++; } if (i - r - 1 >= 0) { s -= L[y * W + i - r - 1]; n--; } if (i >= 0 && i < W) t[y * W + i] = s / n; } }
+  for (let i = 0; i < W; i++) { let s = 0, n = 0; for (let y = -r; y < H + r; y++) { if (y + r < H) { s += t[(y + r) * W + i]; n++; } if (y - r - 1 >= 0) { s -= t[(y - r - 1) * W + i]; n--; } if (y >= 0 && y < H) L[y * W + i] = s / n; } }
+  return L;
+}
+/* The bright centroid inside 0.98 S: the L* > 60 pixels, each weighted by L* - 60 (r: the low-pass, device px). */
+function centroid(d, W, H, dpr, S, r = 0) {
+  const L = lstar(d, W, H, r);
+  let n = 0, sw = 0, sx = 0, sy = 0;
   for (let y = 0; y < H; y++) for (let i = 0; i < W; i++) {
     if (Math.hypot(i + 0.5 - W / 2, y + 0.5 - H / 2) / dpr >= POSTER_FEATHER[0] * S) continue;
-    lab(d, (y * W + i) * 4, o);
-    if (o[0] > 60) { n++; sx += i + 0.5; sy += y + 0.5; }
+    const l = L[y * W + i];
+    if (l > 60) { const w = l - 60; n++; sw += w; sx += w * (i + 0.5); sy += w * (y + 0.5); }
   }
-  return n ? { x: sx / n, y: sy / n, n } : { x: NaN, y: NaN, n: 0 };
+  return n ? { x: sx / sw, y: sy / sw, n } : { x: NaN, y: NaN, n: 0 };
 }
 /* The committed poster at src, decoded and drawn on NIGHT1 at the live frame's size, against the live frame. */
 window.__compare = async (src) => {
@@ -192,35 +216,47 @@ window.__compare = async (src) => {
   }
   let acc = 0, p99 = 0;
   for (let j = 0; j <= 2000; j++) { acc += hist[j]; if (acc >= 0.99 * n) { p99 = j / 20; break; } }
-  const cl = centroid(live, W, H, dpr, S), cp = centroid(p, W, H, dpr, S);
+  const r = Math.round(LOWPASS * dpr), cl = centroid(live, W, H, dpr, S, r), cp = centroid(p, W, H, dpr, S, r);
   const cd = cl.n === 0 && cp.n === 0 ? 0 : Math.hypot(cl.x - cp.x, cl.y - cp.y) / dpr;
   return { meanDE: sum / n, p99, dL: Math.abs(la - lb) / n, centroid: cd, bright: [cl.n, cp.n], natural: img.naturalWidth };
 };
-/* Normal mode (no capture), for the held-frame check. */
-let readyAt = 0;
-window.__mount = (audience, S) => new Promise((res, rej) => {
+/* Normal mode (no capture), for the held-frame check. Every draw is read back in its own task (the drawing buffer
+   is not preserved): its pixel hash and bright centroid, and the released clock mirrored as the renderer keeps it
+   (the sum of min(50 ms, frame delta) since release()). */
+let readyAt = 0, rec = null, relAt = 0;
+for (const C of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) {
+  if (!C) continue;
+  const da = C.prototype.drawArrays;
+  C.prototype.drawArrays = function () {
+    const r = da.apply(this, arguments);
+    if (rec) {
+      const W = this.drawingBufferWidth, H = this.drawingBufferHeight, px = new Uint8Array(W * H * 4);
+      this.readPixels(0, 0, W, H, this.RGBA, this.UNSIGNED_BYTE, px);
+      let h = 2166136261;
+      for (let i = 0; i < px.length; i += 7) h = Math.imul(h ^ px[i], 16777619);
+      const t = performance.now(), prev = rec.draws.length ? rec.draws[rec.draws.length - 1].t : t;
+      if (relAt && t >= relAt) rec.rel += Math.min(0.05, Math.max(0, (t - Math.max(prev, relAt)) / 1000));
+      const c = centroid(px, W, H, 1, rec.S);
+      rec.draws.push({ t, hash: h >>> 0, x: c.x, y: H - c.y, n: c.n, rel: rec.rel, released: !!relAt });
+    }
+    return r;
+  };
+}
+window.__mount = (audience, S, tier) => new Promise((res, rej) => {
   const { canvas, stage } = box(S);
-  handle = mountEclipse(canvas, stage, { audience, onReady: () => { readyAt = performance.now(); res(true); }, onFail: () => rej(new Error("onFail")) });
+  rec = { S, draws: [], rel: 0 }; relAt = 0;
+  handle = mountEclipse(canvas, stage, { audience, tier, onReady: () => { readyAt = performance.now(); res(true); }, onFail: (r) => rej(new Error("onFail " + r)) });
   if (!handle) rej(new Error("no WebGL context"));
 });
 window.__sinceReady = () => performance.now() - readyAt;
+window.__draws = () => rec.draws.length;
 window.__raf = (n) => new Promise((res) => { const f = () => (--n <= 0 ? res(true) : requestAnimationFrame(f)); requestAnimationFrame(f); });
-/* The renderer's released clock, mirrored: the sum of min(50 ms, frame delta) since release(). */
-let rel = 0;
-window.__release = () => {
-  rel = 0; let prev = performance.now();
-  const f = (now) => { rel += Math.min(0.05, Math.max(0, (now - prev) / 1000)); prev = now; if (handle) requestAnimationFrame(f); };
+window.__release = () => { relAt = performance.now(); handle.release(); };
+/* Runs until the mirrored released clock passes s seconds (or 60 draws), then reports. */
+window.__after = (s) => new Promise((res) => {
+  const f = () => (rec.rel >= s || rec.draws.length > 60 ? res(rec.draws.map(({ t, hash, x, y, n, rel, released }) => ({ t, hash, x, y, n, rel, released }))) : requestAnimationFrame(f));
   requestAnimationFrame(f);
-  handle.release();
-};
-window.__rel = () => rel;
-window.__bright = async (url) => {
-  const img = new Image(); img.src = url; await img.decode();
-  const c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
-  const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0);
-  const W = c.width, H = c.height, S = W / 2;
-  return centroid(x.getImageData(0, 0, W, H).data, W, H, 1, S);
-};
+});
 window.__ok = true;`;
 
 function loadPlaywright() {
@@ -253,7 +289,9 @@ async function openPage(browser, side) {
     }
     return route.fulfill({ status: 404, body: "" });
   });
-  await page.goto(`${ORIGIN}/`, { waitUntil: "load", timeout: 120000 });
+  /* ?sky=gl: the renderer refuses software GL outside debug (wave-2 fixes), and --check's held-frame step mounts it
+     in normal mode on SwiftShader. */
+  await page.goto(`${ORIGIN}/?sky=gl`, { waitUntil: "load", timeout: 120000 });
   await page.waitForFunction(() => window.__ok === true, null, { timeout: 60000 });
   return { ctx, page, errors };
 }
@@ -269,16 +307,19 @@ out = []
 for job in json.load(sys.stdin):
     im = Image.open(job["png"]); im.load()
     if im.mode != "RGBA": im = im.convert("RGBA")
+    def enc(fmt, q):
+        b = io.BytesIO()
+        if fmt == "avif": im.save(b, "AVIF", quality=q, speed=0, subsampling="4:4:4")
+        else: im.save(b, "WEBP", quality=q, method=6, alpha_quality=30)
+        return b
     for fmt in ("avif", "webp"):
-        e = job["enc"][fmt]; q = e["q0"]
-        while True:
-            b = io.BytesIO()
-            if fmt == "avif": im.save(b, "AVIF", quality=q, speed=4)
-            else: im.save(b, "WEBP", quality=q, method=6)
-            n = b.tell()
-            if n <= e["cap"] or q - 5 < e["floor"]: break
-            q -= 5
-        ok = n <= e["cap"]
+        e = job["enc"][fmt]; lo, hi, best = e["floor"], e["q0"], None
+        while lo <= hi:  # the highest quality whose file fits the cap (bytes grow with quality)
+            q = (lo + hi) // 2; b = enc(fmt, q)
+            if b.tell() <= e["cap"]: best = (q, b); lo = q + 1
+            else: hi = q - 1
+        if best is None: best = (e["floor"], enc(fmt, e["floor"]))
+        q, b = best; n = b.tell(); ok = n <= e["cap"]
         dest = job["dest"] + "." + fmt
         if ok:
             with open(dest, "wb") as f: f.write(b.getvalue())
@@ -311,7 +352,7 @@ async function generate(browser) {
     const S = POSTER.stage[band], side = POSTER_BOX * S;
     const { ctx, page, errors } = await openPage(browser, side);
     for (const a of AUDIENCES) {
-      const info = await page.evaluate(([aud, s, dpr]) => window.__frame(aud, s, dpr), [a, S, POSTER.dpr]);
+      const info = await page.evaluate(([aud, s, dpr, tier]) => window.__frame(aud, s, dpr, tier), [a, S, POSTER.dpr, POSTER_TIER[band]]);
       const w = posterWidth(band);
       if (info.width !== w || info.height !== w) die(`${a} ${band}: frame ${info.width}x${info.height}, expected ${w}x${w}`);
       if (info.stage !== S) die(`${a} ${band}: stage ${info.stage} CSS px, expected ${S}`);
@@ -320,7 +361,7 @@ async function generate(browser) {
       const url = await page.evaluate(() => window.__png());
       const png = path.join(tmp, `poster-${a}-${w}.png`);
       fs.writeFileSync(png, Buffer.from(url.slice(url.indexOf(",") + 1), "base64"));
-      console.log(`rendered ${a} ${band}: ${w}x${w} in ${(info.ms / 1000).toFixed(1)} s`);
+      console.log(`rendered ${a} ${band} (tier ${POSTER_TIER[band]}): ${w}x${w} in ${(info.ms / 1000).toFixed(1)} s`);
       const dest = path.join(PUBLIC, posterSrc(a, band, "avif")).replace(/\.avif$/, "");
       jobs.push({ png, dest, enc: { avif: { ...ENC.avif, cap: CAPS[w].avif }, webp: { ...ENC.webp, cap: CAPS[w].webp } } });
     }
@@ -329,8 +370,8 @@ async function generate(browser) {
   }
   fs.mkdirSync(path.join(PUBLIC, "hero"), { recursive: true });
   const res = encode(jobs);
-  console.log(`\n${pad("file", 34)}${pad("quality", 9)}${pad("bytes", 9)}cap`);
-  for (const r of res) console.log(`${pad(path.relative(PUBLIC, r.dest), 34)}${pad(r.quality, 9)}${pad(r.bytes, 9)}${r.cap}${r.ok ? "" : "  OVER"}`);
+  console.log(`\n${pad("file", 34)}${pad("quality", 9)}${pad("bytes", 18)}cap`);
+  for (const r of res) console.log(`${pad(path.relative(PUBLIC, r.dest), 34)}${pad(r.quality, 9)}${pad(`${r.bytes} (${KB_(r.bytes)})`, 18)}${KB_(r.cap)}${r.ok ? "" : "  OVER"}`);
   if (res.some((r) => !r.ok)) die(`a poster is over its byte cap at the quality floor (the PNGs are kept in ${tmp})`);
   fs.rmSync(tmp, { recursive: true, force: true });
   if (!FULL) { console.log("\nfiltered run: poster.json not written (run without --only/--band to write it)"); return; }
@@ -366,7 +407,7 @@ async function check(browser) {
     const S = POSTER.stage[band], side = POSTER_BOX * S;
     const { ctx, page, errors } = await openPage(browser, side);
     for (const a of AUDIENCES) for (const dpr of [1, 1.5, 2]) {
-      await page.evaluate(([aud, s, d]) => window.__frame(aud, s, d), [a, S, dpr]);
+      await page.evaluate(([aud, s, d, tier]) => window.__frame(aud, s, d, tier), [a, S, dpr, POSTER_TIER[band]]);
       const out = await page.evaluate(() => window.__outside());
       for (const f of POSTER.formats) {
         const src = posterSrc(a, band, f);
@@ -381,35 +422,24 @@ async function check(browser) {
     await ctx.close();
   }
   /* 3. the held frame, then the release */
-  console.log(`\n${pad("audience", 10)}${pad("band", 9)}${pad("+1 rAF", 8)}${pad("+10 rAF", 9)}${pad("held ms", 9)}${pad("frames", 8)}${pad("released", 10)}${pad("max move", 10)}result`);
+  console.log(`\n${pad("audience", 10)}${pad("band", 9)}${pad("tier", 6)}${pad("held draws", 12)}${pad("+1/+2/+10 rAF", 15)}${pad("held ms", 9)}${pad("released", 10)}${pad("frames", 8)}${pad("max move", 10)}result`);
   for (const band of BANDS) {
     const S = POSTER.stage[band], side = POSTER_BOX * S;
     const { ctx, page, errors } = await openPage(browser, side);
-    const clip = { x: 0, y: 0, width: side, height: side };
-    const shot = () => page.screenshot({ clip, timeout: 300000 });
     for (const a of AUDIENCES) {
-      await page.evaluate(([aud, s]) => window.__mount(aud, s), [a, S]);
-      const s0 = await shot();
-      await page.evaluate(() => window.__raf(1));
-      const s1 = await shot();
-      await page.evaluate(() => window.__raf(10));
-      const s10 = await shot();
+      await page.evaluate(([aud, s, tier]) => window.__mount(aud, s, tier), [a, S, POSTER_TIER[band]]);
+      const counts = [];
+      for (const n of [1, 1, 8]) { await page.evaluate((k) => window.__raf(k), n); counts.push(await page.evaluate(() => window.__draws())); }
       const heldMs = await page.evaluate(() => window.__sinceReady());
-      const same1 = s0.equals(s1), same10 = s0.equals(s10);
-      const inconclusive = heldMs >= api.RELEASE_FALLBACK_MS;
-      const bright = (buf) => page.evaluate((u) => window.__bright(u), `data:image/png;base64,${buf.toString("base64")}`);
-      const c0 = await bright(s0);
       await page.evaluate(() => window.__release());
-      let move = 0, frames = 0, rel = 0;
-      while (rel < 0.3 && frames < 40) {
-        const s = await shot();
-        rel = await page.evaluate(() => window.__rel());
-        const c = await bright(s);
-        move = Math.max(move, c.n && c0.n ? Math.hypot(c.x - c0.x, c.y - c0.y) : 0);
-        frames++;
-      }
-      const ok = same1 && same10 && !inconclusive && move <= LIMIT.heldMove && rel >= 0.3;
-      console.log(`${pad(a, 10)}${pad(band, 9)}${pad(same1 ? "same" : "DIFF", 8)}${pad(same10 ? "same" : "DIFF", 9)}${pad(Math.round(heldMs), 9)}${pad(frames, 8)}${pad(`${(rel * 1000).toFixed(0)} ms`, 10)}${pad(`${fmt(move, 3)} px`, 10)}${ok ? "ok" : inconclusive ? "INCONCLUSIVE (fallback release came first)" : "FAIL"}`);
+      const draws = await page.evaluate(() => window.__after(0.3));
+      const f0 = draws[0], held = draws.filter((d) => !d.released), after = draws.filter((d) => d.released && d.rel <= 0.3);
+      const same = held.every((d) => d.hash === f0.hash);
+      const move = Math.max(0, ...after.map((d) => (d.n && f0.n ? Math.hypot(d.x - f0.x, d.y - f0.y) : 0)));
+      const rel = after.length ? after[after.length - 1].rel : 0;
+      const inconclusive = heldMs >= api.RELEASE_FALLBACK_MS;
+      const ok = same && !inconclusive && move <= LIMIT.heldMove && after.length > 0;
+      console.log(`${pad(a, 10)}${pad(band, 9)}${pad(POSTER_TIER[band], 6)}${pad(`${held.length - 1} ${same ? "same" : "DIFF"}`, 12)}${pad(counts.map((c) => c - 1).join("/"), 15)}${pad(Math.round(heldMs), 9)}${pad(`${(rel * 1000).toFixed(0)} ms`, 10)}${pad(after.length, 8)}${pad(`${fmt(move, 3)} px`, 10)}${ok ? "ok" : inconclusive ? "INCONCLUSIVE (fallback release came first)" : "FAIL"}`);
       if (!ok) fail(`held frame ${a} ${band}`);
     }
     if (errors.length) fail(`page errors:\n${errors.join("\n")}`);

@@ -1,0 +1,63 @@
+{
+  "rendererHash": "478ce63befe6d974881d84fdadcd4bcce1d5f823",
+  "box": 2,
+  "feather": [
+    0.98,
+    1
+  ],
+  "dpr": 2,
+  "stage": {
+    "phone": 240,
+    "desktop": 560
+  },
+  "files": [
+    {
+      "path": "/hero/poster-brands-960.avif",
+      "width": 960,
+      "bytes": 15208,
+      "sha1": "963c7ec8778c9bf8adb8fd568e461fe071f1f2bd"
+    },
+    {
+      "path": "/hero/poster-brands-960.webp",
+      "width": 960,
+      "bytes": 36428,
+      "sha1": "3a6fc23795da22916fbfd1bdd5075588db3b80df"
+    },
+    {
+      "path": "/hero/poster-brands-2240.avif",
+      "width": 2240,
+      "bytes": 26081,
+      "sha1": "1685dcd882a450d693d75200d524a9cfc4b2ba65"
+    },
+    {
+      "path": "/hero/poster-brands-2240.webp",
+      "width": 2240,
+      "bytes": 94620,
+      "sha1": "63524109898322b3d21434be136e89fb56b98039"
+    },
+    {
+      "path": "/hero/poster-creators-960.avif",
+      "width": 960,
+      "bytes": 15157,
+      "sha1": "8a631f74edb904e11741e68b91b9796fd982d8b0"
+    },
+    {
+      "path": "/hero/poster-creators-960.webp",
+      "width": 960,
+      "bytes": 35506,
+      "sha1": "b7a179cb85a47403c32d57f1b7eb8936a8429eae"
+    },
+    {
+      "path": "/hero/poster-creators-2240.avif",
+      "width": 2240,
+      "bytes": 26000,
+      "sha1": "d5ffc31d98e96f98ce9d00bb04cc5647ca324468"
+    },
+    {
+      "path": "/hero/poster-creators-2240.webp",
+      "width": 2240,
+      "bytes": 92564,
+      "sha1": "a1594305ccc10bfccc1c22be6c98a98f7f1d6371"
+    }
+  ]
+}

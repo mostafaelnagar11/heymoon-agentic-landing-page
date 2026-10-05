@@ -1,6 +1,8 @@
-/* The eclipse hero's canvas and stage (EclipseSky.tsx). The canvas is opaque from its first drawn frame, at
-   once and under the opaque poster (V14), and gone at once on a failure: no transition either way. The poster
-   (poster.module.css) owns the only fade. */
-.canvas { opacity: 0; }
-.canvas[data-on="true"] { opacity: 1; }
+/* The eclipse hero's stage (EclipseSky.tsx). Inside .stage, in paint order: the canvas, then the poster
+   (poster.module.css), both the 2 S poster box centred on the star (CANVAS_BOX, V4); the hero's overflow: clip
+   keeps the part of the box outside the hero from causing a scroll. The canvas is opaque from its first drawn
+   frame, at once and under the opaque poster (V14), and gone at once on a failure: no transition either way. The
+   poster owns the only fade. */
 .stage { contain: layout style; }
+.canvas { position: absolute; inset: -50%; width: 200%; height: 200%; opacity: 0; pointer-events: none; }
+.canvas[data-on="true"] { opacity: 1; }

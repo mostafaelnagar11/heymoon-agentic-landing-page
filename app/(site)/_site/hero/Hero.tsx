@@ -6,15 +6,17 @@
    the toasts (next/dynamic, gate G10). */
 import { useRef } from "react";
 import dynamic from "next/dynamic";
-import { useTransform } from "motion/react";
+import { useTransform, type MotionValue } from "motion/react";
 import * as m from "motion/react-m";
 import type { HeroProps } from "../contracts";
+import type { Audience } from "../data/types";
 import { LIFT, SKY, TOAST } from "../tokens";
 import { AudienceSwitch } from "../shell/AudienceSwitch";
 import { Field } from "../shell/Field";
 import { Horizon } from "../shell/Horizon";
 import { Sky } from "../sky/Sky";
 import { EclipseSky } from "../sky/EclipseSky";
+import { useAudience, useWorld } from "../lib/audience";
 import { useHeroExit } from "../lib/lift";
 import { useIsoLayoutEffect } from "../lib/iso";
 import { useIsPhone, useMediaQuery, useReducedMotionPref } from "../lib/prefs";
@@ -26,8 +28,9 @@ import s from "./hero.module.css";
     "horizon": the original field-on-the-horizon hero, kept intact so the lead can flip back. */
 const HERO_VARIANT = "eclipse" as "eclipse" | "horizon";
 
-/** Gate G10 (ruling 34): the hero toasts replay a sample read beside the field. Refused → set false:
-    <Toasts> is never mounted (or loaded) and nothing else changes. */
+/** Gate G10 (ruling 34): the read replayed on the hero. On the eclipse hero that is the agent card (hero/Agents.tsx,
+    brands only, at CARD_MQ), which replaces the toasts; on the horizon hero, the toasts. Refused → set false: no
+    card and no toast is ever mounted (or loaded) and nothing else changes; the glints still light. */
 const G10_SIGNED: boolean = true;
 /** The toast lanes exist at ≥1024 only. Below that the chunk is never even requested. */
 const TOAST_MQ = `(min-width: ${TOAST.minWidth}px)`;
@@ -51,15 +54,42 @@ export function Hero(props: HeroProps) {
   return HERO_VARIANT === "eclipse" ? <EclipseHero {...props} /> : <HorizonHero {...props} />;
 }
 
-/** The eclipse hero: copy on the left (switch, H1, field, chips), the stage on the right; on a phone the
-    stage sits above the copy. No horizon, no toast lanes. */
+/** The glow behind the field (HERO-V2 §3.4, M9, W2c-7): the global .hz-halo ramps and .hz-tint layers, centred on
+    the field, at rest opacity 1. Its tints follow `world`; its core ellipse follows the field's focus (.6 → 1). No
+    light reaches toward the field from the star (Mostafa: "you can delete this"). Static under reduced motion and
+    without JS (the server render is "reduced"). */
+function Glow({ reduced }: { reduced: boolean }) {
+  const { audience } = useAudience();
+  const { world, focus } = useWorld();
+  const core = useTransform(focus, [0, 1], [0.6, 1]);
+  const toBrands = useTransform(world, [0, 1], [1, 0]);
+  const toCreators = useTransform(world, [0, 1], [0, 1]);
+  const tint = (a: Audience, v: MotionValue<number>) => (
+    <m.div className="hz-tint" data-tint={a} style={{ opacity: reduced ? +(audience === a) : v }} />
+  );
+  return (
+    <div aria-hidden className={`hz-halo ${s.glow} dawn-fade`}>
+      {tint("brands", toBrands)}
+      {tint("creators", toCreators)}
+      <m.div className={s.core} style={{ opacity: reduced ? 0.6 : core }}>
+        {tint("brands", toBrands)}
+        {tint("creators", toCreators)}
+      </m.div>
+    </div>
+  );
+}
+
+/** The eclipse hero: copy on the left (switch, H1, field, chips), the stage on the right; on a phone the star
+    sits under the chips, in the space that is left. No horizon; the agent card replaces the toast lanes (G10). */
 function EclipseHero({}: HeroProps) {
   const reduced = useReducedMotionPref();
   const lift = useLift();
   const content = reduced ? undefined : lift.content;
   return (
     <section data-slot="hero" data-surface="night" aria-labelledby="hero-h1" className={`${s.hero} ${s.eclipse}`}>
-      <EclipseSky stageClassName={s.stage} />
+      {/* The copy comes first in the DOM (its grid areas place both on every layout): on phones the star sits in the
+          row under the copy, so a frame painted while the HTML is still parsing (the copy not in yet) would show the
+          star 170 px higher and then jump down. In this order a partial frame only lacks the star. */}
       <div className={s.copy}>
         <m.div className={s.eTop} data-lift="" data-probe-scroll="" style={content}>
           <div className="dawn-fade motion-safe:animate-nav-in [animation-delay:120ms]">
@@ -70,12 +100,14 @@ function EclipseHero({}: HeroProps) {
           <Headline stacked className={s.eHeadline} />
         </m.div>
         <m.div className={s.eField} data-lift="" data-probe-scroll="" style={content}>
+          <Glow reduced={reduced} />
           <Field id="hero" placement="hero" />
         </m.div>
         <m.div className={s.eBottom} data-lift="" data-probe-scroll="" style={content}>
           <Chips className={`${s.chips} ${s.eChips} dawn-fade`} />
         </m.div>
       </div>
+      <EclipseSky stageClassName={s.stage} rowClassName={s.starRow} card={G10_SIGNED} />
       <m.div
         aria-hidden
         data-lift="dim"
