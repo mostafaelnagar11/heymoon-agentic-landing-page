@@ -83,10 +83,17 @@
      width (Nav.tsx), so the nav, the hero and every section's text share their left and right edges. */
   padding: calc(var(--nav-top) + var(--nav-h) + 16px) max(var(--gutter), calc((100% - 1120px) / 2 + var(--gutter))) 88px;
 }
-.copy { grid-area: 1 / 1; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.copy { grid-area: 1 / 1; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; min-width: 0;
+  container-type: inline-size; }   /* the headline sizes itself to this column (cqw below) */
 .stage { grid-area: 1 / 2; position: relative; width: 100%; aspect-ratio: 1; justify-self: center; z-index: 1; pointer-events: none; }
 .eTop { display: flex; flex-direction: column; align-items: flex-start; width: 100%; }
-.eHeadline.eHeadline { margin-top: 36px; text-align: start; font-size: clamp(36px, min(7.6svh, 4.6vw), 68px); }
+/* THREE LINES, ALWAYS (Mostafa: "it should be 3 lines at max"), and the same three on both audiences, so the
+   shared morph cell has one height and the field sits at the same y on brands and creators. The stacked set is
+   three explicit lines (COPY h1.phone); none may wrap again, and the size is capped by the copy column so the
+   longest, "Sales, guaranteed." (about 7.6em in Geist at this tracking), always fits: 100cqw / 7.6em = 13.1cqw,
+   12.6cqw leaves a margin. */
+.eHeadline.eHeadline { margin-top: 36px; text-align: start; font-size: min(clamp(36px, min(7.6svh, 4.6vw), 68px), 12.6cqw); }
+.eHeadline :global(.line) { white-space: nowrap; }
 .eField { width: 100%; max-width: 520px; margin-top: 40px; }
 .eField > [data-field] { width: 100%; max-width: none; }
 .eBottom { margin-top: 24px; width: 100%; max-width: 560px; }
@@ -102,7 +109,7 @@
   .stage { grid-area: 1 / 1; width: min(240px, 62vw, 28svh); }
   .copy { grid-area: 2 / 1; align-items: center; text-align: center; }
   .eTop { align-items: center; }
-  .eHeadline.eHeadline { margin-top: 20px; text-align: center; font-size: clamp(34px, 9.8vw, 46px); }
+  .eHeadline.eHeadline { margin-top: 20px; text-align: center; font-size: min(clamp(34px, 9.8vw, 46px), 12.6cqw); }
   .eField { margin-top: 24px; max-width: 580px; display: grid; place-items: center; }
   .eBottom { margin-top: 20px; }
   .eChips.eChips { justify-content: center; }
