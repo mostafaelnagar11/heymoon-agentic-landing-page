@@ -1,28 +1,39 @@
 /* The Eclipse Glass hero renderer: a bevelled glass four-point star raymarched in front of an eclipse
    (disc, rim, corona, diamond-ring bead, glints). Reached only through `import("./eclipse")`.
-   No React and no site imports: the caller owns the static twin, the crossfade and reduced motion.
-   The canvas covers the whole hero; the stage element's rect sets where and how big the star is drawn. */
+   No React and no site imports except the shared contract (./eclipse-api): the caller owns the poster,
+   the handover and reduced motion.
+   The canvas covers the whole hero; the stage element's rect sets where and how big the star is drawn.
 
-export type Audience = "brands" | "creators";
+   Wave 1 (HERO-V2 V13 to V15, "no flat star, ever"):
+   - The first frame is REST (eclipse-api.ts) at time zero, the same frame scripts/hero-poster.cjs commits as
+     the poster. After it is drawn, onReady fires one rAF later and the frame is HELD (no clock, no draws, no
+     pointer) until release(), or RELEASE_FALLBACK_MS after onReady. From release the sway clock eases in over
+     SWAY_IN_S, so the pose leaves REST with zero velocity.
+   - Exact night: the light is tone-mapped alone and screened over NIGHT1, so an unlit pixel is exactly the
+     hero background, and all light fades out between LIGHT_FADE[0] and LIGHT_FADE[1] S from the centre
+     (nothing is lit beyond 0.98 S: the 2 S poster box holds every lit pixel).
+   - Screen-space marks (bead spikes, the silhouette halo, the rim) are in CSS px (E.z = device px per CSS px),
+     so a 2x capture and a 1x or 1.5x live frame differ only by resampling.
+   - The program links without blocking (KHR_parallel_shader_compile, else checked a frame later).
+   - opts.capture: one REST frame at capture.dpr, read back in the same task, for the poster script. */
 
-export type EclipseHandle = {
-  setAudience(a: Audience, instant?: boolean): void;
-  setFocus(on: boolean): void;
-  pulse(): void;
-  launch(): void;
-  setPaused(p: boolean): void;
-  resize(): void;
-  destroy(): void;
-};
+import {
+  BEAD_REST_RAD, DPR_CAP, LIGHT_FADE, NIGHT1, PHONE_MQ, RELEASE_FALLBACK_MS, REST, SWAY_IN_S, swayAt,
+} from "./eclipse-api";
+import type { Audience, EclipseHandle, EclipseOptions } from "./eclipse-api";
 
-export type EclipseOptions = { audience: Audience; onReady?: () => void; onFail?: () => void };
+export type { Audience, EclipseHandle, EclipseOptions };
+
+/** A JS number as a GLSL float literal. */
+const fl = (x: number) => { const s = String(Math.round(x * 1e6) / 1e6); return /[.e]/.test(s) ? s : `${s}.`; };
 
 const VS = "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
 
-/* Uniforms: St = star centre (px) and radius (px); M = star rotation;
-   A = soft, aud, bead, focus; B = pulse, pulseR, intro, flash; C = glints, sweep, rimW, energy; E = trail, glare sweep */
+/* Uniforms: St = star centre (px) and radius (px); M = star rotation; T = scene time (s);
+   A = soft, aud, bead, focus; B = pulse, pulseR, intro, flash; C = glints, sweep, rimW, energy;
+   E = trail, glare sweep, device px per CSS px. uv: 1 = S/2. */
 const FS = `precision highp float;
-uniform vec2 R;uniform vec3 St;uniform float T;uniform mat3 M;
+uniform vec3 St;uniform float T;uniform mat3 M;
 uniform vec4 A;uniform vec4 B;uniform vec4 C;uniform vec4 E;
 #define S 1.12
 #define CZ 7.0
@@ -32,6 +43,9 @@ uniform vec4 A;uniform vec4 B;uniform vec4 C;uniform vec4 E;
 #define IOR 1.5
 #define CC 1.4
 #define RR 1.456
+#define NIGHT (vec3(${NIGHT1.map(fl).join(",")})/255.)
+#define LF0 ${fl(LIGHT_FADE[0] * 2)}
+#define LF1 ${fl(LIGHT_FADE[1] * 2)}
 float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+1.),f.x),f.y);}
@@ -131,31 +145,31 @@ vec3 glass(vec3 p,vec3 rd){
  float en=.4+.6*A.w+1.2*B.x+C.w*.8;
  vec2 bd=vec2(cos(A.z),sin(A.z));float sc=pow(clamp(dot(normalize(po.xy+1e-4),bd)*.5+.5,0.,1.),3.)*smoothstep(.0,.9,length(po.xy));
  vec3 glow=body*(1.-exp(-L*2.2))*(.05+.5*sc)*(.7+.3*en)+cc*(cs*1.2+exp(-dm*dm*14.)*.12)*en+vec3(1.)*cs*cs*.25*en;
- float rip=exp(-pow((length(po.xy)-B.y)*7.,2.))*B.x;
+ float q=(length(po.xy)-B.y)*7.;float rip=exp(-q*q)*B.x;
  vec3 rc=mix(vec3(.75,.65,1.),vec3(1.,.6,.85),A.y);
  return mix(rr*tint+glow,rfl,fr)+rc*rip*.8+mix(vec3(1.),cc,.4)*pow(1.-ci,7.)*.9;}
 void main(){
  vec2 fc=gl_FragCoord.xy;
  vec2 uv=(fc-St.xy)/St.z;
+ float lu=length(uv);
+ if(lu>LF1){gl_FragColor=vec4(NIGHT,1.);return;}
  vec3 ro=vec3(0.,0.,CZ);
  vec3 rd=normalize(vec3(uv*S/CZ,-1.));
- vec2 q=uv*S*(CZ+DZ)/CZ;float rq=length(q)/RM;
- vec3 col=vec3(.0002,.0005,.0035);
- if(rq<5.)col+=corona(q,true);
- vec2 g=floor(fc/42.);float hs=h21(g);
- if(hs>.93&&rq>1.02){vec2 sp=(g+.2+.6*vec2(h21(g+3.1),h21(g+7.7)))*42.;col+=vec3(.6,.6,.9)*smoothstep(1.6,0.,length(fc-sp))*(hs-.93)*2.;}
+ vec2 q=uv*S*(CZ+DZ)/CZ;
+ vec3 Lg=corona(q,true);
  vec2 bu=vec2(cos(A.z),sin(A.z))*RM*CZ/(S*(CZ+DZ));
- vec2 dv=(uv-bu)*St.z;float L=1./(.12*St.z);
- float sp=exp(-abs(dv.x)*1.3)*exp(-abs(dv.y)*L)+exp(-abs(dv.y)*1.3)*exp(-abs(dv.x)*L);
- col+=vec3(.85,.8,1.)*sp*.38*B.z*(1.+C.w);
+ vec2 dv=(uv-bu)*St.z/E.z;float kl=E.z/(.12*St.z);
+ float sp=exp(-abs(dv.x)*1.3)*exp(-abs(dv.y)*kl)+exp(-abs(dv.y)*1.3)*exp(-abs(dv.x)*kl);
+ Lg+=vec3(.85,.8,1.)*sp*.38*B.z*(1.+C.w);
  float b=dot(ro,rd),c=dot(ro,ro)-BR*BR,h=b*b-c;
- if(h>0.){h=sqrt(h);float t=-b-h,tm=-b+h;bool hit=false;float md=9.,pf=S/St.z;
+ if(h>0.){h=sqrt(h);float t=-b-h,tm=-b+h;bool hit=false;float md=9.,pf=S*E.z/St.z;
   for(int i=0;i<72;i++){float d=map(ro+rd*t);md=min(md,d/pf);if(d<.0006){hit=true;break;}t+=d*.9;if(t>tm)break;}
-  if(hit)col=glass(ro+rd*t,rd);
-  else col+=mix(vec3(.55,.45,1.),vec3(1.,.5,.8),A.y)*(1.-smoothstep(0.,1.4,md))*.35*B.z;}
- col=1.-exp(-col*(1.15+.5*B.w));
- col=pow(col,vec3(.4545));
- col+=(h21(fc+fract(T))-.5)/255.;
+  if(hit)Lg=glass(ro+rd*t,rd);
+  else Lg+=mix(vec3(.55,.45,1.),vec3(1.,.5,.8),A.y)*(1.-smoothstep(0.,1.4,md))*.35*B.z;}
+ Lg*=1.-smoothstep(LF0,LF1,lu);
+ vec3 lit=pow(max(1.-exp(-Lg*(1.15+.5*B.w)),0.),vec3(.4545));
+ vec3 col=1.-(1.-NIGHT)*(1.-lit);
+ col+=(h21(fc+fract(T))-.5)/255.*step(1./512.,max(lit.r,max(lit.g,lit.b)));
  gl_FragColor=vec4(col,1.);}`;
 
 type Ease = (x: number) => number;
@@ -168,6 +182,7 @@ const eo: Ease = (x) => 1 - Math.pow(1 - x, 3);
 const eo4: Ease = (x) => 1 - Math.pow(1 - x, 4);
 const lin: Ease = (x) => x;
 const clamp = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const sstep = (a: number, b: number, x: number) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 
 function rotAxis(ax: number, ay: number, az: number, a: number): M3 {
   const c = Math.cos(a), s = Math.sin(a), t = 1 - c;
@@ -183,12 +198,13 @@ function mul(a: M3, b: M3): M3 {
   return o;
 }
 
-const BEAD0 = 0.8;
 const D = Math.SQRT1_2;
-const UNIFORMS = ["R", "St", "T", "M", "A", "B", "C", "E"] as const;
+const UNIFORMS = ["St", "T", "M", "A", "B", "C", "E"] as const;
+/* swayAt's constant offsets: focus damps only the oscillation around them (as the prototype). */
+const YAW0 = -0.12, PITCH0 = 0.1;
 
 export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts: EclipseOptions): EclipseHandle | null {
-  const fail = () => { opts.onFail?.(); return null; };
+  const cap = opts.capture;
   const ctxOpts: WebGLContextAttributes = {
     antialias: false, alpha: false, depth: false, stencil: false, powerPreference: "high-performance", premultipliedAlpha: false,
   };
@@ -198,61 +214,70 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
       || canvas.getContext("webgl", ctxOpts)
       || (canvas.getContext("experimental-webgl", ctxOpts) as WebGLRenderingContext | null);
   } catch { gl = null; }
-  if (!gl) return fail();
+  if (!gl) { opts.onFail?.(); return null; }
   const g = gl;
 
-  const compile = (type: number, src: string) => {
+  /* Compile and link without reading any status: that would block until the driver is done (review M6). */
+  const shader = (type: number, src: string) => {
     const s = g.createShader(type);
-    if (!s) return null;
-    g.shaderSource(s, src); g.compileShader(s);
-    if (!g.getShaderParameter(s, g.COMPILE_STATUS)) { console.warn(g.getShaderInfoLog(s)); g.deleteShader(s); return null; }
+    if (s) { g.shaderSource(s, src); g.compileShader(s); }
     return s;
   };
-  const vs = compile(g.VERTEX_SHADER, VS), fs = compile(g.FRAGMENT_SHADER, FS);
-  const pr = vs && fs ? g.createProgram() : null;
-  if (!vs || !fs || !pr) { g.getExtension("WEBGL_lose_context")?.loseContext(); return fail(); }
-  g.attachShader(pr, vs); g.attachShader(pr, fs); g.bindAttribLocation(pr, 0, "p"); g.linkProgram(pr);
-  if (!g.getProgramParameter(pr, g.LINK_STATUS)) {
-    console.warn(g.getProgramInfoLog(pr)); g.getExtension("WEBGL_lose_context")?.loseContext(); return fail();
-  }
-  g.useProgram(pr);
-  const buf = g.createBuffer();
-  g.bindBuffer(g.ARRAY_BUFFER, buf);
-  g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), g.STATIC_DRAW);
-  g.enableVertexAttribArray(0); g.vertexAttribPointer(0, 2, g.FLOAT, false, 0, 0);
+  const vs = shader(g.VERTEX_SHADER, VS), fs = shader(g.FRAGMENT_SHADER, FS), pr = g.createProgram();
+  if (vs && fs && pr) { g.attachShader(pr, vs); g.attachShader(pr, fs); g.bindAttribLocation(pr, 0, "p"); g.linkProgram(pr); }
+  const par = cap ? null : (g.getExtension("KHR_parallel_shader_compile") as { COMPLETION_STATUS_KHR: number } | null);
+  let buf: WebGLBuffer | null = null, ready = false;
   const U = {} as Record<(typeof UNIFORMS)[number], WebGLUniformLocation | null>;
-  for (const k of UNIFORMS) U[k] = g.getUniformLocation(pr, k);
+  /* Once the link is complete: read its status, then set up the program. */
+  function link(): boolean {
+    if (!vs || !fs || !pr || !g.getProgramParameter(pr, g.LINK_STATUS)) {
+      if (!g.isContextLost()) console.warn((fs && g.getShaderInfoLog(fs)) || (pr && g.getProgramInfoLog(pr)) || "eclipse: no program");
+      return false;
+    }
+    g.useProgram(pr);
+    buf = g.createBuffer();
+    g.bindBuffer(g.ARRAY_BUFFER, buf);
+    g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), g.STATIC_DRAW);
+    g.enableVertexAttribArray(0); g.vertexAttribPointer(0, 2, g.FLOAT, false, 0, 0);
+    for (const k of UNIFORMS) U[k] = g.getUniformLocation(pr, k);
+    return (ready = true);
+  }
 
-  const dbg = g.getExtension("WEBGL_debug_renderer_info");
+  const dbg = cap ? null : g.getExtension("WEBGL_debug_renderer_info");
   let renderer = "";
   try { renderer = String(dbg ? g.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : ""); } catch { renderer = ""; }
   const soft = /swiftshader|llvmpipe|software/i.test(renderer);
+  const phone = !cap && typeof window.matchMedia === "function" ? window.matchMedia(PHONE_MQ) : null;
 
-  /* geometry: cached rects, refreshed by resize() and a cheap periodic re-read of the stage */
-  let scale = 1, rimW = 0.005;
+  /* Geometry: cached rects, re-read on resize and every 20 frames. kpx = device px per CSS px (uPx). */
+  let scale = 1, kpx = 1, rimW = 0.005, lastKey = "";
   const geo = { cx: 0, cy: 0, r: 1 };
-  let lastKey = "";
-  function measure(force: boolean) {
+  /** Returns true when the buffer size or the star's place in it changed. */
+  function measure(): boolean {
     const cr = canvas.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-    const key = `${cr.left},${cr.top},${cr.width},${cr.height},${sr.left},${sr.top},${sr.width},${sr.height},${scale}`;
-    if (!force && key === lastKey) return;
-    lastKey = key;
-    const cap = window.innerWidth < 768 ? 1.25 : 1.5;
-    const dpr = soft ? 1 : Math.min(window.devicePixelRatio || 1, cap);
+    const dpr = cap ? cap.dpr : soft ? 1 : Math.min(window.devicePixelRatio || 1, phone?.matches ? DPR_CAP.phone : DPR_CAP.desktop);
     const k = dpr * scale;
+    const key = [sr.left - cr.left, sr.top - cr.top, cr.width, cr.height, sr.width, sr.height, k].join();
+    if (key === lastKey) return false;
+    lastKey = key;
     const w = Math.max(1, Math.round(cr.width * k)), h = Math.max(1, Math.round(cr.height * k));
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
     geo.cx = (sr.left - cr.left + sr.width / 2) * k;
     geo.cy = (cr.height - (sr.top - cr.top + sr.height / 2)) * k;
     geo.r = Math.max(1, (sr.width / 2) * k);
-    rimW = Math.max(0.003, 1.1 * (1.12 / geo.r) * (10.2 / 7) / 1.08);
+    kpx = k;
+    /* the rim's width, 1.1 CSS px, in ring radii (the prototype's formula, from the CSS radius) */
+    rimW = Math.max(0.003, (1.1 * 1.12 * (10.2 / 7)) / 1.08 / Math.max(1, sr.width / 2));
     g.viewport(0, 0, w, h);
+    return true;
   }
-  const resize = () => measure(true);
 
-  /* animation state */
+  /* Animation state. At mount it is REST: no flip or spin, focus, pointer, pulse, glints, sweep, trail 0. */
   const clk = () => performance.now();
-  const V = { soft: 0, aud: 0, bead: BEAD0, kick: 0, focus: 0, flip: 0, spin: 0, pulse: 0, pr: 1.5, glints: 0, glT: 0, sweep: 0, fT: 0, px: 0, py: 0, tx: 0, ty: 0 };
+  const V = {
+    soft: 0, aud: 0, bead: BEAD_REST_RAD[opts.audience], kick: 0, focus: 0, flip: 0, spin: 0, pulse: 0, pr: 1.5,
+    glints: 0, glT: 0, sweep: 0, fT: 0, px: 0, py: 0, tx: 0, ty: 0,
+  };
   const tw: Tween[] = [];
   function tween(k: Key, to: number, dur: number, delay = 0, ease: Ease = eio) {
     for (let i = tw.length - 1; i >= 0; i--) if (tw[i].k === k) tw.splice(i, 1);
@@ -268,14 +293,22 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
       if (p >= 1) tw.splice(i, 1);
     }
   }
+  /* tr: the released clock (s of running time since release). sc: the sway clock, which eases in with tr. */
+  let tr = 0, sc = 0, bPrev = V.bead, trail = 0;
   let aud: Audience = opts.audience;
   let flashT = -1e9, launchT = -1e9, typed = 0;
-  let launchTimer: ReturnType<typeof setTimeout> | null = null;
-  const setAud = (a: Audience, instant: boolean) => {
+  let launchTimer: ReturnType<typeof setTimeout> | undefined, relT: ReturnType<typeof setTimeout> | undefined;
+  /** jump: material, tint and bead at once (a running flip lands on its target, none starts). */
+  const setAud = (a: Audience, jump: boolean) => {
     const v = a === "creators" ? 1 : 0;
-    if (instant) {
-      for (const k of ["flip", "soft", "aud", "bead"] as const) for (let i = tw.length - 1; i >= 0; i--) if (tw[i].k === k) tw.splice(i, 1);
-      V.soft = v; V.aud = v; V.bead = BEAD0 - v * Math.PI; aud = a; return;
+    if (jump) {
+      for (let i = tw.length - 1; i >= 0; i--) {
+        const w = tw[i];
+        if (w.k === "flip") V.flip = w.to;
+        if (w.k === "flip" || w.k === "soft" || w.k === "aud" || w.k === "bead") tw.splice(i, 1);
+      }
+      V.soft = v; V.aud = v; V.bead = BEAD_REST_RAD[a]; bPrev = V.bead - V.kick; aud = a;
+      return;
     }
     if (a === aud) return;
     aud = a;
@@ -287,98 +320,111 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
   };
   setAud(aud, true);
 
-  const onPointer = (e: PointerEvent) => {
-    V.tx = (e.clientX / window.innerWidth) * 2 - 1;
-    V.ty = (e.clientY / window.innerHeight) * 2 - 1;
-  };
-  window.addEventListener("pointermove", onPointer, { passive: true });
-
-  /* loop */
-  let raf = 0, destroyed = false, lost = false, paused = false, visible = true, onScreen = true;
-  const t0 = performance.now();
-  let last = t0, bPrev = V.bead, trail = 0, shown = false, slow = 0, frames = 0;
+  /* Uniforms from the current state, then one draw. Never advances anything. */
   const mat = new Float32Array(9);
-
-  function frame(now: number) {
-    raf = 0;
-    if (!active()) return;
-    raf = requestAnimationFrame(frame);
-    if (++frames % 20 === 0) measure(false);
-    const t = (now - t0) / 1000, dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
-    last = now;
+  function draw(now: number) {
+    const amp = 1 - 0.72 * V.focus, si = sstep(0, SWAY_IN_S, tr), sw = swayAt(sc);
+    const yaw = YAW0 + (sw.yaw - YAW0) * amp + V.px * 0.22 * si + V.spin;
+    const pitch = PITCH0 + (sw.pitch - PITCH0) * amp - V.py * 0.14 * si;
+    const Rm = mul(rotAxis(0, 1, 0, yaw), mul(rotAxis(1, 0, 0, pitch), rotAxis(0, 0, 1, sw.roll * amp)));
+    mat.set(mul(rotAxis(D, D, 0, V.flip), Rm));
+    const fsec = (now - flashT) / 1000, flash = fsec > 0 && fsec < 1.1 ? Math.pow(Math.sin(Math.PI * Math.pow(fsec / 1.1, 0.7)), 2) : 0;
+    const ls = (now - launchT) / 1000, lfl = ls > 0 && ls < 2.2 ? Math.pow(Math.sin((Math.PI * ls) / 2.2), 2) : 0;
+    /* the intro flare and the breathing run on the released clock: both 0 at REST */
+    const introFl = tr > 0 ? Math.exp(-Math.pow((tr - 1.7) / 0.35, 2)) * 0.9 : 0;
+    const gs = clamp((tr - 0.35) / 2.2), ls2 = clamp((ls - 0.2) / 1.6);
+    g.uniform3f(U.St, geo.cx, geo.cy, geo.r);
+    g.uniform1f(U.T, REST.time + sc);
+    g.uniformMatrix3fv(U.M, false, mat);
+    g.uniform4f(U.A, V.soft, V.aud, V.bead - V.kick, V.focus);
+    g.uniform4f(U.B, V.pulse, V.pr, REST.intro, flash + lfl * 0.8);
+    g.uniform4f(U.C, V.glints, V.sweep, rimW, V.focus * 0.5 + flash * 0.8 + lfl + introFl + 0.12 * Math.sin(tr * 1.1) * Math.sin(tr * 0.37));
+    g.uniform4f(U.E, trail, gs < 1 ? REST.glare * (1 - eio(gs)) : ls2 > 0 && ls2 < 1 ? 1.1 - 2.4 * eio(ls2) : 0, kpx, 0);
+    g.drawArrays(g.TRIANGLES, 0, 3);
+  }
+  /* One running frame's advance. */
+  function step(now: number, dt: number) {
     runTw(now);
+    tr += dt;
+    sc += dt * sstep(0, SWAY_IN_S, tr);
     V.focus += (V.fT - V.focus) * (1 - Math.exp(-dt * 3));
     V.glints += (V.glT - V.glints) * (1 - Math.exp(-dt * 5));
     V.px += (V.tx - V.px) * (1 - Math.exp(-dt * 2)); V.py += (V.ty - V.py) * (1 - Math.exp(-dt * 2));
     V.pulse *= Math.exp(-dt * 1.8); V.pr += dt * 1.25;
     V.kick *= Math.exp(-dt * 0.35);
-    const intro = eo(clamp(t / 2.4));
-    const fsec = (now - flashT) / 1000, flash = fsec > 0 && fsec < 1.1 ? Math.pow(Math.sin(Math.PI * Math.pow(fsec / 1.1, 0.7)), 2) : 0;
-    const ls = (now - launchT) / 1000, lfl = ls > 0 && ls < 2.2 ? Math.pow(Math.sin((Math.PI * ls) / 2.2), 2) : 0;
-    const introFl = Math.exp(-Math.pow((t - 1.7) / 0.35, 2)) * 0.9;
-    const amp = 1 - 0.72 * V.focus;
-    const yaw = -0.12 + (0.2 * Math.sin(t * 0.23) + 0.07 * Math.sin(t * 0.61 + 1)) * amp + V.px * 0.22 + V.spin;
-    const pitch = 0.1 + 0.13 * Math.sin(t * 0.19 + 1.7) * amp - V.py * 0.14;
-    const roll = 0.05 * Math.sin(t * 0.13) * amp;
-    let Rm = mul(rotAxis(0, 1, 0, yaw), mul(rotAxis(1, 0, 0, pitch), rotAxis(0, 0, 1, roll)));
-    Rm = mul(rotAxis(D, D, 0, V.flip), Rm);
-    mat.set(Rm);
-    g.uniform2f(U.R, canvas.width, canvas.height);
-    g.uniform3f(U.St, geo.cx, geo.cy, geo.r);
-    g.uniform1f(U.T, t);
-    g.uniformMatrix3fv(U.M, false, mat);
-    g.uniform4f(U.A, V.soft, V.aud, V.bead - V.kick, V.focus);
-    g.uniform4f(U.B, V.pulse, V.pr, 0.6 + 0.4 * intro, flash + lfl * 0.8);
-    g.uniform4f(U.C, V.glints, V.sweep, rimW, V.focus * 0.5 + flash * 0.8 + lfl + introFl + 0.12 * Math.sin(t * 1.1) * Math.sin(t * 0.37));
     const bNow = V.bead - V.kick, bv = dt > 0 ? (bPrev - bNow) / dt : 0;
     bPrev = bNow;
     trail += (clamp(bv / 2.6) - trail) * (1 - Math.exp(-dt * 6));
-    const gs = clamp((t - 0.35) / 2.2), ls2 = clamp(((now - launchT) / 1000 - 0.2) / 1.6);
-    g.uniform4f(U.E, trail, gs < 1 ? -1.3 * (1 - eio(gs)) : ls2 > 0 && ls2 < 1 ? 1.1 - 2.4 * eio(ls2) : 0, 0, 0);
-    g.drawArrays(g.TRIANGLES, 0, 3);
-    if (!shown) {
-      shown = true;
-      requestAnimationFrame(() => { if (!destroyed && !lost) opts.onReady?.(); });
-    }
+  }
+
+  /* Lifecycle. held: the resting frame stays on screen until release(). */
+  let raf = 0, poll = 0, destroyed = false, lost = false, paused = false, visible = true, onScreen = true;
+  let drawn = false, held = true, last = 0, slow = 0, frames = 0;
+  const running = () => ready && drawn && !held && !destroyed && !lost && !paused && visible && onScreen;
+  function tick(now: number) {
+    raf = 0;
+    if (!running()) return;
+    raf = requestAnimationFrame(tick);
+    if (++frames % 20 === 0) measure();
+    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    last = now;
+    step(now, dt);
+    draw(now);
     /* frame-time watchdog: shed resolution if a device cannot hold ~55fps */
     if (!soft && frames > 20) {
       slow = dt > 0.019 ? slow + 1 : Math.max(0, slow - 1);
-      if (slow > 24 && scale > 0.55) { scale = Math.max(0.55, scale * 0.85); slow = 0; resize(); }
+      if (slow > 24 && scale > 0.55) { scale = Math.max(0.55, scale * 0.85); slow = 0; measure(); }
     }
   }
-  const active = () => !destroyed && !lost && !paused && visible && onScreen;
   function sync() {
-    if (active()) {
-      if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
+    if (running()) {
+      if (!raf) { last = performance.now(); raf = requestAnimationFrame(tick); }
     } else if (raf) { cancelAnimationFrame(raf); raf = 0; }
   }
-
-  const onVis = () => { visible = !document.hidden; sync(); };
-  visible = !document.hidden;
-  document.addEventListener("visibilitychange", onVis);
-  const io = typeof IntersectionObserver === "function"
-    ? new IntersectionObserver((e) => { onScreen = e[e.length - 1].isIntersecting; sync(); })
-    : null;
-  io?.observe(canvas);
-  const ro = typeof ResizeObserver === "function" ? new ResizeObserver(() => resize()) : null;
-  ro?.observe(canvas); ro?.observe(stage);
-  window.addEventListener("resize", resize);
-
-  const onLost = (e: Event) => {
-    e.preventDefault();
+  /** A redraw of the current state while the loop is stopped or held (a resized buffer is blank). */
+  const redraw = () => { if (drawn && ready && !lost && !destroyed && !running()) draw(clk()); };
+  const resize = () => { if (measure()) redraw(); };
+  function release() {
+    if (destroyed || !held) return;
+    held = false;
+    clearTimeout(relT);
+    sync();
+  }
+  /* The resting frame: drawn once the program is ready, whatever the pause (it is the poster's frame). */
+  function first() {
+    measure();
+    draw(clk());
+    drawn = true;
+    requestAnimationFrame(() => {
+      if (destroyed || lost) return;
+      opts.onReady?.();
+      if (held) relT = setTimeout(release, RELEASE_FALLBACK_MS);
+    });
+    sync();
+  }
+  function waitLink() {
+    poll = 0;
     if (destroyed || lost) return;
-    lost = true; sync();
-    opts.onFail?.();
-  };
-  canvas.addEventListener("webglcontextlost", onLost);
+    if (par && pr && !g.getProgramParameter(pr, par.COMPLETION_STATUS_KHR)) { poll = requestAnimationFrame(waitLink); return; }
+    if (!link()) { opts.onFail?.(); handle.destroy(); return; }
+    first();
+  }
 
-  resize();
-  sync();
-
-  return {
-    setAudience(a, instant = false) { if (!destroyed) setAud(a, instant); },
-    setFocus(on) { V.fT = on ? 1 : 0; },
+  const offs: (() => void)[] = [];
+  const handle: EclipseHandle = {
+    setAudience(a, instant = false) {
+      if (destroyed) return;
+      if (!instant && a !== aud) release();
+      const jump = instant || !running();
+      setAud(a, jump);
+      if (jump) redraw();
+    },
+    setFocus(on) {
+      if (on) release();
+      V.fT = on ? 1 : 0;
+    },
     pulse() {
+      release();
       V.pulse = Math.min(1.2, V.pulse * 0.5 + 0.9);
       if (V.pr > 0.35) V.pr = 0;
       V.kick += 0.045;
@@ -387,26 +433,24 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
     },
     launch() {
       if (destroyed) return;
+      release();
       launchT = clk();
       tween("spin", V.spin + Math.PI * 2, 2.0, 0, eio);
       V.glT = 7;
       tween("sweep", 1, 1.9, 0.05, lin);
-      if (launchTimer) clearTimeout(launchTimer);
-      launchTimer = setTimeout(() => { launchTimer = null; V.sweep = 0; V.glT = Math.min(7, typed / 2); }, 2600);
+      clearTimeout(launchTimer);
+      launchTimer = setTimeout(() => { launchTimer = undefined; V.sweep = 0; V.glT = Math.min(7, typed / 2); }, 2600);
     },
     setPaused(p) { paused = p; sync(); },
     resize,
+    release,
     destroy() {
       if (destroyed) return;
       destroyed = true;
-      if (raf) cancelAnimationFrame(raf);
-      raf = 0;
-      if (launchTimer) clearTimeout(launchTimer);
-      window.removeEventListener("pointermove", onPointer);
-      window.removeEventListener("resize", resize);
-      document.removeEventListener("visibilitychange", onVis);
-      canvas.removeEventListener("webglcontextlost", onLost);
-      io?.disconnect(); ro?.disconnect();
+      cancelAnimationFrame(raf); cancelAnimationFrame(poll);
+      raf = poll = 0;
+      clearTimeout(launchTimer); clearTimeout(relT);
+      offs.forEach((off) => off());
       if (!lost) {
         try {
           g.deleteBuffer(buf); g.deleteProgram(pr); g.deleteShader(vs); g.deleteShader(fs);
@@ -415,4 +459,53 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
       }
     },
   };
+
+  /* Capture (scripts/hero-poster.cjs): one REST frame, read back in this task. No listeners, no loop. */
+  if (cap) {
+    measure();
+    if (!link()) { opts.onFail?.(); handle.destroy(); return handle; }
+    draw(clk());
+    drawn = true;
+    const w = canvas.width, h = canvas.height, row = w * 4;
+    const raw = new Uint8Array(w * h * 4), rgba = new Uint8Array(w * h * 4);
+    g.readPixels(0, 0, w, h, g.RGBA, g.UNSIGNED_BYTE, raw);
+    for (let y = 0; y < h; y++) rgba.set(raw.subarray((h - 1 - y) * row, (h - y) * row), y * row);
+    cap.onFrame({ audience: aud, width: w, height: h, dpr: cap.dpr, stage: stage.getBoundingClientRect().width, rgba });
+    return handle;
+  }
+
+  const listen = (t: EventTarget, type: string, fn: EventListener, o?: AddEventListenerOptions) => {
+    t.addEventListener(type, fn, o);
+    offs.push(() => t.removeEventListener(type, fn));
+  };
+  listen(window, "pointermove", (e) => {
+    if (held) return;
+    const p = e as PointerEvent;
+    V.tx = (p.clientX / window.innerWidth) * 2 - 1;
+    V.ty = (p.clientY / window.innerHeight) * 2 - 1;
+  }, { passive: true });
+  visible = !document.hidden;
+  listen(document, "visibilitychange", () => { visible = !document.hidden; sync(); });
+  listen(window, "resize", resize);
+  listen(canvas, "webglcontextlost", (e) => {
+    e.preventDefault();
+    if (destroyed || lost) return;
+    lost = true; sync();
+    cancelAnimationFrame(poll); poll = 0;
+    opts.onFail?.();
+  });
+  if (typeof IntersectionObserver === "function") {
+    const io = new IntersectionObserver((e) => { onScreen = e[e.length - 1].isIntersecting; sync(); });
+    io.observe(canvas);
+    offs.push(() => io.disconnect());
+  }
+  if (typeof ResizeObserver === "function") {
+    const ro = new ResizeObserver(() => resize());
+    ro.observe(canvas); ro.observe(stage);
+    offs.push(() => ro.disconnect());
+  }
+
+  measure();
+  poll = requestAnimationFrame(waitLink);
+  return handle;
 }

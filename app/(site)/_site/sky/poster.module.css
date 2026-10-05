@@ -1,0 +1,18 @@
+/* The eclipse poster (EclipsePoster.tsx, HERO-V2 §8.3). The root is the poster box: 2 S square, centred on
+   the stage (POSTER_BOX). */
+.root { position: absolute; inset: -50%; pointer-events: none; user-select: none; -webkit-user-select: none; }
+.layer { position: absolute; inset: 0; display: block; }
+.layer > img { display: block; width: 100%; height: 100%; }
+
+/* The switch with GL off: the incoming layer fades in over 900 ms while the outgoing one holds, then leaves
+   under or over it, so the crossfade never dips toward the night between the two stars. */
+.layer { opacity: 0; transition: opacity 450ms ease-in 450ms; }
+.root[data-shown="brands"] > [data-a="brands"],
+.root[data-shown="creators"] > [data-a="creators"] { opacity: 1; transition: opacity 900ms var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .root[data-shown] > .layer { transition: none; } }
+
+/* The handover (V14): from the first drawn frame the canvas is opaque under the poster, which fades out over
+   POSTER_FADE_MS (--fade, set inline) and is then hidden. On a failure or a lost context it is back at once.
+   No dawn fade: the canvas has none either. */
+[data-gl="on"] > .root { opacity: 0; visibility: hidden; transition: opacity var(--fade) ease-out, visibility 0s linear var(--fade); }
+[data-gl="off"] > .root { opacity: 1; visibility: visible; transition: none; }

@@ -1,13 +1,6 @@
-/* The eclipse hero's static twin and the canvas crossfade (EclipseSky.tsx). */
-.canvas { opacity: 0; transition: opacity .6s var(--ease-out); }
+/* The eclipse hero's canvas and stage (EclipseSky.tsx). The canvas is opaque from its first drawn frame, at
+   once and under the opaque poster (V14), and gone at once on a failure: no transition either way. The poster
+   (poster.module.css) owns the only fade. */
+.canvas { opacity: 0; }
 .canvas[data-on="true"] { opacity: 1; }
 .stage { contain: layout style; }
-.still { position: absolute; inset: -14%; width: 128%; height: 128%; overflow: visible; transition: opacity .5s var(--ease-out) .15s; }
-.stage[data-gl="on"] .still { opacity: 0; }
-.cb, .cc { transition: opacity .9s var(--ease-out); }
-.cc { opacity: 0; }
-.stage[data-aud="creators"] .cc { opacity: 1; }
-.stage[data-aud="creators"] .cb { opacity: 0; }
-.bead { transform-origin: 0 0; transition: transform 1.4s cubic-bezier(.65, 0, .35, 1); }
-.stage[data-aud="creators"] .bead { transform: rotate(180deg); }
-@media (prefers-reduced-motion: reduce) { .canvas, .still, .cb, .cc, .bead { transition: none; } }
