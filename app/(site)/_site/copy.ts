@@ -22,7 +22,7 @@ export const SHARED = {
   credit: "Built by AI. Backed by HeyMoon.AI, a Saudi company.",                                            // [A4][A7] gate G1
   stages: ["Intake", "Matching", "Safety", "Creative", "Activation", "Optimization", "Learning"],            // [A4]
   footerNav: "Site",                                                                                        // [v1]
-  footerLinks: { brands: "Brands", creators: "Creators", dashboard: "Dashboard" },                          // [A1]
+  footerLinks: { brands: "Brands", creators: "Creators", dashboard: "Login" },                              // [CHANGE] Mostafa 5 Oct: "Login", as in the nav
 } as const;
 
 export const COPY = {
