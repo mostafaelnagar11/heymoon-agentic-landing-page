@@ -190,9 +190,10 @@ export interface RingSpec { count: number; r: number; a: number; alpha: number; 
       the faces near them, and the disc replaces them inside RING.
     - The rings live on the eclipse plane at depth DZ: the main view and every refracted ray through the glass
       (env(), on tiers whose ringsInGlass is true) see the same rings. Never in screen space. */
+/* Ring opacity pinned by Mostafa (5 Oct, "increase it by 10%"): inner 50%, outer 35%, before the radial fade. */
 export const RINGS = {
-  inner: { count: 14, r: 0.39, a: 0.07, alpha: 0.36, driftDegPerS: 0.8, phaseDeg: 90 } as RingSpec,
-  outer: { count: 17, r: 0.552, a: 0.077, alpha: 0.24, driftDegPerS: -0.6, phaseDeg: 90 + 180 / 17 } as RingSpec,
+  inner: { count: 14, r: 0.39, a: 0.07, alpha: 0.5, driftDegPerS: 0.8, phaseDeg: 90 } as RingSpec,
+  outer: { count: 17, r: 0.552, a: 0.077, alpha: 0.35, driftDegPerS: -0.6, phaseDeg: 90 + 180 / 17 } as RingSpec,
   fade: [0.52, 0.64] as const,
   look: { highlight: 0.82, gain: 0.78, saturation: 0.5, tint: [26, 20, 77] as const, tintMix: 0.3 },
 } as const;

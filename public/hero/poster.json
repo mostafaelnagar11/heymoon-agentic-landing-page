@@ -1,5 +1,5 @@
 {
-  "rendererHash": "478ce63befe6d974881d84fdadcd4bcce1d5f823",
+  "rendererHash": "3faf9fb606143cf524d165d60951604b4f981610",
   "box": 2,
   "feather": [
     0.98,
@@ -14,26 +14,26 @@
     {
       "path": "/hero/poster-brands-960.avif",
       "width": 960,
-      "bytes": 15208,
-      "sha1": "963c7ec8778c9bf8adb8fd568e461fe071f1f2bd"
+      "bytes": 15288,
+      "sha1": "1d192f5b95edb48452a0b4a177dbf555fcd86cba"
     },
     {
       "path": "/hero/poster-brands-960.webp",
       "width": 960,
-      "bytes": 36428,
-      "sha1": "3a6fc23795da22916fbfd1bdd5075588db3b80df"
+      "bytes": 36222,
+      "sha1": "45c6a779f924c24e5ad8fd86fe8cb088876d3c31"
     },
     {
       "path": "/hero/poster-brands-2240.avif",
       "width": 2240,
-      "bytes": 26081,
-      "sha1": "1685dcd882a450d693d75200d524a9cfc4b2ba65"
+      "bytes": 25571,
+      "sha1": "370376c186b34baec077500f5b570c0f36bca3c2"
     },
     {
       "path": "/hero/poster-brands-2240.webp",
       "width": 2240,
-      "bytes": 94620,
-      "sha1": "63524109898322b3d21434be136e89fb56b98039"
+      "bytes": 94878,
+      "sha1": "f149f9bc9cd24f7285616cfe8335b58a4d569907"
     },
     {
       "path": "/hero/poster-creators-960.avif",
