@@ -13,7 +13,7 @@ import { EASE_CSS, GLYPH } from "../tokens";
 import { COPY } from "../copy";
 import { inertProp } from "../lib/iso";
 import { Moon } from "../ui/Moon";
-import s from "./promo.module.css";
+import { s } from "./styles";
 
 /** Which keyframe the disc plays, and a nonce so the same one can play again. "in" and "pulse" are
     CSS keyframes on the inner span, which is keyed by them (a remount restarts them). "catch" (the card
@@ -38,8 +38,9 @@ export interface LauncherProps {
   reduced: boolean;
   onToggle(): void;
   onEscape(): void;
-  /** Lab only: render in flow instead of fixed. */
-  inline?: boolean;
+  /** Phone only (Promo): "tucked" while the visitor scrolls down, "back" just after it returns. Either
+      makes a reduced-motion show or hide instant (promo.css); the hide itself comes in `shown`. */
+  tuck?: "none" | "tucked" | "back";
 }
 
 /** One lunar cycle from full: 5, 6, 7, 0, 1, 2, 3, then back to 4. */
@@ -72,7 +73,7 @@ function useHoverCycle(enabled: boolean) {
 }
 
 export const Launcher = forwardRef<HTMLButtonElement, LauncherProps>(function Launcher(
-  { open, shown, label, anim, reduced, onToggle, onEscape, inline = false },
+  { open, shown, label, anim, reduced, onToggle, onEscape, tuck = "none" },
   ref,
 ) {
   const cycle = useHoverCycle(!open && !reduced);
@@ -103,6 +104,7 @@ export const Launcher = forwardRef<HTMLButtonElement, LauncherProps>(function La
       data-shown={shown ? "true" : "false"}
       data-open={open ? "true" : "false"}
       data-rm={reduced ? "true" : "false"}
+      data-tuck={tuck === "none" ? undefined : tuck}
       aria-expanded={open}
       aria-controls="promo-card"
       aria-label={open ? COPY.shared.close : label}
@@ -111,7 +113,7 @@ export const Launcher = forwardRef<HTMLButtonElement, LauncherProps>(function La
       onClick={onToggle}
       onKeyDown={onKeyDown}
       onPointerEnter={(e) => { if (e.pointerType === "mouse") cycle.play(); }}
-      className={`${s.launcher} ${inline ? s.launcherInline : ""} dawn-fade`}
+      className={`${s.launcher} dawn-fade`}
     >
       <span key={`${k.kind}-${k.n}`} ref={animRef} className={`${s.anim} ${animClass}`}>
         <span className={`${s.face} shadow-launcher`}>

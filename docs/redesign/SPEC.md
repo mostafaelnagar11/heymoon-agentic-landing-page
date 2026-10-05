@@ -1590,7 +1590,7 @@ There is no exit animation, so there is never double DOM.
 - Width `min(1120px, 100vw − 48px)` (phone `100vw − 24px`). Height `var(--nav-h)`.
 - Radius pill, padding `0 8px 0 20px`.
 - `z-nav motion-safe:animate-nav-in dawn-fade`.
-- It carries `data-at-hero={heroSwitchVisible ? "true" : "false"}` (server: `"true"`, from `INITIAL`). Every arrangement change below is a CSS selector on that attribute plus Tailwind breakpoints. **The nav never calls `useIsPhone()`** (rule 2.4.10): the server would render the desktop arrangement on phones and the nav would reflow above the fold.
+- It carries `data-at-hero={heroSwitchVisible || closeSwitchVisible ? "true" : "false"}` (server: `"true"`, from `INITIAL`; the close switch joined in the final round, so the phone nav keeps Wordmark, Pause and Dashboard at the close instead of emptying). Every arrangement change below is a CSS selector on that attribute plus Tailwind breakpoints. **The nav never calls `useIsPhone()`** (rule 2.4.10): the server would render the desktop arrangement on phones and the nav would reflow above the fold.
 
 **Skins** (they cross-fade `background-color` and `box-shadow` over 250ms):
 
@@ -1602,7 +1602,7 @@ There is no exit animation, so there is never double DOM.
 **Layout (desktop ≥768).**
 
 - Left: the Wordmark, a plain `<a href={PATHS[audience]}>` (never `next/link`). A plain click calls `preventDefault()` and scrolls to the top with Lenis.
-- Centre: `AudienceSwitch placement="nav"`, absolutely centred, `hidden={heroSwitchVisible}`.
+- Centre: `AudienceSwitch placement="nav"`, absolutely centred, `hidden={heroSwitchVisible || closeSwitchVisible}` (one switch on screen at a time; `closeSwitchVisible` is the close switch's own IO, up to the line where its tuck starts).
 - Right, gap 8:
   - `PauseToggle`.
   - Dashboard, an `<a href>` to `COPY[audience].nav.dashboardHref`. While Start is shown, it is demoted to a text link (`white/72` or `ink/72`).
@@ -2145,7 +2145,7 @@ void main(){
 
 - Header row, 40px: the title (`text-small font-semibold text-ink/72`). The brands read title is `read.title`. The creators read uses `LABELS.creators.readingProfile`, with `read.sub` under it. The counter sits at the end.
 - Read rows are visible up to the current `sizes` total. At `sizes[1].atMs` (6,048 / 6,738ms), rows 5 to 9 unfold: height 0 to 52, 40ms stagger, 300ms `--ease-out`.
-- **Fold** (F to B0): the read rows collapse (height and opacity, 500ms) into one summary row. It holds a Moon at phase 4, the title, `9/9`, and `read.totalText`.
+- **Fold** (F to B0): the read rows collapse (height and opacity, 500ms) into one summary row. It holds a Moon at phase 4, the title and `9/9`. No time: the stopwatch above already stamps the read with its label, and no time shows without one (final round, POLISH.md).
 - Then the build header (`build.title`, counter `n/7` or `n/4`) and its rows.
 - Phone: the list translates (300ms) so the working row sits in slot 4.
 

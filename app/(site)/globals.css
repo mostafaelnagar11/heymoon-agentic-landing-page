@@ -83,9 +83,20 @@ html.lenis, html.lenis body { height: auto; }
                band's type and the white window never read through it.
         paper: over the sheet. Blurred (§5.0.5).
         The hairline sits above both parts: a white ring that shows on dark and an ink ring on light. ── */
-  .nav-glass { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; pointer-events: none; }
+  .nav-glass { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; pointer-events: none;
+    --split: 100%; --feather: 8px; }
   .nav-glass > span { position: absolute; inset-inline: 0; top: 0; height: 100%; }
   .nav-glass > span + span { height: auto; top: 100%; bottom: 0; }
+  /* Split (Nav sets data-split and --split, the edge's y in the pill): A runs feather/2 past the edge and
+     fades out over the feather, B starts feather/2 above it and fades in over the same band, so the two
+     skins blend across 8px instead of meeting on a hard line. The masks also cut each part's backdrop
+     blur, so the blur ramps in with its skin. */
+  .nav-glass[data-split] > span:first-child { height: calc(var(--split) + var(--feather) / 2);
+    -webkit-mask-image: linear-gradient(#000 calc(100% - var(--feather)), transparent);
+    mask-image: linear-gradient(#000 calc(100% - var(--feather)), transparent); }
+  .nav-glass[data-split] > span + span { top: calc(var(--split) - var(--feather) / 2);
+    -webkit-mask-image: linear-gradient(transparent, #000 var(--feather));
+    mask-image: linear-gradient(transparent, #000 var(--feather)); }
   .nav-glass > [data-kind="night"] { background: rgb(1 3 23 / .62); }
   .nav-glass > [data-kind="deep"] { background: rgb(1 3 23 / .84);
     -webkit-backdrop-filter: blur(20px) saturate(1.5); backdrop-filter: blur(20px) saturate(1.5); }

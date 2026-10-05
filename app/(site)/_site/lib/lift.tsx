@@ -14,7 +14,7 @@ interface LiftApi {
 }
 const LiftContext = createContext<LiftApi | null>(null);
 
-/* Outside a LiftProvider (lab pages) heroExit is a constant 0 and nothing is covered. */
+/* Outside a LiftProvider (the close, the footer, the promo) heroExit is a constant 0 and nothing is covered. */
 const NO_EXIT = motionValue(0);
 const NO_REF: RefObject<HTMLDivElement> = { current: null };
 

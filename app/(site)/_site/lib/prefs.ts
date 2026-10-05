@@ -39,29 +39,11 @@ export const useFinePointer = () => useMediaQuery("(pointer: fine)");
 /* ── reduced motion ── */
 const RM = "(prefers-reduced-motion: reduce)";
 
-/** Lab pages only: `?rm=1` forces the JS side of reduced motion. Read from location after hydration
-    (the client snapshot), never via useSearchParams, so static routes stay static. */
-function forcedNow(): boolean {
-  if (typeof location === "undefined") return false;
-  return /^\/lab(\/|$)/.test(location.pathname) && new URLSearchParams(location.search).get("rm") === "1";
-}
-function subscribeLocation(cb: () => void) {
-  window.addEventListener("popstate", cb);
-  return () => window.removeEventListener("popstate", cb);
-}
-export function useForcedReducedMotion(): boolean {
-  return useSyncExternalStore(subscribeLocation, forcedNow, () => false);
-}
-
 /** Non-hook read, for imperative code (select(), toField(), animate calls). */
 export function getReducedMotion(): boolean {
-  return forcedNow() || matches(RM);
+  return matches(RM);
 }
-function subscribeReduced(cb: () => void) {
-  const off1 = subscribeMq(RM)(cb);
-  const off2 = subscribeLocation(cb);
-  return () => { off1(); off2(); };
-}
+const subscribeReduced = subscribeMq(RM);
 /** `true` on the server. Updates live. Use this, never motion's useReducedMotion (null on the server, not live). */
 export function useReducedMotionPref(): boolean {
   return useSyncExternalStore(subscribeReduced, getReducedMotion, () => true);

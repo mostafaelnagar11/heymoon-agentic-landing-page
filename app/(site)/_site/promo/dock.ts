@@ -1,7 +1,7 @@
 /* Where the card sits, without rendering it (WP7, fix round). Promo asks two questions of an unopened
    card: would it cover the hero field right now (R1: then the launcher waits), and is the card's spot
    over the window's own sections (the calm moment for the auto-open). Both need the card's rect before
-   it exists, so it is computed here from the same numbers as .dock in promo.module.css: desktop end 24
+   it exists, so it is computed here from the same numbers as .pm-dock in promo.css: desktop end 24
    and bottom 92, short-and-wide beside the launcher (end 92, bottom 24), RTL mirrored, scaled down by
    the same fit PromoCard applies. Keep the two in step. Never used on phone (its own rules apply). */
 
@@ -49,7 +49,7 @@ export function intersects(a: Box, b: Box, pad = 0): boolean {
 
 /** The section (its data-slot) on top at viewport height `y`: later in the DOM wins, so the sheet's
     sections beat the lifted hero behind them. */
-export function slotAt(y: number): string | null {
+function slotAt(y: number): string | null {
   let hit: string | null = null;
   document.querySelectorAll<HTMLElement>("section[data-slot]").forEach((el) => {
     const r = el.getBoundingClientRect();

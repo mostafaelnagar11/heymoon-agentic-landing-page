@@ -235,7 +235,6 @@ function main() {
      are off the first load). Every client chunk holding a module from app/(site)/ that the first load
      does not already list. They still ship, so they are budgeted together and deny-scanned. */
   const isSite = (res) => typeof res === "string" && res.replace(/\\/g, "/").includes("/app/(site)/");
-  const isLab = (res) => isSite(res) && res.replace(/\\/g, "/").includes("/app/(site)/lab/");
   const resOf = (mods) => mods.flatMap((m) => [m.res, ...(m.inner || []).map((x) => x.res)]);
   let deferredGz = 0;
   const deferred = [];
@@ -243,8 +242,8 @@ function main() {
     if (!f.endsWith(".js") || siteChunks.has(f) || rootMain.includes(f)) continue;
     const res = resOf(mods);
     if (!res.some(isSite)) continue;
-    siteChunks.add(f); // deny-scanned either way; lab-only chunks (WP-F deletes lab/) are not budgeted
-    if (res.some((r) => isSite(r) && !isLab(r))) { deferred.push(f); deferredGz += info(f).gz; }
+    siteChunks.add(f);
+    deferred.push(f); deferredGz += info(f).gz;
   }
   if (deferredGz > BUDGET.deferred) fail(`lazy site chunks ${kb(deferredGz)} > ${kb(BUDGET.deferred)}`);
 

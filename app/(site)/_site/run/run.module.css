@@ -16,6 +16,10 @@
    the H2's and the sub's last lines (no selection, no hit-testing). Their content takes pointers back. */
 .outer { pointer-events: none; }
 .inner { position: sticky; top: 0; height: 100svh; overflow: clip; padding-top: 96px; }
+/* The clip keeps an overlong list from spilling, but it must not cut the active card's shadow (it falls
+   40px below the card, and creators' list ends 30px above the box at 1440x900): as the stage releases
+   and scrolls up, the cut showed as a faint hard edge under step 04's card. */
+.inner { overflow-clip-margin: 48px; }
 .listWrap, .panel { pointer-events: auto; }
 
 /* The step list, natural row heights. The wrapper is the stacking context the card (z −1), the

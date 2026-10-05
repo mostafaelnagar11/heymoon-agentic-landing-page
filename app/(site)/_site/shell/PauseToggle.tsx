@@ -13,6 +13,7 @@ export function PauseToggle({ surface = "night", className = "" }: { surface?: "
       type="button"
       aria-pressed={paused}
       aria-label={COPY.shared.pause}
+      data-pause=""
       onClick={toggle}
       className={`grid size-8 flex-none place-items-center rounded-full transition-colors duration-[250ms] ${skin} ${className}`}
     >

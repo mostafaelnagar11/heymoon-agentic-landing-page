@@ -117,7 +117,8 @@ function PageList({ s: sch, snap, live }: ChainListProps) {
           </span>
           <span className={s.headMeta} dir="ltr">
             <span className={`${s.headCount} mono-data num`}>{readCounter}</span>
-            <span className={s.headTime}><span className="mono-data num">{sch.totalText}</span></span>
+            {/* No time here (final round): the stopwatch above already stamps the read with its label
+                ("Store details in 15.0s"), and no time ever shows without one (§7.4). */}
           </span>
         </div>
 

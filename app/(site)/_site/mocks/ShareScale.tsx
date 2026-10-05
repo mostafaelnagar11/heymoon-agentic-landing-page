@@ -5,7 +5,7 @@
    tick per whole percent from min to max (mono-data ink/60); the 11px Moons; the label (mono-caps) and
    the note. `lit` fades the dots in a tick at a time, 40ms apart.
 
-   One of the two mocks that speak: role="img" with `spoken`, which states the same counts the dots are
+   One of the two mocks that speak: a div with role="img" (not a <figure>: axe aria-allowed-role) and `spoken`, which states the same counts the dots are
    drawn from; the note is its description. */
 import { useId, type CSSProperties } from "react";
 import type { ShareScaleProps } from "../contracts";
@@ -25,7 +25,7 @@ export function ShareScale({ figure, counts, min, max, label, note, spoken, lit 
   const stackH = tallest * DOT + (tallest - 1) * GAP;
 
   return (
-    <figure role="img" aria-label={spoken} aria-describedby={`${id}n`} className={`${s.share} w-full`}>
+    <div role="img" aria-label={spoken} aria-describedby={`${id}n`} className={`${s.share} w-full`}>
       <span className="mono-caps block text-ink/60">{label}</span>
       <span className={`${s.shareFigure} num mt-3 block whitespace-nowrap text-figure text-ink`}>{figure}</span>
 
@@ -55,6 +55,6 @@ export function ShareScale({ figure, counts, min, max, label, note, spoken, lit 
       </span>
 
       <span id={`${id}n`} className="mt-6 block max-w-[44ch] text-small text-ink/60">{note}</span>
-    </figure>
+    </div>
   );
 }

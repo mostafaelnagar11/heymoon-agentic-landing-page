@@ -10,11 +10,12 @@
    reason Promo recorded (`closing`): an auto-close folds back into the launcher, slower and softer
    than a close the visitor asked for. */
 import {
-  forwardRef, useEffect, useImperativeHandle, useRef, useState,
+  forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState,
   type KeyboardEvent, type MouseEvent, type PointerEvent,
 } from "react";
 import { AnimatePresence, animate, useIsPresent, useMotionValue, type Variants } from "motion/react";
 import * as m from "motion/react-m";
+import type { RunProgress } from "../contracts";
 import type { Audience } from "../data/types";
 import { COPY } from "../copy";
 import { DEMO } from "../data/demo";
@@ -22,9 +23,10 @@ import { EASE } from "../tokens";
 import { useIsoLayoutEffect } from "../lib/iso";
 import { WorkingWindow } from "../window/WorkingWindow";
 import { fitFor } from "./dock";
-import s from "./promo.module.css";
+import { s } from "./styles";
 
-/** Why the card closed. "auto": an auto-opened card closing itself (scrolled on, or 12 s untouched). */
+/** Why the card closed. "auto": an auto-opened card closing itself (scrolled on, or left untouched until
+    its thumbnail has stamped the read; Promo.tsx). */
 export type CloseReason = "toggle" | "esc" | "outside" | "swipe" | "cta" | "hidden" | "external" | "auto";
 
 export interface PromoCardProps {
@@ -46,8 +48,9 @@ export interface PromoCardProps {
   closing?: { readonly current: CloseReason | null };
   onClose(reason: CloseReason): void;
   onCta(): void;
-  /** Lab only: in flow, never fixed. */
-  inline?: boolean;
+  /** The thumbnail's run has stamped its read and moved on to the build (act 1, 1.1 s after the stamp).
+      Promo's auto-close waits for it (final round). */
+  onRead?(): void;
 }
 
 export interface PromoCardHandle { el: HTMLDivElement | null }
@@ -81,8 +84,9 @@ function Headline({ text, rise }: { text: string; rise: boolean }) {
 }
 
 /* ── the thumbnail: remounts on a switch; the new one fades in over the old ── */
-function Thumb({ audience, playing }: { audience: Audience; playing: boolean }) {
+function Thumb({ audience, playing, onRead }: { audience: Audience; playing: boolean; onRead?: () => void }) {
   const present = useIsPresent();
+  const onProgress = useCallback((p: RunProgress) => { if (p.act >= 1 || p.done) onRead?.(); }, [onRead]);
   return (
     <m.div
       className={s.thumb}
@@ -95,13 +99,13 @@ function Thumb({ audience, playing }: { audience: Audience; playing: boolean }) 
       transition={{ duration: 0.2, ease: EASE.out }}
       aria-hidden
     >
-      <WorkingWindow variant="compact" audience={audience} playing={playing && present} loop />
+      <WorkingWindow variant="compact" audience={audience} playing={playing && present} loop onProgress={onProgress} />
     </m.div>
   );
 }
 
 export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function PromoCard(
-  { audience, playing, reduced, focusOnOpen, openId = 0, surface, swipe, by = "user", closing, onClose, onCta, inline = false },
+  { audience, playing, reduced, focusOnOpen, openId = 0, surface, swipe, by = "user", closing, onClose, onCta, onRead },
   ref,
 ) {
   const dockRef = useRef<HTMLDivElement>(null);
@@ -131,7 +135,6 @@ export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function Pr
      reaches over the nav). The card's layout height ignores transforms, so the open animation never
      feeds back into this. dock.ts computes the same fit for the card before it opens. */
   useIsoLayoutEffect(() => {
-    if (inline) return;
     const dock = dockRef.current, card = cardRef.current;
     if (!dock || !card) return;
     const fit = () => {
@@ -141,7 +144,7 @@ export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function Pr
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [inline]);
+  }, []);
 
   /* Swipe down to close (phone). The pointer is captured only once it has moved, so a tap on the pill
      stays a click on the pill. Upward drags resist; a drag that moved swallows the click that follows. */
@@ -215,17 +218,17 @@ export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function Pr
   const a = COPY[audience].promo;
 
   return (
-    <div ref={dockRef} className={`${s.dock} ${inline ? s.dockInline : ""}`}>
+    <div ref={dockRef} className={s.dock}>
       <m.div
         ref={cardRef}
-        id={inline ? undefined : "promo-card"}
+        id="promo-card"
         role="dialog"
         aria-modal="false"
-        aria-labelledby={inline ? `promo-h-${audience}` : "promo-h"}
+        aria-labelledby="promo-h"
         data-lenis-prevent=""
         data-promo-card=""
         data-motion={reduced ? "reduced" : "full"}
-        data-by={inline ? undefined : by}
+        data-by={by}
         className={`${s.card} dawn-fade ${surface === "night" ? "shadow-promo-night" : "shadow-promo"}`}
         style={{ y: dragY }}
         variants={variants}
@@ -243,7 +246,7 @@ export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function Pr
           <p className={`${s.eyebrow} mono-caps text-brand`}>{COPY.shared.sampleRun}</p>
           <h2
             ref={headRef}
-            id={inline ? `promo-h-${audience}` : "promo-h"}
+            id="promo-h"
             tabIndex={-1}
             className={`${s.head} text-h3 text-ink`}
           >
@@ -257,7 +260,7 @@ export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function Pr
           <div className={s.reveal}>
             <div className={s.stack}>
               <AnimatePresence initial={false}>
-                <Thumb key={audience} audience={audience} playing={playing && lead} />
+                <Thumb key={audience} audience={audience} playing={playing && lead} onRead={onRead} />
               </AnimatePresence>
             </div>
             <div className={s.scrim} aria-hidden />

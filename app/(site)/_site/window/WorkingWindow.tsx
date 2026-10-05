@@ -101,9 +101,8 @@ function TitleBar({ sch, snap, t }: { sch: Schedule; snap: Snap; t: MotionValue<
   );
 }
 
-/** The page window at a frame: the state at the current mark, and `t` for the per-frame parts.
-    Exported for the lab's frozen views; WorkingWindow is the only production caller. */
-export function PageWindow({ sch, snap, t, live, done }: { sch: Schedule; snap: Snap; t: MotionValue<number>; live: boolean; done: boolean }) {
+/** The page window at a frame: the state at the current mark, and `t` for the per-frame parts. */
+function PageWindow({ sch, snap, t, live, done }: { sch: Schedule; snap: Snap; t: MotionValue<number>; live: boolean; done: boolean }) {
   return (
     <div className={s.win} aria-hidden data-a={sch.audience} data-live={live ? "1" : "0"} style={{ "--read-n": sch.read.length } as CSSProperties}>
       <TitleBar sch={sch} snap={snap} t={t} />
@@ -117,7 +116,7 @@ export function PageWindow({ sch, snap, t, live, done }: { sch: Schedule; snap: 
   );
 }
 
-export function CompactWindow({ sch, snap, t, live }: { sch: Schedule; snap: Snap; t: MotionValue<number>; live: boolean }) {
+function CompactWindow({ sch, snap, t, live }: { sch: Schedule; snap: Snap; t: MotionValue<number>; live: boolean }) {
   return (
     <div className={s.compact} aria-hidden data-a={sch.audience}>
       <FrameArt />

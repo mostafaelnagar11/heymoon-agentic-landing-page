@@ -10,7 +10,6 @@ import type { LenisOptions } from "lenis";
 import { LazyMotion, MotionConfig, domAnimation, frame, cancelFrame } from "motion/react";
 import { setLenis } from "./scroll";
 import { setSignal } from "./signals";
-import { useForcedReducedMotion } from "./prefs";
 
 const LENIS_OPTIONS = {                         // module constant: ReactLenis rebuilds when the JSON changes
   autoRaf: false, lerp: 0.1, smoothWheel: true, syncTouch: false,
@@ -44,12 +43,8 @@ function KeyboardWatcher() {
 }
 
 export function Providers({ children }: { children: ReactNode }) {
-  // Lab pages only: ?rm=1 forces the JS side of reduced motion. Read in an effect, never via
-  // useSearchParams (that would de-opt the static routes). CSS media queries cannot be forced this way:
-  // use DevTools > Rendering > prefers-reduced-motion for a full check (§7.2).
-  const forced = useForcedReducedMotion();      // false on the server and on every non-lab path
   return (
-    <MotionConfig reducedMotion={forced ? "always" : "user"}>
+    <MotionConfig reducedMotion="user">
       <LazyMotion features={domAnimation} strict>
         <ReactLenis root options={LENIS_OPTIONS} />
         <LenisFrameDriver />

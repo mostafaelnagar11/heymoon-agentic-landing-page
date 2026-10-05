@@ -8,9 +8,9 @@
  * - Sticky (≥768 wide, motion allowed, innerHeight ≥ 600, and the list fits the stage with 24px of
  *   air above and below): a
  *   100svh + 3 × 60svh track around a sticky 12-column stage. The step list (cols 1 to 5) with its
- *   rail, and the panel (cols 7 to 12) that swaps one mock at a time. Scroll progress decides the
- *   active step (it changes only at the quarters); the rail fill is an accelerated ViewTimeline
- *   binding (data-probe-scroll).
+ *   rail, and the panel (cols 7 to 12) that cross-fades to the active step's mock. Scroll progress
+ *   decides the active step (it changes only at the quarters); the rail fill is an accelerated
+ *   ViewTimeline binding (data-probe-scroll).
  * The switch to sticky happens in a layout effect after hydration (§5.9), so SSR and hydration agree
  * and nothing paints in between. Later mounts (a <Swap> remount) start in the right layout.
  *
@@ -59,6 +59,10 @@ const easeInOut = cubicBezier(...EASE.inOut);
 /** Misses appear 120 ms apart (§5.3), after the panel has started to arrive. */
 const MISS_STEP_MS = 120;
 const PANEL_LEAD_MS = 160;
+/** The panel's cross-fade: the new mock rises in over 300ms while the old one fades out over 180ms
+    (ease-out both, so the old one is mostly gone by the time the new one is mostly there). */
+const PANEL_IN_S = 0.3;
+const PANEL_OUT_S = 0.18;
 /** The sticky list needs this much spare height in the stage (24px above and below), or it stacks. */
 const FIT_AIR = 48;
 
@@ -149,7 +153,8 @@ function RunH2({ text }: { text: string }) {
   useArmed(ref, 0.6);
   const ws = words(text);
   return (
-    <h2 ref={ref} id="run-h2" className={`${wr.root} max-w-[16ch] text-balance text-h2 text-ink lg:col-span-6`}>
+    /* dir="auto", as WordReveal: inline-block words are ordered by the paragraph's direction (final round). */
+    <h2 ref={ref} id="run-h2" dir="auto" className={`${wr.root} max-w-[16ch] text-balance text-h2 text-ink lg:col-span-6`}>
       {ws.map((w, i) => (
         <Fragment key={i}>
           <span className={wr.word} style={{ "--i": i } as CSSProperties}>{w}</span>
@@ -310,13 +315,18 @@ const Stage = memo(function Stage({ a, steps, onOverflow }: { a: Audience; steps
 
           <div aria-hidden className={`${s.panel} hm-media col-span-6 col-start-7 ring-1 ring-[var(--hair)]`}>
             <span className={`${s.dots} halftone`} />
-            <AnimatePresence mode="wait" initial={false}>
+            {/* A cross-fade, not a queue: the new mock enters while the old one leaves, both in the one
+                absolute slot box (the entering one is later in the DOM, so on top). A fast scroll that
+                crosses two quarters never waits for an exit, so the panel is on the active step within
+                ~150ms of the change (polish round; `mode="wait"` trailed by up to two steps). */}
+            <AnimatePresence initial={false}>
               <m.div
                 key={active}
+                data-step={active}
                 className={s.slot}
                 initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.35, ease: EASE.out } }}
-                exit={{ opacity: 0, transition: { duration: 0.2, ease: EASE.exit } }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: PANEL_IN_S, ease: EASE.out } }}
+                exit={{ opacity: 0, transition: { duration: PANEL_OUT_S, ease: EASE.out } }}
               >
                 <Mock a={a} i={active} play="play" />
               </m.div>
@@ -359,7 +369,10 @@ export function RunStage({ audience }: RunStageProps) {
   const sticky = ready && roomy && !reduced && !tooSmall;
 
   return (
-    <Section slot="run" surface="paper" audience={audience} labelledBy="run-h2" className="pt-24 sm:pt-[140px]">
+    /* pt: §5.3 said 140 (phone 96), which stacked on the work section's 96 bottom padding into ~240px of
+       empty paper under the act rail at 1440 (157 at 390). 64 / 48 give 160 / 109 rail-to-H2, in step
+       with the sheet's other section gaps (polish round). */
+    <Section slot="run" surface="paper" audience={audience} labelledBy="run-h2" className="pt-12 sm:pt-16">
       <Head a={audience} />
       {sticky
         ? <Stage a={audience} steps={steps} onOverflow={onOverflow} />

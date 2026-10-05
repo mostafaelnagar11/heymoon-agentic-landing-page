@@ -165,9 +165,6 @@
 }
 .list[data-folded="1"] .headSub { max-height: 0; opacity: 0; }
 .headCount { color: rgb(18 21 27 / .6); }
-.headTime { display: inline-flex; overflow: hidden; max-width: 0; opacity: 0; }
-.headTime > span { padding-inline-start: 10px; color: var(--ink); white-space: nowrap; }
-.list[data-folded="1"] .headTime { max-width: 72px; opacity: 1; }
 
 /* the build: a hairline, its header */
 .buildHead { position: relative; z-index: 1; height: 0; overflow: hidden; opacity: 0; }
@@ -416,7 +413,6 @@
   .readRows .rowWrap[data-shown="0"] { transition-duration: .5s; transition-delay: 0s; }
   .readHead { transition: height .5s var(--ease-out); }
   .headSub { transition: max-height .5s var(--ease-out), opacity .3s var(--ease-out); }
-  .headTime { transition: max-width .5s var(--ease-out), opacity .4s var(--ease-out) .15s; }
   .buildHead { transition: height .3s var(--ease-out), opacity .3s var(--ease-out); }
 
   .text > span { transition: opacity .2s var(--ease-out), transform .2s var(--ease-out), color .2s var(--ease-out); }

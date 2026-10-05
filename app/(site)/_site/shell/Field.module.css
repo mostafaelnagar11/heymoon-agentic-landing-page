@@ -2,6 +2,9 @@
    value, with or without JS (the input's placeholder attribute is always a single space). */
 .input:not(:placeholder-shown) + .hint { visibility: hidden; }
 .root:focus-within .caret { visibility: hidden; }
+/* The caret blinks only while it can be seen and the visitor has not pressed Pause (WCAG 2.2.2: the pause
+   control stops every loop). Stopped, it holds as a steady bar. */
+.root[data-paused] .caret, .root[data-off] .caret { animation: none; }
 
 /* The two icons are both rendered and cross-fade with y 4px over 200ms. */
 .icon { transition: opacity .2s var(--ease-out), transform .2s var(--ease-out); }

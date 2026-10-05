@@ -18,6 +18,18 @@
 @media (max-width: 639px) { .top { padding-bottom: 76px; } }
 /* Short screens: the hero is content-height, so the 1fr row collapses onto the chips; keep them off the sheet. */
 @media (max-height: 520px) { .bottom { padding-bottom: 48px; } }
+/* The tuck (final round), the close's (close.module.css .tuck) on short screens only: there the hero is not
+   sticky and scrolls away, and the switch slid under the translucent nav and showed blurred through the
+   glass. Fully shown from 16px below the pill's bottom, gone by the time it touches it, and hidden there
+   so it cannot be clicked or focused under the nav; AudienceSwitch hands over to the nav's switch at the
+   same line. Not on taller screens: the sticky hero holds the switch in place while the sheet covers it. */
+@supports (animation-timeline: view()) {
+  @media (max-height: 520px) {
+    .tuck { animation: tuck linear both; animation-timeline: view(block 88px 0px); animation-range: exit 0px exit 16px; }
+  }
+  @media (max-height: 520px) and (max-width: 639px) { .tuck { animation-timeline: view(block 80px 0px); } }
+}
+@keyframes tuck { to { opacity: 0; visibility: hidden; } }
 
 /* ── Headline (§5.1.2). The .morph rules, the odometer's sequencing included, live in globals.css (shared
    with the close H2; WP1 R1 was taken there, so the hero no longer overrides the out-curve). ── */

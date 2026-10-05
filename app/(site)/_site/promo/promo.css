@@ -1,142 +1,149 @@
 /* WP7: the promo launcher and card (SPEC §5.7). The §2.3 CSS variables only; never @apply or theme() here.
 
+   GLOBAL, not a CSS module (polish round): every class is prefixed pm- and promo/styles.ts names them.
+   Next's CSS chunking (loose, the default) merges a CSS module into the stylesheet of whatever CSS sits
+   next to it in a chunk; PromoCard imports the working window, so promo.module.css was folded into the
+   window's stylesheet, which the work section links in the static HTML: the promo's 2 kB landed on the
+   first paint although the promo is client-only (lead ruling 5 Oct). Global CSS is never merged into a
+   stylesheet another chunk group loads, so this file stays with the promo's own dynamic chunk.
+
    Two levels everywhere something both toggles and animates (rule 2.4.6): the launcher <button> shows
-   and hides by a transition; its inner .anim span plays the appear and pulse keyframes; the .face inside
-   that carries the disc and the press. The card's entrance runs on motion (it needs an exit); its parts
-   rise with CSS keyframes that play once, at mount, only with motion allowed. */
+   and hides by a transition; its inner .pm-anim span plays the appear and pulse keyframes; the .pm-face
+   inside that carries the disc and the press. The card's entrance runs on motion (it needs an exit); its
+   parts rise with CSS keyframes that play once, at mount, only with motion allowed. */
 
 /* ───────────────────────── launcher ───────────────────────── */
-.launcher {
+.pm-launcher {
   position: fixed; z-index: 60; inset-inline-end: 24px; bottom: 24px;
   width: 56px; height: 56px; padding: 0; border: 0; border-radius: 9999px; background: none;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: opacity .2s var(--ease-out), transform .2s var(--ease-out);
 }
-.launcher[data-shown="false"] { opacity: 0; transform: scale(.8); pointer-events: none; }
+.pm-launcher[data-shown="false"] { opacity: 0; transform: scale(.8); pointer-events: none; }
 /* The disc already wears a 2px ring and a 6px halo: the focus ring sits outside both. */
-.launcher:focus-visible { outline: 2px solid var(--v500); outline-offset: 7px; }
+.pm-launcher:focus-visible { outline: 2px solid var(--v500); outline-offset: 7px; }
 @media (max-width: 639px) {
-  .launcher { inset-inline-end: 16px; bottom: max(16px, env(safe-area-inset-bottom)); width: 52px; height: 52px; }
+  .pm-launcher { inset-inline-end: 16px; bottom: max(16px, env(safe-area-inset-bottom)); width: 52px; height: 52px; }
 }
-.launcher.launcherInline { position: relative; inset: auto; z-index: auto; flex: none; }
 
-.anim { position: absolute; inset: 0; display: block; border-radius: inherit; }
-.face {
+.pm-anim { position: absolute; inset: 0; display: block; border-radius: inherit; }
+.pm-face {
   position: absolute; inset: 0; display: block; border-radius: inherit; background: var(--night-0);
   transition: transform .2s var(--ease-out), box-shadow .25s var(--ease-out);
 }
 /* The ring brightens a step on hover (v400 → v300, halo .16 → .24); the press sinks the disc. */
-.launcher:hover .face {
+.pm-launcher:hover .pm-face {
   box-shadow: 0 0 0 2px #A78BFA, 0 0 0 6px rgb(167 139 250 / .24), 0 12px 28px -8px rgb(0 0 0 / .55), inset 0 0 0 1px rgb(255 255 255 / .12);
 }
-.launcher:active .face { transform: scale(.94); }
+.pm-launcher:active .pm-face { transform: scale(.94); }
 
 /* The catch ring: invisible at rest; it blooms once when the card comes back into the launcher (the
    Launcher animates it, with the disc's give, through the Web Animations API, motion allowed only). */
-.bloom {
+.pm-bloom {
   position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
   box-shadow: 0 0 0 2px var(--v300), 0 0 18px 2px rgb(167 139 250 / .35); opacity: 0;
 }
 
-.glyph {
+.pm-glyph {
   position: absolute; inset: 0; display: grid; place-items: center; color: #fff;
   transition: opacity .22s var(--ease-out), transform .22s var(--ease-out);
 }
 /* The auto-close: the X waits for the card to fold in (Promo sets data-lag just before it closes). */
-.launcher[data-lag] .glyph { transition-delay: .2s; }
-.launcher[data-open="true"] .moonG { opacity: 0; transform: rotate(90deg) scale(.7); }
-.xG { opacity: 0; transform: rotate(-90deg) scale(.7); }
-.launcher[data-open="true"] .xG { opacity: 1; transform: none; }
+.pm-launcher[data-lag] .pm-glyph { transition-delay: .2s; }
+.pm-launcher[data-open="true"] .pm-moonG { opacity: 0; transform: rotate(90deg) scale(.7); }
+.pm-xG { opacity: 0; transform: rotate(-90deg) scale(.7); }
+.pm-launcher[data-open="true"] .pm-xG { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) {
-  .launcher, .glyph, .face { transition-property: opacity; }
-  .launcher[data-shown="false"], .launcher[data-open="true"] .moonG, .xG { transform: none; }
+  .pm-launcher, .pm-glyph, .pm-face { transition-property: opacity; }
+  .pm-launcher[data-shown="false"], .pm-launcher[data-open="true"] .pm-moonG, .pm-xG { transform: none; }
 }
-.launcher[data-rm="true"], .launcher[data-rm="true"] .glyph { transition-property: opacity; }
-.launcher[data-rm="true"][data-shown="false"],
-.launcher[data-rm="true"][data-open="true"] .moonG,
-.launcher[data-rm="true"] .xG { transform: none; }
+.pm-launcher[data-rm="true"], .pm-launcher[data-rm="true"] .pm-glyph { transition-property: opacity; }
+/* The phone's scroll tuck (Promo): reduced motion makes it instant both ways ("back" holds this through
+   the return). Every other show and hide keeps its opacity fade. */
+.pm-launcher[data-rm="true"][data-tuck] { transition: none; }
+.pm-launcher[data-rm="true"][data-shown="false"],
+.pm-launcher[data-rm="true"][data-open="true"] .pm-moonG,
+.pm-launcher[data-rm="true"] .pm-xG { transform: none; }
 
 /* ───────────────────────── card ───────────────────────── */
 /* The dock positions the card and scales it down only when the viewport is too short for it (--fit,
    set from the card's layout height). It is empty and inert to the pointer while the card is closed. */
-.dock {
+.pm-dock {
   position: fixed; z-index: 60; inset-inline-end: 24px; bottom: 92px; width: 360px;
   transform: scale(var(--fit, 1)); transform-origin: 100% 100%;
   pointer-events: none;
 }
-:global([dir="rtl"]) .dock { transform-origin: 0 100%; }
-.dock > * { pointer-events: auto; }
+[dir="rtl"] .pm-dock { transform-origin: 0 100%; }
+.pm-dock > * { pointer-events: auto; }
 /* Phone: 12px clear of the launcher's disc, as on desktop (92 = 24 + 56 + 12). The disc sits at
    max(16px, safe area) and is 52px tall, so the card sits 64px above that. (SPEC said 74px with the safe
    area added: that put the card's edge on the launcher's halo, and 34px off it on a phone with a home
    indicator.) */
 @media (max-width: 639px) {
-  .dock {
+  .pm-dock {
     inset-inline: 12px; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px); width: auto; max-width: 400px;
     margin-inline: auto; transform-origin: 50% 100%;
   }
 }
 /* Short and wide (a phone on its side): beside the launcher, so the card gets the full height. */
 @media (max-height: 520px) and (min-width: 640px) {
-  .dock { bottom: 24px; inset-inline-end: 92px; }
+  .pm-dock { bottom: 24px; inset-inline-end: 92px; }
 }
-.dock.dockInline { position: relative; inset: auto; bottom: auto; z-index: auto; transform: none; margin: 0; }
-@media (max-width: 639px) { .dock.dockInline { width: 100%; max-width: 400px; } }
 
-.card {
+.pm-card {
   --floor: 48px;
   position: relative; overflow: hidden; border-radius: 20px; background: #fff;
   /* The card grows out of the launcher's centre: 28px in from the end edge, 40px below the card. */
   transform-origin: calc(100% - 28px) calc(100% + 40px);
   transition: box-shadow .25s var(--ease-out);
 }
-:global([dir="rtl"]) .card { transform-origin: 28px calc(100% + 40px); }
+[dir="rtl"] .pm-card { transform-origin: 28px calc(100% + 40px); }
 @media (max-width: 639px) {
-  .card {
+  .pm-card {
     /* launcher centre: 42px from the viewport end, and 12 + 26 = 38px below the card at any safe area */
     transform-origin: calc(100% - 42px + max(12px, (100vw - 400px) / 2)) calc(100% + 38px);
     touch-action: none;   /* the swipe down dismisses; the page never scrolls under a finger on the card */
   }
-  :global([dir="rtl"]) .card {
+  [dir="rtl"] .pm-card {
     transform-origin: calc(42px - max(12px, (100vw - 400px) / 2)) calc(100% + 38px);
   }
 }
 @media (max-height: 520px) and (min-width: 640px) {
-  .card { transform-origin: calc(100% + 40px) calc(100% - 28px); }
-  :global([dir="rtl"]) .card { transform-origin: -40px calc(100% - 28px); }
+  .pm-card { transform-origin: calc(100% + 40px) calc(100% - 28px); }
+  [dir="rtl"] .pm-card { transform-origin: -40px calc(100% - 28px); }
 }
 
 /* The band: eyebrow and headline on lilac. */
-.band { padding: 20px 24px 22px; text-align: center; background: var(--lilac); }
-.eyebrow { display: block; }
-.head {
+.pm-band { padding: 20px 24px 22px; text-align: center; background: var(--lilac); }
+.pm-eyebrow { display: block; }
+.pm-head {
   display: grid; margin-top: 8px;
 }
-.head > * { grid-area: 1 / 1; }
+.pm-head > * { grid-area: 1 / 1; }
 /* The headline takes focus on a user open so a screen reader lands on the dialog's name. It is not a
    control, so it draws no ring; the next Tab reaches the pill, which does. */
-.head:focus, .head:focus-visible { outline: none; }
+.pm-head:focus, .pm-head:focus-visible { outline: none; }
 /* Two lines, always: both headlines break into balanced pairs at this measure, so the band never
    changes height on a switch ("Watch five agents / build a campaign", "Watch HeyMoon / read a grid"). */
-.headText { display: block; max-width: 232px; margin-inline: auto; text-wrap: balance; }
-.mask { display: block; overflow: clip; padding-block-end: .1em; margin-block-end: -.1em; }
-.maskIn { display: block; }
+.pm-headText { display: block; max-width: 232px; margin-inline: auto; text-wrap: balance; }
+.pm-mask { display: block; overflow: clip; padding-block-end: .1em; margin-block-end: -.1em; }
+.pm-maskIn { display: block; }
 
 /* The media: the compact window, a floor of the frame's own deep below it, and the pill on the floor.
    The window dissolves into the floor over its last 22px, so the pill never sits on a working row. */
-.media { position: relative; background: var(--deep); }
+.pm-media { position: relative; background: var(--deep); }
 /* The wipe clips this box, so the floor and the scrim live inside it; the deep panel behind stays put. */
-.reveal { position: relative; isolation: isolate; padding-bottom: var(--floor); }
-.stack { display: grid; }
-.stack > * { grid-area: 1 / 1; }
-.thumb { position: relative; display: block; }
+.pm-reveal { position: relative; isolation: isolate; padding-bottom: var(--floor); }
+.pm-stack { display: grid; }
+.pm-stack > * { grid-area: 1 / 1; }
+.pm-thumb { position: relative; display: block; }
 /* Creators: the compact window's tiers end with the foot line ("12 more, each a request to join"),
    which lands at card y 304 to 327: under the fade, half drawn, behind the pill, and clipped by the
    window's own bottom edge (323). The thumbnail drops it, so the tiers end on the "Request to join" row,
    whole, above the fade. A workaround inside WP7 until WP2's compact branch stops rendering it (see
    WP7.md, requests to the lead); the page's window keeps its foot. */
-.thumb :global([data-mock="tiers"]) p { display: none; }
-.scrim {
+.pm-thumb [data-mock="tiers"] p { display: none; }
+.pm-scrim {
   position: absolute; z-index: 2; inset-inline: 0; bottom: 0; height: calc(var(--floor) + 22px);
   pointer-events: none;
   /* An eased (sine in-out) ramp: no visible band where the fade starts or ends. */
@@ -145,30 +152,30 @@
     rgb(20 18 41 / .5) 12px, rgb(20 18 41 / .691) 15px, rgb(20 18 41 / .854) 18px, rgb(20 18 41 / .962) 21px,
     var(--deep) 24px);
 }
-.ctaRow {
+.pm-ctaRow {
   position: absolute; z-index: 1; inset-inline: 0; bottom: 16px; display: flex; justify-content: center; pointer-events: none;
 }
-.ctaRise { display: block; pointer-events: auto; }
-.cta { display: inline-flex; align-items: center; height: 40px; padding-inline: 18px;
+.pm-ctaRise { display: block; pointer-events: auto; }
+.pm-cta { display: inline-flex; align-items: center; height: 40px; padding-inline: 18px;
   border-radius: 100px; background: #fff; color: var(--ink); white-space: nowrap;
   font-size: 14px; line-height: 1; letter-spacing: -0.003em; font-weight: 600;
   box-shadow: 0 8px 24px -6px rgb(0 0 0 / .35), 0 1px 2px rgb(0 0 0 / .2);
   transition: background-color .2s var(--ease-out), transform .2s var(--ease-out);
   -webkit-tap-highlight-color: transparent;
 }
-.cta:hover { background: rgb(243 239 252); }
-.cta:active { transform: scale(.97); }
-.cta:focus-visible { outline: 2px solid rgb(167 139 250 / .9); outline-offset: 3px; }
+.pm-cta:hover { background: rgb(243 239 252); }
+.pm-cta:active { transform: scale(.97); }
+.pm-cta:focus-visible { outline: 2px solid rgb(167 139 250 / .9); outline-offset: 3px; }
 
 /* The entrance (§5.7 choreography), after the card's own 420ms scale-in: the eyebrow at +60ms, the
    headline's masked rise and the thumbnail's wipe at +120ms, the pill at +360ms. Mount-only. */
 @media (prefers-reduced-motion: no-preference) {
-  .card[data-motion="full"] .eyebrow { animation: pc-in .36s var(--ease-out) .06s both; }
-  .card[data-motion="full"] .rise { animation: pc-rise .62s var(--ease-out-expo) .12s both; }
-  .card[data-motion="full"] .reveal { animation: pc-wipe .5s var(--ease-out-expo) .12s both; }
-  .card[data-motion="full"] .ctaRise { animation: pc-cta .5s var(--ease-out-expo) .36s both; }
+  .pm-card[data-motion="full"] .pm-eyebrow { animation: pm-in .36s var(--ease-out) .06s both; }
+  .pm-card[data-motion="full"] .pm-rise { animation: pm-rise .62s var(--ease-out-expo) .12s both; }
+  .pm-card[data-motion="full"] .pm-reveal { animation: pm-wipe .5s var(--ease-out-expo) .12s both; }
+  .pm-card[data-motion="full"] .pm-ctaRise { animation: pm-cta .5s var(--ease-out-expo) .36s both; }
 }
-@keyframes pc-in { from { opacity: 0; transform: translateY(4px); } }
-@keyframes pc-rise { from { transform: translateY(108%); } }
-@keyframes pc-wipe { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
-@keyframes pc-cta { from { opacity: 0; transform: translateY(12px); } }
+@keyframes pm-in { from { opacity: 0; transform: translateY(4px); } }
+@keyframes pm-rise { from { transform: translateY(108%); } }
+@keyframes pm-wipe { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes pm-cta { from { opacity: 0; transform: translateY(12px); } }

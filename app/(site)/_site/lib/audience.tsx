@@ -44,9 +44,8 @@ const audienceOfPath = (p: string): Audience | null =>
 /** The Landing root carries data-dawn (globals.css). */
 const landingRoot = () => (typeof document === "undefined" ? null : document.querySelector<HTMLElement>(".landing-root"));
 
-/** `syncUrl` (default true) is the Landing's behaviour: a switch rewrites the path to /brands or
-    /creators. The lab harness passes false and keeps its own `?a=` instead. */
-export function AudienceProvider({ initial, children, syncUrl = true }: { initial: Audience; children: ReactNode; syncUrl?: boolean }) {
+/** A switch rewrites the path to /brands or /creators (query and hash kept). */
+export function AudienceProvider({ initial, children }: { initial: Audience; children: ReactNode }) {
   const [state, setState] = useState<AudienceState>({ audience: initial, switches: 0, source: null });
   const current = useRef<Audience>(initial);
   const anchor = useRef<Anchor | null>(null);
@@ -72,13 +71,7 @@ export function AudienceProvider({ initial, children, syncUrl = true }: { initia
           reduced ? { duration: WORLD.reducedDuration } : { duration: WORLD.duration, ease: EASE.inOut });
         dir.set(next === "creators" ? 1 : -1);
         // 5. The URL. `null` so Next 14.2's patched replaceState re-syncs its router.
-        if (syncUrl) {
-          window.history.replaceState(null, "", PATHS[next] + window.location.search + window.location.hash);
-        } else {
-          const q = new URLSearchParams(window.location.search);
-          q.set("a", next);
-          window.history.replaceState(null, "", `${window.location.pathname}?${q}${window.location.hash}`);
-        }
+        window.history.replaceState(null, "", PATHS[next] + window.location.search + window.location.hash);
         // 6. Title and the polite announcement.
         document.title = COPY[next].meta.title;
         announce(COPY.shared.announce[next]);
@@ -101,13 +94,12 @@ export function AudienceProvider({ initial, children, syncUrl = true }: { initia
         dawn.jump(0);
       },
     };
-  }, [initial, syncUrl]);
+  }, [initial]);
 
   /* A remount after a switch (Fast Refresh re-running this module, a bfcache restore) gets the page's
      `initial` again while the URL says the other audience. The URL is the truth: sync to it, without
      animating. On a normal hydration the two agree and nothing happens. */
   useIsoLayoutEffect(() => {
-    if (!syncUrl) return;
     const fromUrl = audienceOfPath(window.location.pathname);
     if (fromUrl && fromUrl !== current.current) {
       current.current = fromUrl;
@@ -116,7 +108,7 @@ export function AudienceProvider({ initial, children, syncUrl = true }: { initia
       api.dir.set(fromUrl === "creators" ? 1 : -1);
       document.title = COPY[fromUrl].meta.title;
     }
-  }, [api, syncUrl]);
+  }, [api]);
 
   return (
     <WorldContext.Provider value={api}>
@@ -127,7 +119,7 @@ export function AudienceProvider({ initial, children, syncUrl = true }: { initia
   );
 }
 
-/* Outside a provider (never on the Landing; possible in a lab page that forgets one) these fail loud. */
+/* Outside a provider (never on the Landing) these fail loud. */
 function need<T>(v: T | null, name: string): T {
   if (!v) throw new Error(`${name} needs an <AudienceProvider> above it`);
   return v;

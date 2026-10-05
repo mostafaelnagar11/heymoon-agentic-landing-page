@@ -45,6 +45,12 @@ export function Landing({ initial }: { initial: Audience }) {
         <LandingRoot>
           <SkipLink />
           <Nav />
+          {/* Right after the nav in the DOM (final round): fixed and z-promo, so nothing moves on screen, but
+              Tab now meets the launcher after the nav's controls and before main. After the footer it came
+              last, when the close field was in view and the launcher hidden and inert, so the keyboard
+              never reached it. The skip link still jumps past it, and it stays out of the Tab order while
+              hidden. */}
+          <Promo />
           <main id="main" tabIndex={-1} className="outline-none">
             <LiftProvider /* owns heroExit: LiftTrack AND Sheet must both be inside it */>
               <LiftTrack>
@@ -65,7 +71,6 @@ export function Landing({ initial }: { initial: Audience }) {
             <Close />
           </main>
           <Footer /* dawn-fade */ />
-          <Promo />
           <SrStatus />
         </LandingRoot>
       </PlaybackProvider>

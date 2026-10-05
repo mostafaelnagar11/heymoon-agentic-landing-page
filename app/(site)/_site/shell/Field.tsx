@@ -11,7 +11,8 @@ import { EASE, TYPE } from "../tokens";
 import { useAudience, useWorld } from "../lib/audience";
 import { usableHandle, usableUrl } from "../lib/field";
 import { getReducedMotion } from "../lib/prefs";
-import { els, getSignal, setSignal } from "../lib/signals";
+import { els, getSignal, setSignal, useSignal } from "../lib/signals";
+import { usePlayback } from "../lib/playback";
 import { useUncovered } from "../lib/lift";
 import { Moon } from "../ui/Moon";
 import { At, Globe } from "../ui/icons";
@@ -61,6 +62,10 @@ export function Field({ id, placement }: FieldProps) {
   const uncovered = useUncovered(rootRef);
   const inView = useRef(placement === "hero");
   const key = placement === "hero" ? "heroFieldVisible" : "closeFieldVisible";
+  /* The hint's caret is the one loop the field owns: it stops under the global pause and while the field is
+     off screen (final round; Field.module.css). Both stores have server snapshots, so hydration is safe. */
+  const { paused } = usePlayback();
+  const onScreen = useSignal(key);
   useEffect(() => {
     const el = rootRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
@@ -170,6 +175,8 @@ export function Field({ id, placement }: FieldProps) {
       data-field={placement}
       data-invalid={invalid ? "true" : "false"}
       data-going={going ? "true" : "false"}
+      data-paused={paused ? "" : undefined}
+      data-off={onScreen ? undefined : ""}
       className={`${s.root} relative z-content w-[calc(100vw-32px)] max-w-[580px] sm:w-full ${placement === "hero" ? "motion-safe:animate-field-in" : ""}`}
     >
       <form

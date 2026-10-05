@@ -4,7 +4,8 @@
    printed. `drawn` sets data-drawn: the arc draws (.draw) and the dot turns by --sweep (.dial-dot), both
    1.2s in globals.css. --sweep sits on the .dial-dot element itself (@property, inherits: false).
 
-   One of the two mocks that speak: role="img", labelled "Guaranteed ROAS: 5x", described by the note.
+   One of the two mocks that speak: a div with role="img" (axe: the role is not allowed on <figure>), labelled
+   "Guaranteed ROAS: 5x", described by the note.
    Fluid: it fills its wrapper's width (WP4 sets 360px, phone 300) and takes its height from the ratio. */
 import { useId, type CSSProperties } from "react";
 import type { RoasDialProps } from "../contracts";
@@ -27,7 +28,7 @@ export function RoasDial({ value, min, max, label, note, drawn }: RoasDialProps)
   const [sx, sy] = pt(180);
   const [ex, ey] = pt(0);
   return (
-    <figure
+    <div
       role="img"
       aria-label={`${label}: ${value}x`}
       aria-describedby={`${id}n`}
@@ -56,10 +57,10 @@ export function RoasDial({ value, min, max, label, note, drawn }: RoasDialProps)
         <text x={sx} y="120" textAnchor="middle" className="num fill-ink/60" style={{ fontSize: 8 }}>{`${min}x`}</text>
         <text x={ex} y="120" textAnchor="middle" className="num fill-ink/60" style={{ fontSize: 8 }}>{`${max}x`}</text>
       </svg>
-      <figcaption className="mt-3 text-center">
+      <div className="mt-3 text-center">
         <span className="mono-caps block text-brand">{label}</span>
         <span id={`${id}n`} className="mt-2 block text-small text-ink/60">{note}</span>
-      </figcaption>
-    </figure>
+      </div>
+    </div>
   );
 }

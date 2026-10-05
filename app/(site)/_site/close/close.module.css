@@ -150,6 +150,20 @@
    overflows and the line start-aligns, cutting the final "n"; 23vw ends exactly on the 16px gutters.
    The dot pitch drops to 4px with it, so the strokes stay about as many dots wide as on desktop. */
 @media (max-width: 639px) { .wmBox { --wm-size: 23vw; --dot: 4px; --dot-r: .75px; } }
+/* Short landscape (a phone on its side, 844x390; final round). The page's last screen is the close and the
+   footer together, and at 22vw the giant wordmark alone took 92px of a 390px screen: at max scroll the
+   field rested under the nav, whose Pause and Dashboard drew over its Start. Here the wordmark drops to
+   12vw (the phone dot pitch, so the strokes keep their dot count), --foot-h follows it, and the note's
+   padding tightens. That lifts the field about 100px, clear of the pill, still on its horizon. Nav.tsx's
+   yield covers any screen still too short (740x360). The note now starts 32px under the field, inside the
+   reach of its error line, so the note steps aside while the error shows, as on phone. After the phone
+   rules, so it wins on a landscape phone under 640. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .wmBox { --wm-size: 12vw; --dot: 4px; --dot-r: .75px; }
+  .close { --foot-h: calc(64px + 12vw * .8 * .62); }
+  .bottom { padding-block: 32px 24px; }
+  .close:has([data-invalid="true"]) .bottom { opacity: 0; visibility: hidden; }
+}
 .wm {
   display: block; font: 600 var(--wm-size) / 0.8 var(--font-geist-sans), system-ui, sans-serif;
   letter-spacing: -0.06em; white-space: nowrap; text-align: center;

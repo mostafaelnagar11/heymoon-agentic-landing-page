@@ -68,7 +68,11 @@ export function Hero({}: HeroProps) {
       <Sky hzRef={hzRef} />
       <m.div className={s.top} data-lift="" data-probe-scroll="" style={content}>
         <div className="dawn-fade mb-8 motion-safe:animate-nav-in [animation-delay:120ms] sm:mb-12">
-          <AudienceSwitch placement="hero" surface="night" />
+          {/* The tuck (hero.module.css, short screens only) owns this wrapper's opacity; the entrance
+              animation and dawn-fade own the outer one. */}
+          <div className={s.tuck}>
+            <AudienceSwitch placement="hero" surface="night" />
+          </div>
         </div>
         <Headline />
       </m.div>

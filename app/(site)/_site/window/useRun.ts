@@ -187,7 +187,7 @@ export function actAt(s: Schedule, t: number): Act {
   return t < s.acts[1] ? 0 : t < s.acts[2] ? 1 : 2;
 }
 
-export function snapAt(s: Schedule, tm: number): Snap {
+function snapAt(s: Schedule, tm: number): Snap {
   let readTotal = s.sizes[0]?.total ?? s.read.length;
   for (const x of s.sizes) if (tm >= x.at) readTotal = x.total;
   const read = s.read.map((u) => ({ u, state: stateOf(u, tm), shown: u.i < readTotal }));
@@ -247,7 +247,7 @@ export function snapAt(s: Schedule, tm: number): Snap {
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 /** The act and its progress at any t (continuous: the act rail reads it per frame). */
-export function progressAt(s: Schedule, t: number): RunProgress {
+function progressAt(s: Schedule, t: number): RunProgress {
   const act = actAt(s, t);
   const a0 = s.acts[act];
   const a1 = act === 2 ? s.END : s.acts[act + 1];

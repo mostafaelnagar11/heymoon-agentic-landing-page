@@ -14,7 +14,10 @@ export function WordReveal({ as: Tag = "h2", text, className = "", id }: WordRev
   const parts = text.split(/(\s+)/);
   let i = 0;
   return (
-    <Tag ref={ref} id={id} className={`${s.root} ${className}`}>
+    /* dir="auto": each word is an inline-block, and bidi orders those blocks by the paragraph's direction,
+       so English copy on an rtl page read backwards (final round, RTL smoke). The heading now takes its
+       direction from its own first strong letter: ltr for English, rtl for Arabic. */
+    <Tag ref={ref} id={id} dir="auto" className={`${s.root} ${className}`}>
       {parts.map((p, k) =>
         /^\s+$/.test(p) || p === "" ? p : (
           <span key={k} data-word="" className={s.word} style={{ "--i": i++ } as React.CSSProperties}>{p}</span>

@@ -7,7 +7,8 @@
 import { useSyncExternalStore } from "react";
 
 export interface SignalState {
-  heroSwitchVisible: boolean;    // writer: AudienceSwitch placement="hero" (IO visible AND useUncovered)
+  heroSwitchVisible: boolean;    // writer: AudienceSwitch placement="hero" (IO visible AND useUncovered; on short screens, top edge below the tuck line)
+  closeSwitchVisible: boolean;   // writer: AudienceSwitch placement="close" (IO: in view with its top edge below the tuck line, navTop + navH + 16)
   heroFieldVisible: boolean;     // writer: Field placement="hero" (IO, rootMargin "-64px 0px 0px 0px", AND useUncovered)
   closeFieldVisible: boolean;    // writer: Field placement="close" (IO)
   fieldFocus: "hero" | "close" | null;  // writer: Field. Focus sets its placement; blur clears it only if it still holds it.
@@ -23,7 +24,7 @@ export interface SignalState {
 /** The server snapshot and the first client render. Matches what the SSR HTML shows at scrollY 0:
     the hero switch and field visible, so the nav's compact switch and Start render hidden. */
 export const INITIAL: SignalState = {
-  heroSwitchVisible: true, heroFieldVisible: true, closeFieldVisible: false,
+  heroSwitchVisible: true, closeSwitchVisible: false, heroFieldVisible: true, closeFieldVisible: false,
   fieldFocus: null, heroFieldHasText: false, closeFieldHasText: false, keyboardOpen: false,
   surface: "night", swapCommit: 0, work: { state: "idle", overall: 0, passed: false }, promoOpen: false,
 };

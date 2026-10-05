@@ -42,7 +42,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   return <PlaybackContext.Provider value={api}>{children}</PlaybackContext.Provider>;
 }
 
-/** `{ paused, toggle }`. Works with or without a PlaybackProvider above it (lab pages). */
+/** `{ paused, toggle }`. Works with or without a PlaybackProvider above it. */
 export function usePlayback(): PlaybackApi {
   const ctx = useContext(PlaybackContext);
   const isPaused = usePausedStore();

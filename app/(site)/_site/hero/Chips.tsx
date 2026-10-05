@@ -30,7 +30,9 @@ export function Chips({ className = "" }: { className?: string }) {
             style={load ? { animationDelay: `${420 + 35 * i}ms` } : undefined}
           >
             <Check size={12} weight="bold" aria-hidden className={`${s.word} flex-none text-brand-300`} style={{ "--w": first } as CSSProperties} />
-            <span>
+            {/* dir="auto": the words are inline-blocks, which bidi orders by the paragraph's direction; the
+                chip takes its own text's direction instead (final round, RTL smoke). */}
+            <span dir="auto">
               {chip.split(/(\s+)/).map((part, k) =>
                 /^\s*$/.test(part) ? part : (
                   <span key={k} className={s.word} style={{ "--w": w++ } as CSSProperties}>{part}</span>

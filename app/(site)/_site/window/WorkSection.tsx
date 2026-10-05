@@ -32,7 +32,7 @@ const FINAL: RunProgress = { act: 2, actProgress: 1, overall: 1, done: true };
 const START: RunProgress = { act: 0, actProgress: 0, overall: 0, done: false };
 
 export function WorkSection({ audience }: WorkSectionProps) {
-  /* Keyed: a new audience is a new run (the Landing's <Swap> remounts anyway; the lab does not). */
+  /* Keyed: a new audience is a new run (the Landing's <Swap> remounts anyway). */
   return <Work key={audience} audience={audience} />;
 }
 

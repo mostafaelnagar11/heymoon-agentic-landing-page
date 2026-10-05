@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { COPY } from "../copy";
 import { useAudience, useAudienceLink } from "../lib/audience";
-import { setSignal, useSignal } from "../lib/signals";
+import { els, setSignal, useSignal } from "../lib/signals";
 import { toField } from "../lib/scroll";
 import { inertProp } from "../lib/iso";
 import { Wordmark } from "../ui/Wordmark";
@@ -23,10 +23,12 @@ const kindOf = (el: Element | null): Kind | null => {
     a hit test at the centre x (the first [data-surface] under the point, outside the nav), not DOM order,
     so where the sheet's rounded bottom overlaps the close (§5.6's -mt-8) the sheet wins (WP6 R6).
     - The GLASS follows the pill's rows: if the top and bottom rows sit on different kinds, a 7-step
-      bisection finds the edge (under 0.5px) and the glass splits there. The part over the night sky stays
+      bisection finds the edge (under 0.5px) and the glass splits there, with an 8px feathered seam
+      (polish round: a hard split read as a line through the pill). The part over the night sky stays
       night (no blur over the canvas, ruling 6); the part over a deep band or paper gets its own blurred
       skin. So the pill is never a grey mix of two skins while a sheet edge passes under it.
     - The TEXT skin (the "surface" signal) is the kind at the pill's centre line.
+    The same pass sets data-yield while the close field sits under the pill (see measure()).
     It measures on scroll (one rAF per frame: two hit tests, nine while an edge is inside the pill), when
     a surface crosses the pill's band (IntersectionObserver, for layout that moves without a scroll), when
     a content-visibility section renders its contents, on resize, and after every swapCommit (Swap
@@ -63,12 +65,23 @@ function useSurfaceWatch(navRef: RefObject<HTMLElement>, aRef: RefObject<HTMLSpa
       if (key !== shown) {
         shown = key;
         a.dataset.kind = kt;
-        a.style.height = `${split}px`;
         b.dataset.kind = kt === kb ? "" : kb;
-        b.style.top = `${split}px`;
+        /* The glass's parts overlap across the split and feather into each other there (globals
+           .nav-glass[data-split]), so a still frame shows a soft seam, not a hard line through the pill. */
+        const glass = a.parentElement;
+        if (glass) {
+          glass.style.setProperty("--split", `${split}px`);
+          glass.toggleAttribute("data-split", kt !== kb);
+        }
       }
       const centre = split > h / 2 ? kt : kb;
       setSignal("surface", centre === "paper" ? "paper" : "night");
+      /* The yield (final round): where a short screen leaves the close field resting under the pill at
+         max scroll, the nav fades out of its way, so a tap on the field's Start never lands on Pause or
+         Dashboard. close.module.css already lifts the field clear on short landscape screens; this is
+         the net for any screen it misses. */
+      const cf = els.closeField?.getBoundingClientRect();
+      nav.toggleAttribute("data-yield", !!cf && cf.height > 0 && cf.top < top + h + 8 && cf.bottom > top);
     };
     const schedule = () => { if (!raf) raf = requestAnimationFrame(measure); };
 
@@ -101,6 +114,7 @@ function useSurfaceWatch(navRef: RefObject<HTMLElement>, aRef: RefObject<HTMLSpa
 export function Nav() {
   const { audience } = useAudience();
   const heroSwitchVisible = useSignal("heroSwitchVisible");
+  const closeSwitchVisible = useSignal("closeSwitchVisible");
   const heroFieldVisible = useSignal("heroFieldVisible");
   const closeFieldVisible = useSignal("closeFieldVisible");
   const surface = useSignal("surface");
@@ -124,15 +138,19 @@ export function Nav() {
   }, []);
 
   const startShown = !heroFieldVisible && !closeFieldVisible;
+  /* A big switch (the hero's or the close's) is on screen: the nav keeps quiet. Desktop hides its own
+     switch; below md it takes the hero arrangement (Wordmark, Pause, Dashboard), at the close too, so
+     the pill never empties down to a lone Pause there (final round). */
+  const quiet = heroSwitchVisible || closeSwitchVisible;
   const night = surface === "night";
   const copy = COPY[audience].nav;
 
   return (
     <header
       ref={navRef}
-      data-at-hero={heroSwitchVisible ? "true" : "false"}
+      data-at-hero={quiet ? "true" : "false"}
       data-skin={surface}
-      className={`group fixed inset-x-0 top-[var(--nav-top)] z-nav mx-auto flex h-[var(--nav-h)] w-[calc(100vw-24px)] items-center rounded-pill pe-2 ps-5 transition-shadow duration-[250ms] ${entered ? "" : "motion-safe:animate-nav-in"} dawn-fade sm:w-[min(1120px,calc(100vw-48px))] ${
+      className={`group fixed inset-x-0 top-[var(--nav-top)] z-nav mx-auto flex h-[var(--nav-h)] w-[calc(100vw-24px)] items-center rounded-pill pe-2 ps-5 transition-[box-shadow,opacity,visibility] duration-[250ms] data-[yield]:pointer-events-none data-[yield]:invisible data-[yield]:opacity-0 ${entered ? "" : "motion-safe:animate-nav-in"} dawn-fade sm:w-[min(1120px,calc(100vw-48px))] ${
         night ? "shadow-[0_12px_32px_-12px_rgba(0,0,0,.6)]" : "shadow-[0_8px_24px_-12px_rgba(25,18,52,.18)]"
       }`}
     >
@@ -151,9 +169,10 @@ export function Nav() {
       </a>
 
       <div className="max-md:group-data-[at-hero=true]:hidden md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 max-md:-ms-3">
-        {/* Hidden while the hero's switch or the close's is on screen: one switch at a time (WP6 R5). The
-            close field sits right under the close switch, so its visibility stands in for the switch's. */}
-        <AudienceSwitch placement="nav" surface={night ? "night" : "paper"} hidden={heroSwitchVisible || closeFieldVisible} />
+        {/* Hidden while the hero's switch or the close's is on screen: one switch at a time (WP6 R5). Each
+            big switch reports itself, up to the line where its tuck starts (AudienceSwitch), so the
+            handoff holds both ways: in as the close switch comes up, back as it tucks under the pill. */}
+        <AudienceSwitch placement="nav" surface={night ? "night" : "paper"} hidden={quiet} />
       </div>
 
       <div className="ms-auto flex items-center gap-2">

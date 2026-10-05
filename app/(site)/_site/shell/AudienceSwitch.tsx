@@ -2,12 +2,12 @@
 /* The audience switch (SPEC §5.0.3): a radiogroup of two real anchors, so no-JS navigates and a
    modified click opens a new tab. One Tab stop; the arrows switch and move focus. Three of these
    exist (hero, nav, close) and each has its own pill: no shared layoutId (ruling 4). */
-import { useEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
 import * as m from "motion/react-m";
 import type { AudienceSwitchProps } from "../contracts";
 import type { Audience } from "../data/types";
 import { COPY } from "../copy";
-import { SPRING } from "../tokens";
+import { MQ, SPRING } from "../tokens";
 import { PATHS, useAudience, useWorld } from "../lib/audience";
 import { useDir } from "../lib/prefs";
 import { setSignal } from "../lib/signals";
@@ -44,24 +44,54 @@ export function AudienceSwitch({ placement, surface, hidden = false }: AudienceS
   const links = useRef<Record<Audience, HTMLAnchorElement | null>>({ brands: null, creators: null });
   const skin = SKIN[surface];
 
-  /* The hero switch reports whether it can be seen: IO visible AND not under the sheet (the hero is
-     sticky, so IO alone keeps reporting "visible" while the sheet covers it). */
+  /* The hero and close switches report whether they can be seen, for the nav: one switch on screen at a
+     time (WP6 R5, final round).
+     - hero: IO visible AND not under the sheet (the hero is sticky, so IO alone keeps reporting
+       "visible" while the sheet covers it).
+     - close, and the hero on short screens (MQ.short, where the hero is not sticky and scrolls away):
+       in view with its top edge below the tuck line, the nav's bottom plus 16px (88px, phone 80px).
+       That line is where the .tuck view timeline (close.module.css, hero.module.css) starts fading the
+       switch under the pill, so the nav's switch fades in as this one fades out, and fades out the
+       moment this one's top edge comes in at the bottom.
+     The sticky hero keeps plain IO: its lift transform carries the switch up while it is still plainly
+     in view, and a top-edge rule there would hand over far too early. */
   const uncovered = useUncovered(rootRef);
-  const inView = useRef(true);
+  const uncoveredNow = useRef(uncovered);
+  uncoveredNow.current = uncovered;
+  const seen = useRef(placement === "hero");
+  const report = useCallback(() => {
+    if (placement === "hero") setSignal("heroSwitchVisible", seen.current && uncoveredNow.current);
+    else if (placement === "close") setSignal("closeSwitchVisible", seen.current);
+  }, [placement]);
   useEffect(() => {
-    if (placement !== "hero") return;
+    if (placement === "nav") return;
     const el = rootRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([e]) => {
-      inView.current = e.isIntersecting;
-      setSignal("heroSwitchVisible", inView.current && uncovered);
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [placement, uncovered]);
-  useEffect(() => {
-    if (placement === "hero") setSignal("heroSwitchVisible", inView.current && uncovered);
-  }, [placement, uncovered]);
+    const short = window.matchMedia(MQ.short);
+    let io: IntersectionObserver | null = null;
+    let line = -1;
+    const build = () => {
+      const tucks = placement === "close" || short.matches;
+      const cs = getComputedStyle(document.documentElement);
+      const next = tucks ? (parseFloat(cs.getPropertyValue("--nav-top")) || 16) + (parseFloat(cs.getPropertyValue("--nav-h")) || 56) + 16 : 0;
+      if (io && next === line) return;
+      line = next;
+      io?.disconnect();
+      io = new IntersectionObserver(([e]) => {
+        seen.current = e.isIntersecting && (!tucks || e.boundingClientRect.top >= (e.rootBounds?.top ?? line) - 0.5);
+        report();
+      }, { rootMargin: `-${line}px 0px 0px 0px`, threshold: [0, 0.5, 0.98, 1] });
+      io.observe(el);
+    };
+    build();
+    window.addEventListener("resize", build);
+    return () => {
+      window.removeEventListener("resize", build);
+      io?.disconnect();
+      if (placement === "close") setSignal("closeSwitchVisible", false);
+    };
+  }, [placement, report]);
+  useEffect(() => { report(); }, [uncovered, report]);
 
   const choose = (a: Audience, focus: boolean) => {
     select(a, placement);
