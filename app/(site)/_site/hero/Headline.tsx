@@ -27,8 +27,15 @@ function Lines({ lines, grad, className }: { lines: readonly string[]; grad: num
   );
 }
 
-function LineSets({ a }: { a: Audience }) {
+function LineSets({ a, stacked }: { a: Audience; stacked: boolean }) {
   const h1 = COPY[a].h1;
+  /* Stacked (the eclipse hero's narrow copy column): the three-line phone set at every width. */
+  if (stacked) return (
+    <>
+      <span className="sr-only">{h1.sentence}</span>
+      <Lines lines={h1.phone} grad={h1.gradPhone} className="block" />
+    </>
+  );
   return (
     <>
       <span className="sr-only">{h1.sentence}</span>
@@ -38,17 +45,17 @@ function LineSets({ a }: { a: Audience }) {
   );
 }
 
-export function Headline() {
+export function Headline({ stacked = false, className = "" }: { stacked?: boolean; className?: string }) {
   const { audience, switches } = useAudience();
   return (
-    <div className={`morph ${s.headline} dawn-fade text-center text-display-1 font-book text-white/[.96]`}>
+    <div className={`morph ${s.headline} dawn-fade text-center text-display-1 font-book text-white/[.96] ${className}`}>
       {ORDER.map((a) => {
         const active = a === audience;
         const state = switches === 0 ? (active ? "rise" : "idle") : active ? "in" : "out";
         return active ? (
-          <h1 key={a} id="hero-h1" data-state={state}><LineSets a={a} /></h1>
+          <h1 key={a} id="hero-h1" data-state={state}><LineSets a={a} stacked={stacked} /></h1>
         ) : (
-          <div key={a} aria-hidden {...inertProp(true)} data-state={state}><LineSets a={a} /></div>
+          <div key={a} aria-hidden {...inertProp(true)} data-state={state}><LineSets a={a} stacked={stacked} /></div>
         );
       })}
     </div>

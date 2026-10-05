@@ -14,12 +14,17 @@ import { AudienceSwitch } from "../shell/AudienceSwitch";
 import { Field } from "../shell/Field";
 import { Horizon } from "../shell/Horizon";
 import { Sky } from "../sky/Sky";
+import { EclipseSky } from "../sky/EclipseSky";
 import { useHeroExit } from "../lib/lift";
 import { useIsoLayoutEffect } from "../lib/iso";
 import { useIsPhone, useMediaQuery, useReducedMotionPref } from "../lib/prefs";
 import { Headline } from "./Headline";
 import { Chips } from "./Chips";
 import s from "./hero.module.css";
+
+/** Which hero ships. "eclipse": the split layout with the glass star in front of the eclipse (sky/EclipseSky);
+    "horizon": the original field-on-the-horizon hero, kept intact so the lead can flip back. */
+const HERO_VARIANT = "eclipse" as "eclipse" | "horizon";
 
 /** Gate G10 (ruling 34): the hero toasts replay a sample read beside the field. Refused → set false:
     <Toasts> is never mounted (or loaded) and nothing else changes. */
@@ -42,7 +47,47 @@ function useLift() {
   return { content: { opacity, transform }, dim, sinkDesktop, sinkPhone };
 }
 
-export function Hero({}: HeroProps) {
+export function Hero(props: HeroProps) {
+  return HERO_VARIANT === "eclipse" ? <EclipseHero {...props} /> : <HorizonHero {...props} />;
+}
+
+/** The eclipse hero: copy on the left (switch, H1, field, chips), the stage on the right; on a phone the
+    stage sits above the copy. No horizon, no toast lanes. */
+function EclipseHero({}: HeroProps) {
+  const reduced = useReducedMotionPref();
+  const lift = useLift();
+  const content = reduced ? undefined : lift.content;
+  return (
+    <section data-slot="hero" data-surface="night" aria-labelledby="hero-h1" className={`${s.hero} ${s.eclipse}`}>
+      <EclipseSky stageClassName={s.stage} />
+      <div className={s.copy}>
+        <m.div className={s.eTop} data-lift="" data-probe-scroll="" style={content}>
+          <div className="dawn-fade motion-safe:animate-nav-in [animation-delay:120ms]">
+            <div className={s.tuck}>
+              <AudienceSwitch placement="hero" surface="night" />
+            </div>
+          </div>
+          <Headline stacked className={s.eHeadline} />
+        </m.div>
+        <m.div className={s.eField} data-lift="" data-probe-scroll="" style={content}>
+          <Field id="hero" placement="hero" />
+        </m.div>
+        <m.div className={s.eBottom} data-lift="" data-probe-scroll="" style={content}>
+          <Chips className={`${s.chips} ${s.eChips} dawn-fade`} />
+        </m.div>
+      </div>
+      <m.div
+        aria-hidden
+        data-lift="dim"
+        data-probe-scroll=""
+        className="pointer-events-none absolute inset-0 z-[3] bg-black opacity-0"
+        style={reduced ? undefined : { opacity: lift.dim }}
+      />
+    </section>
+  );
+}
+
+function HorizonHero({}: HeroProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const hzRef = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotionPref();
