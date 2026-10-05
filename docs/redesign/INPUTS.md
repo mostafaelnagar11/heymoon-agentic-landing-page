@@ -39,3 +39,18 @@ to the product's data), and its button takes the visitor to the field:
 
 The step-list-with-tool-icons pattern is also a strong fit for showing
 the agents working (READ_TASKS / BUILD_TASKS on each side).
+
+## The hero's right side, as Mostafa sketched it (5 Oct 2026)
+
+He sent a sketch: the eclipse (black disc) with the four-point star in front, and around it two
+concentric rings of circles, "creators from MENA and Gulf region profile pictures". The pictures sit
+UNDER the eclipse disc and the star, and fade or sit at mid opacity "so it doesn't look busy". The
+agents' text (agent name in caps plus its note, e.g. "MOONSHOT AI · Walking the navigation an…") sits
+in a fixed card at the bottom right of the hero, not beside the ring.
+
+**Consent decision.** Asked what fills the circles, he chose the creator photos already in the project
+(the 10 profile pictures in public/creators), the option worded "only if you confirm HeyMoon has their
+permission to appear on the marketing site". This overrides RESEARCH D7 for these 10 profile pictures
+on the marketing site, faces only: never a name, handle, link, location or figure beside them. The site
+uses anonymised copies, public/hero/creators/c01.webp to c10.webp (192 px), so no handle reaches the
+HTML or the JS (check:site and measure still deny every handle and name).
