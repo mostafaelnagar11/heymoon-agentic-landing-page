@@ -184,6 +184,10 @@ export function Field({ id, placement }: FieldProps) {
           <At size={19} className={`${s.icon} col-start-1 row-start-1`} data-on={audience === "creators" ? "true" : "false"} />
         </span>
         <label htmlFor={inputId} className="sr-only">{copy.label}</label>
+        {/* The input and the hint are dir="ltr" (a URL or a handle), so logical ps/pe/start would resolve
+            against ltr and, on an rtl page, put the text under the Start button (WP6 R4). Their insets are
+            physical and follow the PAGE direction instead: the icon side (start) gets 52px, the button side
+            108px, and on rtl the text sits right, beside the icon. */}
         <input
           ref={inputRef}
           id={inputId}
@@ -203,9 +207,9 @@ export function Field({ id, placement }: FieldProps) {
           autoCorrect="off"
           spellCheck={false}
           enterKeyHint="go"
-          className={`${s.input} h-full w-full rounded-field bg-transparent ps-[52px] pe-[108px] text-[17px] tracking-[-0.01em] text-ink outline-none sm:text-[18px]`}
+          className={`${s.input} h-full w-full rounded-field bg-transparent pl-[52px] pr-[108px] text-[17px] tracking-[-0.01em] text-ink outline-none rtl:pl-[108px] rtl:pr-[52px] rtl:text-right sm:text-[18px]`}
         />
-        <p aria-hidden data-hint className={`${s.hint} pointer-events-none absolute inset-y-0 start-0 flex items-center ps-[52px] text-[17px] tracking-[-0.01em] text-ink/60 sm:text-[18px]`} dir="ltr">
+        <p aria-hidden data-hint className={`${s.hint} pointer-events-none absolute inset-y-0 left-0 flex items-center pl-[52px] text-[17px] tracking-[-0.01em] text-ink/60 rtl:left-auto rtl:right-0 rtl:pl-0 rtl:pr-[52px] sm:text-[18px]`} dir="ltr">
           <span ref={hintRef}>{ssrHint}</span>
           <span className={`${s.caret} ms-px inline-block h-[22px] w-px bg-ink/45 motion-safe:animate-caret`} />
         </p>

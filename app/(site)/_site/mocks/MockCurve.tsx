@@ -4,12 +4,16 @@
    reaches it, and one number kept: the last multiple, in a pill on the point where it lands. `drawn`
    sets data-drawn, and the globals.css .draw / .draw-fill rules do the drawing (reduced: drawn).
 
-   The chart is 146px tall at every width and its viewBox follows its rendered width 1:1 (useBox), so
-   the labels stay 10.5px and the strokes stay 2.5px in a 280px panel and in a 430px one alike. */
+   The chart is 146px tall at every width and its outer svg has no viewBox, so its user units are CSS
+   px: the labels stay 11px and the points 3.75px in a 280px panel and in a 430px one alike. Everything
+   placed along the width (rules, points, pill, labels) sits at a percentage, so the server and no-JS
+   render already span the card. Only the line and its fill need a number: they sit in a nested svg
+   whose viewBox follows the rendered width 1:1 (useBox) and stretches to it before the first measure,
+   so the stroke is a true 2.5px once measured and never narrower than the card before. */
 import { useId, useRef } from "react";
 import type { MockCurveProps } from "../contracts";
 import { LABELS } from "../copy";
-import { CARD, FRAME, svgId, useBox } from "./parts";
+import { CARD, FRAME, drawStroke, svgId, useBox } from "./parts";
 
 /** A monotone cubic through the points (Fritsch–Carlson), with its tangents eased to EASE of their
     value. Like v1's path it never overshoots a rung, and it still settles a little at each one, so the
@@ -41,20 +45,26 @@ function smoothPath(pts: [number, number][]) {
 const EASE = 0.42;
 const H = 146;
 const FLOOR = 118;
+/** Phase 1 sits 13% of the way in and the last phase 15% from the end, so its pill and label never
+    touch the edge (the same places v1's 290-unit drawing used, as fractions of the width). */
+const X0 = 0.13;
+const X1 = 0.85;
+/** The desktop run panel's chart width (524 panel, 32px frame inset, 16px card padding): the
+    server's guess for the path, exact at 1440 and stretched to fit everywhere else until measured. */
+const SERVER_W = 428;
 
 export function MockCurve({ rungs, label, drawn }: MockCurveProps) {
   const id = svgId(useId());
   const ref = useRef<SVGSVGElement>(null);
-  const [W] = useBox(ref, [290, H]);
+  const [W] = useBox(ref, [SERVER_W, H]);
   if (rungs.length === 0) return null;
 
-  /* Room above the top point for the pill, and a floor the curve leaves from. Phase 1 sits a fifth of
-     the way in, the last phase a ninth from the end, so its pill and label never touch the edge. */
+  /* Room above the top point for the pill, and a floor the curve leaves from. */
   const top = Math.max(...rungs.map((r) => r.multiple)) * 1.12;
-  const x0 = Math.max(34, W * 0.13), x1 = W - Math.max(40, W * 0.15);
-  const x = (i: number) => x0 + i * ((x1 - x0) / Math.max(1, rungs.length - 1));
+  const fx = (i: number) => X0 + i * ((X1 - X0) / Math.max(1, rungs.length - 1));
+  const pc = (i: number) => `${+(fx(i) * 100).toFixed(3)}%`;
   const y = (m: number) => 112 - (m / top) * 82;
-  const pts: [number, number][] = [[6, FLOOR], ...rungs.map((r, i): [number, number] => [x(i), y(r.multiple)])];
+  const pts: [number, number][] = [[6, FLOOR], ...rungs.map((r, i): [number, number] => [fx(i) * W, y(r.multiple)])];
   const line = smoothPath(pts);
   const lastI = rungs.length - 1;
   const last = rungs[lastI];
@@ -66,8 +76,6 @@ export function MockCurve({ rungs, label, drawn }: MockCurveProps) {
         <p className="mono-caps text-ink/60">{label}</p>
         <svg
           ref={ref}
-          viewBox={`0 0 ${W} ${H}`}
-          preserveAspectRatio="xMidYMid meet"
           className="mt-2 block h-[146px] w-full overflow-visible"
           {...(drawn ? { "data-drawn": "" } : {})}
         >
@@ -81,30 +89,34 @@ export function MockCurve({ rungs, label, drawn }: MockCurveProps) {
           </defs>
 
           {rungs.map((r, i) => (
-            <line key={r.phaseNo} x1={x(i)} y1="10" x2={x(i)} y2={FLOOR} stroke="rgb(18 21 27 / .06)" strokeWidth="1" shapeRendering="crispEdges" />
+            <line key={r.phaseNo} x1={pc(i)} y1="10" x2={pc(i)} y2={FLOOR} stroke="rgb(18 21 27 / .06)" strokeWidth="1" shapeRendering="crispEdges" />
           ))}
-          <line x1="0" y1={FLOOR + 0.5} x2={W} y2={FLOOR + 0.5} stroke="rgb(18 21 27 / .10)" strokeWidth="1" />
+          <line x1="0" y1={FLOOR + 0.5} x2="100%" y2={FLOOR + 0.5} stroke="rgb(18 21 27 / .10)" strokeWidth="1" />
 
-          <path className="draw-fill" d={`${line} L ${x(lastI)} ${FLOOR} L 6 ${FLOOR} Z`} fill={`url(#${id}f)`} />
-          <path className="draw" pathLength={1} d={line} fill="none" stroke={`url(#${id}l)`} strokeWidth="2.5" strokeLinecap="round" />
+          <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="overflow-visible">
+            <path className="draw-fill" d={`${line} L ${fx(lastI) * W} ${FLOOR} L 6 ${FLOOR} Z`} fill={`url(#${id}f)`} />
+            <path className="draw" pathLength={1} d={line} fill="none" stroke={`url(#${id}l)`} strokeWidth="2.5" strokeLinecap="round" style={drawStroke(drawn)} />
+          </svg>
 
           {rungs.map((r, i) => (
             <circle
-              key={r.phaseNo} cx={x(i)} cy={y(r.multiple)} r="3.75"
+              key={r.phaseNo} cx={pc(i)} cy={y(r.multiple)} r="3.75"
               fill="#fff" stroke="#7C5CE0" strokeWidth="2"
               className="draw-fill" style={{ transitionDelay: `${360 + i * 300}ms` }}
             />
           ))}
 
           <g className="draw-fill" style={{ transitionDelay: `${360 + rungs.length * 300}ms` }}>
-            <rect x={x(lastI) - pillW / 2} y={y(last.multiple) - 32} width={pillW} height="21" rx="10.5" fill="#12151B" />
-            <text x={x(lastI)} y={y(last.multiple) - 17.5} textAnchor="middle" className="num" fill="#fff" style={{ fontSize: 11.5, fontWeight: 600 }}>
-              {last.multipleText}
-            </text>
+            <svg x={pc(lastI)} y={y(last.multiple) - 32} className="overflow-visible">
+              <rect x={-pillW / 2} y="0" width={pillW} height="21" rx="10.5" fill="#12151B" />
+              <text x="0" y="14.5" textAnchor="middle" className="num" fill="#fff" style={{ fontSize: 11.5, fontWeight: 600 }}>
+                {last.multipleText}
+              </text>
+            </svg>
           </g>
 
           {rungs.map((r, i) => (
-            <text key={r.phaseNo} x={x(i)} y="139" textAnchor="middle" className="fill-ink/60" style={{ fontSize: 11 }}>
+            <text key={r.phaseNo} x={pc(i)} y="139" textAnchor="middle" className="num fill-ink/60" style={{ fontSize: 11 }}>
               {LABELS.brands.phase(r.phaseNo)}
             </text>
           ))}

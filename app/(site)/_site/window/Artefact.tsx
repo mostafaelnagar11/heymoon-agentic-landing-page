@@ -1,8 +1,9 @@
 "use client";
 /* What the agents are making, beside the rows (SPEC §5.2.3).
 
-   Act 0: the store (or handle) card. Every unit the read has found so far holds a skeleton tag; when
-   the unit lands, its `produces` label takes the place. The fold collapses the tags.
+   Act 0: the store (or handle) card, centred in the pane. From the first frame every unit the read will
+   run holds a skeleton tag; when the unit lands, its `produces` label takes the place. The card never
+   grows during the read, and the fold collapses the tags.
    Brands, act 1: MockPlan with every reveal off, its fields flipping as their rows land; act 2: the
    ladder's MockPhases under the card.
    Creators, act 1: the card collects the build's own products while the three agents work, then
@@ -10,8 +11,8 @@
 
    No layout ever shifts. All layers share one grid cell, and an invisible GHOST of the largest final
    state sizes that cell, so the plan grows downwards into space that was already there. The cell is
-   scaled down to fit the pane when it is too tall (the pane is 280px below 1024). */
-import { useRef, type CSSProperties, type ReactNode } from "react";
+   scaled down to fit the pane when it is too tall (the pane is 380px below 640, 420px to 1023). */
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { At, Globe } from "../ui/icons";
 import { view } from "../data/view";
 import { MockPlan } from "../mocks/MockPlan";
@@ -82,7 +83,7 @@ function Mount({ children, kind }: { children: ReactNode; kind: "plan" | "phases
 }
 
 /* ── the source card: the store or the handle, and the tags the agents land in it ── */
-function Tags({ rows, open, total }: { rows: RowSnap[]; open: boolean; total?: number }) {
+function Tags({ rows, open }: { rows: RowSnap[]; open: boolean }) {
   return (
     <div className={s.tagsFold} data-open={open ? "1" : "0"}>
       <div className={s.tagsClip}>
@@ -91,9 +92,8 @@ function Tags({ rows, open, total }: { rows: RowSnap[]; open: boolean; total?: n
             <span
               key={r.u.key}
               className={s.tag}
-              data-shown={total === undefined || r.u.i < total ? "1" : "0"}
               data-landed={r.state === "done" ? "1" : "0"}
-              style={{ "--k": Math.max(0, r.u.i - 4) } as CSSProperties}
+              style={{ "--k": r.u.i } as CSSProperties}
             >
               <span className={s.tagFace}><span className={s.tagText}>{r.u.produces}</span></span>
             </span>
@@ -113,7 +113,7 @@ function SourceCard({ sch, snap }: { sch: Schedule; snap: Snap }) {
         <Icon size={14} weight="regular" className={s.cardIcon} aria-hidden />
         <span className="mono-data text-ink/88" dir="ltr">{sch.shown}</span>
       </div>
-      <Tags rows={snap.read} open={!snap.folded} total={snap.readTotal} />
+      <Tags rows={snap.read} open={!snap.folded} />
       {creators && <Tags rows={snap.build} open={snap.buildOn} />}
     </div>
   );
@@ -123,12 +123,30 @@ function SourceCard({ sch, snap }: { sch: Schedule; snap: Snap }) {
 const PLAN = view.plan();
 const PHASES = view.phases();
 const ALL_ON = { header: true, pay: true, markets: true, creators: true } as const;
+/** window.module.css .planStack gap. */
+const PLAN_GAP = 12;
 
+/* Until the phases arrive (act 2) the plan is centred in the stage: the stack sits lower by half the
+   phases' reserved space, then glides up as they fade in under it. */
 function PlanStack({ art, ghost = false, checks }: { art?: BrandsArt; ghost?: boolean; checks: string[] }) {
+  const phases = useRef<HTMLDivElement>(null);
+  const [ph, setPh] = useState(0);
+  useIsoLayoutEffect(() => {
+    const el = phases.current;
+    if (ghost || !el) return;
+    const read = () => setPh(el.offsetHeight);
+    read();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ghost]);
+  const on = ghost || !!art?.phasesOn;
+  const y = on || !ph ? 0 : Math.round((ph + PLAN_GAP) / 2);
   return (
-    <div className={s.planStack}>
+    <div className={s.planStack} style={{ "--plan-y": `${y}px` } as CSSProperties}>
       <Mount kind="plan"><MockPlan {...PLAN} reveal={ghost || !art ? ALL_ON : art.reveal} checks={checks} /></Mount>
-      <div className={s.phases} data-on={ghost || art?.phasesOn ? "1" : "0"}>
+      <div ref={phases} className={s.phases} data-on={on ? "1" : "0"}>
         <Mount kind="phases"><MockPhases rungs={PHASES} grown={ghost || !!art?.grown} /></Mount>
       </div>
     </div>
@@ -172,7 +190,7 @@ export function Artefact({ s: sch, snap, variant = "page", done = false }: Artef
           <div className={s.ghost} aria-hidden>
             {brands ? <PlanStack ghost checks={finalChecks} /> : <MatchStack ghost />}
           </div>
-          <div className={`${s.layer} ${s.layerTop}`} data-on={lay(!nextOn, nextOn)}>
+          <div className={s.layer} data-on={lay(!nextOn, nextOn)}>
             <SourceCard sch={sch} snap={snap} />
           </div>
           <div className={`${s.layer} ${s.layerTop}`} data-on={lay(nextOn, false)}>

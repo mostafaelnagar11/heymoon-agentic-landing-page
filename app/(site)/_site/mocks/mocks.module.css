@@ -33,11 +33,36 @@
 :global([dir="rtl"]) .grow { transform-origin: right center; }
 .grow[data-on="0"] { transform: scaleX(0); }
 
+/* A row and its skeleton in one grid cell; the skeleton (.ghost) fades out as the row arrives
+   (MockTiers). The cell takes the taller of the two, so nothing moves. */
+.layers { display: grid; align-items: center; }
+.layers > * { grid-area: 1 / 1; }
+.ghost[data-on="0"] { opacity: 0; }
+
 /* The skeleton a hidden field shows (§5.8: h-2 w-16 bg-ink/6 rounded). */
 .skel { display: block; height: 8px; width: 64px; border-radius: 4px; background: rgb(18 21 27 / .06); }
 
 /* ── MockRead: one line per row on a wide card, the agent over the label on a narrow one ────────── */
-.read { container-type: inline-size; }
+/* The card never runs past its mount (100cqh is the FIT frame's content box): the list clips inside
+   it, under a 56px fade pinned to the visible bottom (a zero-height sticky marker at the list's end).
+   The fade shows only while rows are hidden: its opacity comes from a scroll timeline on the list,
+   which is active only when the list overflows. When every row fits, the timeline is inactive and the
+   fade stays at 0, so it takes no space and covers nothing. Without scroll timelines the card still
+   clips cleanly, just without the fade. */
+.read { container-type: inline-size; max-height: 100cqh; }
+.readList { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.readFade { position: sticky; bottom: 0; display: block; height: 0; pointer-events: none; }
+.readFade::before {
+  content: ""; position: absolute; inset-inline: 0; bottom: 0; height: 56px; opacity: 0;
+  background: linear-gradient(to bottom, rgb(255 255 255 / 0), rgb(255 255 255 / .82) 62%, #fff);
+}
+@supports (animation-timeline: scroll()) {
+  .readFade::before {
+    animation-name: mk-overflowing; animation-timing-function: linear; animation-fill-mode: both;
+    animation-timeline: scroll(nearest block);
+  }
+}
+@keyframes mk-overflowing { from, to { opacity: 1; } }
 .readRow {
   display: grid; grid-template-columns: 15px 118px minmax(0, 1fr); column-gap: 12px; align-items: center;
   padding: 9px 16px;
@@ -72,6 +97,17 @@
 .pickTile { height: 112px; }
 @container (max-height: 360px) { .pickTile { height: 92px; } }
 
+/* ── MockPicks rows: one line on a wide card; under 400px the share and chip drop under the names ─ */
+.rows { container-type: inline-size; }
+.pickRow { align-items: center; }
+.pickRowBody { display: flex; align-items: center; column-gap: 12px; }
+.pickRowBody > :first-child { flex: 1 1 auto; }
+@container (max-width: 400px) {
+  .pickRow { align-items: flex-start; }
+  .pickRowBody { flex-direction: column; align-items: flex-start; row-gap: 6px; padding-top: 2px; }
+  .pickRowBody > :first-child { align-self: stretch; }
+}
+
 /* ── ShareScale: the figure fits its column (WP4 request 1). The root is the inline-size container. ─ */
 .share { container-type: inline-size; }
 .shareFigure { font-size: min(clamp(64px, 9vw, 132px), 23cqi); margin-inline-start: -0.05em; }
@@ -83,6 +119,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .swap > * { transition: opacity .3s var(--ease-out); }
+  .ghost { transition: opacity .3s var(--ease-out); }
   .arrive { transition: opacity .3s var(--ease-out), transform .3s var(--ease-out); }
   .arrive[data-slow] { transition-duration: .4s; }
   .rise { transition: opacity .4s var(--ease-out), transform .4s var(--ease-out); }

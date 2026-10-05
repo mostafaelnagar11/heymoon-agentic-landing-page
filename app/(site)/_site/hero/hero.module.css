@@ -19,15 +19,9 @@
 /* Short screens: the hero is content-height, so the 1fr row collapses onto the chips; keep them off the sheet. */
 @media (max-height: 520px) { .bottom { padding-bottom: 48px; } }
 
-/* ── Headline (§5.1.2). The .morph rules live in globals.css (shared with the close H2). ── */
+/* ── Headline (§5.1.2). The .morph rules, the odometer's sequencing included, live in globals.css (shared
+   with the close H2; WP1 R1 was taken there, so the hero no longer overrides the out-curve). ── */
 .headline { width: 100%; }
-/* The odometer's outgoing lines lead the incoming ones. With --ease-exit (an ease-in) the old sentence has
-   moved under 15% when the new one, expo-out from 120ms, is already 70% up its line box: for about 250ms the
-   two sentences sit on top of each other. This curve keeps the old line ahead of the new at every frame
-   (same 450ms, same 30ms stagger). Hero only; the shared rule is the lead's (WP1 notes). */
-@media (prefers-reduced-motion: no-preference) {
-  .headline.headline > [data-state="out"] :global(.line) > span { animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
-}
 
 /* ── Chips (§5.1.3). Load: Tailwind's fade-up per <li>. Switch: the remounted list blurs its words in. ── */
 .word { display: inline-block; }
@@ -50,11 +44,12 @@
 .lane[data-lane="start"] { inset-inline-end: calc(50% + 338px); align-items: flex-end; }
 .lane[data-lane="end"] { inset-inline-start: calc(50% + 338px); align-items: flex-start; }
 .lane[data-lane="center"] { inset-inline-start: calc(50% - 150px); width: 300px; align-items: center; justify-content: flex-start; }
-/* Two lanes sit on the horizon. A toast rests 12px above the lane's bottom, fully opaque; it enters from
-   12px lower, through the masked band, so it surfaces out of the horizon (Toasts.tsx LANE). */
-.lanes[data-toasts="2"] .lane { padding-bottom: 12px;
-  -webkit-mask-image: linear-gradient(to top, transparent 0, #000 12px);
-          mask-image: linear-gradient(to top, transparent 0, #000 12px); }
+/* Two lanes sit on the horizon, masked over their bottom 14px (§5.1.4). A toast rests 14px above the lane's
+   bottom, fully opaque; it enters from 12px lower, through the masked band, so it surfaces out of the
+   horizon. The padding equals LANE.rise (Toasts.tsx), so the toast's rest position does not depend on it. */
+.lanes[data-toasts="2"] .lane { padding-bottom: 14px;
+  -webkit-mask-image: linear-gradient(to top, transparent 0, #000 14px);
+          mask-image: linear-gradient(to top, transparent 0, #000 14px); }
 /* Working note → landed label: a 200ms crossfade with 4px of travel, in one grid cell (no width jump). */
 .swap { display: grid; grid-template-columns: minmax(0, 1fr); }
 .swap > span { grid-area: 1 / 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;

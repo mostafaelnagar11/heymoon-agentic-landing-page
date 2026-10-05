@@ -1,7 +1,8 @@
 /* MockPicks (SPEC §5.8, C6): the conversation's carousel as the matches arrive. `cards`: a PickCard per
    pick (ProductTile 112px, brand, campaign, the share with "of every order", the pace, the level chip),
    on a rail that runs on past the panel's own edge the way a rail that scrolls continues. `rows`: a 44px
-   tile, brand and campaign, the share and the chip. Picks past `shown` keep their place and arrive over
+   tile, brand and campaign, the share and the chip; in a card under 400px the share and chip drop under
+   the names (a container query), so a phone never truncates a brand to a few letters. Picks past `shown` keep their place and arrive over
    400ms. No bonus bar, no countdown, no image, no logo. */
 import type { CampaignPick } from "../data/types";
 import type { MockPicksProps } from "../contracts";
@@ -36,7 +37,7 @@ function PickCard({ pick, on }: { pick: CampaignPick; on: boolean }) {
             <p className="mt-0.5 truncate text-[11px] leading-4 text-ink/64">{LABELS.creators.ofEveryOrder}</p>
           </div>
           <div className="min-w-0 px-2.5 py-2">
-            <p className="flex h-6 items-end"><span className="truncate text-[15px] font-semibold leading-none tracking-[-0.01em] text-ink">{pick.paceBig}</span></p>
+            <p className="flex h-6 items-end"><span className="num truncate text-[15px] font-semibold leading-none tracking-[-0.01em] text-ink">{pick.paceBig}</span></p>
             <p className="mt-0.5 truncate text-[11px] leading-4 text-ink/64">{pick.paceSmall}</p>
           </div>
         </div>
@@ -49,18 +50,22 @@ export function MockPicks({ title, picks, shown, layout }: MockPicksProps) {
   if (layout === "rows") {
     return (
       <div aria-hidden className={FRAME}>
-        <div className={`rounded-[16px] px-3 pb-1 pt-3 ${CARD}`}>
+        <div className={`${s.rows} rounded-[16px] px-3 pb-1 pt-3 ${CARD}`}>
           <div className="px-1 pb-2"><Title title={title} /></div>
           <ul className="divide-y divide-ink/[0.06]">
             {picks.map((p, i) => (
-              <li key={p.brand} className={`${s.arrive} flex items-center gap-3 py-2`} data-on={i < shown ? "1" : "0"} data-slow="">
+              <li key={p.brand} className={`${s.arrive} ${s.pickRow} flex gap-3 py-2`} data-on={i < shown ? "1" : "0"} data-slow="">
                 <span className="hm-media size-11 shrink-0 rounded-[10px] ring-1 ring-inset ring-ink/[0.04]" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12px] font-semibold leading-4 text-ink">{p.brand}</span>
-                  <span className="mt-0.5 block truncate text-[12px] leading-4 text-ink/72">{p.campaign}</span>
+                <span className={`${s.pickRowBody} min-w-0 flex-1`}>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[12px] font-semibold leading-4 text-ink">{p.brand}</span>
+                    <span className="mt-0.5 block truncate text-[12px] leading-4 text-ink/72">{p.campaign}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-3">
+                    <span className="num text-[15px] font-semibold leading-5 tracking-[-0.01em] text-brand">{`${p.sharePct}%`}</span>
+                    <Chip tone="good" icon={<Tick />}>{p.levelWord}</Chip>
+                  </span>
                 </span>
-                <span className="num shrink-0 text-[15px] font-semibold tracking-[-0.01em] text-brand">{`${p.sharePct}%`}</span>
-                <Chip tone="good" icon={<Tick />}>{p.levelWord}</Chip>
               </li>
             ))}
           </ul>

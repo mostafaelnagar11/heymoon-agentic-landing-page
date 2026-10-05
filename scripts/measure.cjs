@@ -36,7 +36,7 @@ const BUDGET = {
   deferred: 110 * KB,        // every lazy site chunk together (next/dynamic sections, lead ruling 4 Oct): off the first load, but it still ships
   site: 45 * KB,             // site code + demo.json
   sky: 8 * KB,               // the lazy sky chunk, absent from first load
-  css: 18 * KB,
+  css: 26 * KB,              // every stylesheet the prerendered HTML links (lead ruling 5 Oct: the hero's and the lazy sections' CSS is in the static HTML by design, so it all blocks first paint and all counts)
   html: 60 * KB,
   fontPreloads: 1,           // exactly one: Geist Sans
 };
@@ -185,7 +185,13 @@ function main() {
     if (!page) { fail(`app-build-manifest has no /(site)/${r}/page`); continue; }
     page.filter((f) => f.endsWith(".js")).forEach((f) => siteChunks.add(f));
     const js = uniq([...rootMain, ...layout, ...page]).filter((f) => f.endsWith(".js"));
-    const css = uniq([...layout, ...page]).filter((f) => f.endsWith(".css"));
+    /* CSS: every stylesheet the prerendered HTML links (layout, page and the next/dynamic sections' CSS
+       that PreloadCss puts in the static HTML), falling back to the manifest entries. */
+    const htmlFile = path.join(OUT, "server", "app", `${r}.html`);
+    const linked = fs.existsSync(htmlFile)
+      ? uniq((fs.readFileSync(htmlFile, "utf8").match(/\/_next\/static\/css\/[^"'?]+\.css/g) || []).map((h) => h.replace(/^\/_next\//, "")))
+      : [];
+    const css = linked.length ? linked : uniq([...layout, ...page]).filter((f) => f.endsWith(".css"));
     const sum = { framework: 0, libs: 0, site: 0 };
     const pkgs = {};
     for (const f of js) {

@@ -74,6 +74,26 @@ html.lenis, html.lenis body { height: auto; }
     -webkit-box-decoration-break: clone; box-decoration-break: clone;
   }
 
+  /* ── Nav glass (WP0 shell/Nav.tsx). Behind the nav's content (z -1 inside the nav's stacking context),
+        clipped to the pill. A is the part above the split, B the part below; Nav writes each part's
+        data-kind from what is painted under it, so a sheet edge passing under the pill splits the glass
+        exactly there instead of cross-fading one skin through grey.
+        night: over the hero's live canvas and the close's CSS sky. No backdrop-filter (ruling 6).
+        deep:  over a deep band (the window frame, the agents band). Blurred and dense enough that the
+               band's type and the white window never read through it.
+        paper: over the sheet. Blurred (§5.0.5).
+        The hairline sits above both parts: a white ring that shows on dark and an ink ring on light. ── */
+  .nav-glass { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; pointer-events: none; }
+  .nav-glass > span { position: absolute; inset-inline: 0; top: 0; height: 100%; }
+  .nav-glass > span + span { height: auto; top: 100%; bottom: 0; }
+  .nav-glass > [data-kind="night"] { background: rgb(1 3 23 / .62); }
+  .nav-glass > [data-kind="deep"] { background: rgb(1 3 23 / .84);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5); backdrop-filter: blur(20px) saturate(1.5); }
+  .nav-glass > [data-kind="paper"] { background: rgb(252 251 248 / .72);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+  .nav-glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / .08), inset 0 0 0 1px rgb(18 21 27 / .08), inset 0 1px 0 rgb(255 255 255 / .06); }
+
   /* Moon-phase glyph (WP0 ui/Moon.tsx). */
   .moon { display: inline-block; flex: none; vertical-align: middle; }
   .moon circle { fill: currentColor; fill-opacity: .16; }
@@ -87,11 +107,14 @@ html.lenis, html.lenis body { height: auto; }
   .morph > * { grid-area: 1 / 1; }
   .morph .line { display: block; overflow: clip; padding-block-end: .08em; }
   .morph .line > span { display: block; }
-  .morph > [data-state="out"] { animation: morph-hide 0s linear .6s both; }   /* after the last line's hl-out (≤ .51s) */
+  .morph > [data-state="out"] { animation: morph-hide 0s linear .6s both; }   /* after the last line's hl-out (≤ .38s) */
   .morph > [data-state="idle"] { visibility: hidden; }
 
-  /* Mock draws (WP3, WP4, WP8). Server HTML carries data-drawn, so no-JS shows them drawn. */
-  .draw { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  /* Mock draws (WP3, WP4, WP8). Server HTML carries data-drawn, so no-JS shows them drawn.
+     Dash 1, gap 2 (pathLength 1), offset 1.02 while undrawn: no dash touches either end of the path. With
+     "1 / 1" the next dash began exactly on the path's end, a zero-length dash that a round cap painted as a
+     stray dot on 2x screens before the line drew (WP8 fix round, request 5; its mocks set the same inline). */
+  .draw { stroke-dasharray: 1 2; stroke-dashoffset: 1.02; }
   [data-drawn] .draw { stroke-dashoffset: 0; transition: stroke-dashoffset 1.2s var(--ease-out); }
   .draw-fill { opacity: 0; }
   [data-drawn] .draw-fill { opacity: 1; transition: opacity .8s var(--ease-out) .45s; }
@@ -140,11 +163,14 @@ html.lenis, html.lenis body { height: auto; }
   .hz-ground { top: 50%; height: 150svh;
     background: radial-gradient(circle var(--limb-r) at 50% var(--limb-r),
       var(--night-0) calc(var(--limb-r) - .75px), rgb(0 2 17 / 0) calc(var(--limb-r) + .75px)); }
-  .hz-earth { top: 50%; height: 200px;
+  /* The limb meets the screen edges 12.02vw below the apex (R = 110vw: 110 − √(110² − 50²)), so the
+     earth, rim and hair layers grow with the width: at a fixed 200px the rim stopped short of the edges and
+     the earth glow ended on a straight line from about 1630px wide (1920: 231px). WP6 deviation 8, adopted. */
+  .hz-earth { top: 50%; height: max(200px, calc(12.1vw + 64px));
     background: radial-gradient(circle var(--limb-r) at 50% var(--limb-r),
       transparent calc(var(--limb-r) - 36px), rgb(124 92 224 / .10) calc(var(--limb-r) - 1px), transparent var(--limb-r)); }
   /* The rim's mask and ignition clip-path live on the outer layer; the tints only paint. */
-  .hz-rim { top: calc(50% - 4px); height: 200px;
+  .hz-rim { top: calc(50% - 4px); height: max(200px, calc(12.1vw + 64px));
     -webkit-mask: radial-gradient(circle calc(var(--limb-r) + 6px) at 50% calc(var(--limb-r) + 4px),
       transparent calc(var(--limb-r) - 1px), #000 calc(var(--limb-r) - .25px), #000 calc(var(--limb-r) + .5px), transparent calc(var(--limb-r) + 1.5px));
             mask: radial-gradient(circle calc(var(--limb-r) + 6px) at 50% calc(var(--limb-r) + 4px),
@@ -155,7 +181,7 @@ html.lenis, html.lenis body { height: auto; }
   .hz-rim > [data-tint="creators"] { --rim-hue: 240 85 157; }
   /* The hair's ring is 1.5px at the base (was 1px) at .20 (was .30): the same light, but every pixel row it
      crosses gets some of it, so at DPR 1 it is one line instead of a row of dashes (WP1). */
-  .hz-hair { top: calc(50% - 8px); height: 120px;
+  .hz-hair { top: calc(50% - 8px); height: max(120px, calc(12.1vw + 64px));
     background: linear-gradient(90deg, transparent 10%, rgb(255 255 255 / .20) 50%, transparent 90%);
     -webkit-mask: radial-gradient(circle calc(var(--limb-r) + 12px) at 50% calc(var(--limb-r) + 8px),
       transparent calc(var(--limb-r) + 2.25px), #000 calc(var(--limb-r) + 3px), transparent calc(var(--limb-r) + 3.75px));
@@ -170,8 +196,12 @@ html.lenis, html.lenis body { height: auto; }
   .morph > [data-state="rise"] .line > .grad-text-night {
     animation: hl-rise 1.1s var(--ease-out-expo) calc(120ms + var(--i, 0) * 90ms) both,
                grad-sweep 1.8s var(--ease-in-out) calc(1.6s + var(--i, 0) * 90ms) both; }
-  .morph > [data-state="in"] .line > span { animation: hl-in .8s var(--ease-out-expo) both; animation-delay: calc(120ms + var(--i, 0) * 60ms); }
-  .morph > [data-state="out"] .line > span { animation: hl-out .45s var(--ease-exit) both; animation-delay: calc(var(--i, 0) * 30ms); }
+  /* A switch is an odometer: the old line leaves first, then the new one rises. The exit is front-loaded
+     (.32s on (.3,0,.2,1): under 4% of each old line is left by 200ms) and "in" starts at 200ms, so the two
+     sentences never share a line box (WP1 R1, WP6 R2: the old .45s ease-in exit against "in" at 120ms
+     double-exposed them for ~200ms). The last line settles by ~.55s and ends at ~1.1s. */
+  .morph > [data-state="in"] .line > span { animation: hl-in .8s var(--ease-out-expo) both; animation-delay: calc(200ms + var(--i, 0) * 60ms); }
+  .morph > [data-state="out"] .line > span { animation: hl-out .32s cubic-bezier(.3,0,.2,1) both; animation-delay: calc(var(--i, 0) * 30ms); }
 
   /* Outer layers only (.hz > .hz-*): the inner .hz-tint opacities stay free for `world`. */
   .hz[data-ignite] > .hz-rim { animation: hz-rim-in 1.6s var(--ease-out-expo) .4s both; }
@@ -179,9 +209,10 @@ html.lenis, html.lenis body { height: auto; }
   .hz[data-ignite] > .hz-sun { animation: hz-sun-in 1.6s var(--ease-out-expo) .4s both; }
 }
 @media (prefers-reduced-motion: reduce) {
-  /* Animations, not transitions: both children are new nodes after every switch. */
-  .morph > [data-state="in"] { animation: morph-fade-in .2s var(--ease-out) both; }
-  .morph > [data-state="out"] { animation: morph-fade-out .2s var(--ease-out) both, morph-hide 0s linear .2s both; }
+  /* Animations, not transitions: both children are new nodes after every switch. Sequenced like the
+     odometer: the old sentence is gone (.14s) before the new one is more than faintly there. */
+  .morph > [data-state="in"] { animation: morph-fade-in .2s var(--ease-out) .12s both; }
+  .morph > [data-state="out"] { animation: morph-fade-out .14s var(--ease-out) both, morph-hide 0s linear .14s both; }
   .draw { stroke-dashoffset: 0 !important; transition: none !important; }
   .draw-fill { opacity: 1 !important; transition: none !important; }
   .dial-dot { transform: rotate(var(--sweep)) !important; transition: none !important; }

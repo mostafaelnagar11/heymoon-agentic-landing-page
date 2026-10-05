@@ -106,7 +106,10 @@ export function Close({}: CloseProps) {
 
       <div className={s.top}>
         <div className="dawn-fade mb-10">
-          <AudienceSwitch placement="close" surface="night" />
+          {/* The tuck (close.module.css) owns this wrapper's opacity; dawn-fade owns the outer one. */}
+          <div className={s.tuck}>
+            <AudienceSwitch placement="close" surface="night" />
+          </div>
         </div>
         <Headline inView={inView} />
       </div>

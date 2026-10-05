@@ -17,7 +17,7 @@ export function MockPhases({ rungs, grown }: MockPhasesProps) {
           return (
             <div key={r.phaseNo} className={first ? "" : "mt-3"}>
               <div className="flex items-baseline justify-between gap-3">
-                <span className={`text-[12px] font-medium ${first ? "text-ink" : "text-ink/60"}`}>{LABELS.brands.phase(r.phaseNo)}</span>
+                <span className={`num text-[12px] font-medium ${first ? "text-ink" : "text-ink/60"}`}>{LABELS.brands.phase(r.phaseNo)}</span>
                 <span className={`num text-[12px] font-semibold ${first ? "text-ink" : "text-ink/60"}`}>{r.budget}</span>
               </div>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-ink/[0.05]">

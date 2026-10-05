@@ -10,7 +10,7 @@
    direction (it carries no text). */
 import { useId, useRef } from "react";
 import type { CurveProps } from "../contracts";
-import { svgId, useBox } from "./parts";
+import { drawStroke, svgId, useBox } from "./parts";
 
 /* v1's drawing, in its own 520x260 space: a start point, then three cubic segments. */
 const START: [number, number] = [0, 236];
@@ -55,7 +55,7 @@ export function Curve({ drawn, className = "" }: CurveProps) {
         </linearGradient>
       </defs>
       <path className="draw-fill" d={area} fill={`url(#${id}f)`} />
-      <path className="draw" pathLength={1} d={line} stroke={`url(#${id}l)`} strokeWidth={SW} strokeLinecap="round" />
+      <path className="draw" pathLength={1} d={line} stroke={`url(#${id}l)`} strokeWidth={SW} strokeLinecap="round" style={drawStroke(drawn)} />
     </svg>
   );
 }

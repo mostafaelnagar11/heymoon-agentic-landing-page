@@ -13,7 +13,8 @@
    Hovering or focusing a node holds the cycle and the revolution, and the readout shows that agent's
    latest note in this cycle, or "Waiting". Everything moves only while useActive (in view, page
    visible, not paused, motion allowed). Static by default: the server, no-JS and reduced motion show
-   the face-on circle, every glyph full at white/56, and MoonShot's first unit in the readout. */
+   the orbit at its starting angle without depth, every glyph full at white/56, and MoonShot's first
+   unit in the readout. The panel is its content plus py-24: the stage is only as tall as the orbit. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentsBandProps } from "../contracts";
 import type { Audience, RunUnit } from "../data/types";
@@ -82,7 +83,7 @@ export function AgentsBand({ audience }: AgentsBandProps) {
   const [lockHi, setLockHi] = useState<number | null>(null);
 
   /* Orbiting from the first time the band is active; until then (and under reduced motion) it is the
-     static face-on circle, exactly as the server drew it. A timeline first rendered on the server
+     static picture, exactly as the server drew it. A timeline first rendered on the server
      sits at its end (static by default), so going live restarts it from waiting IN THE SAME EFFECT
      as the flip: t.set(0) notifies the timeline's mark synchronously, React batches both into one
      commit, and no frame ever shows the orbit live on the end-of-cycle state (no stray readout
@@ -142,7 +143,7 @@ export function AgentsBand({ audience }: AgentsBandProps) {
     <Section slot="agents" surface="paper" audience={audience} cv labelledBy={titleId}>
       <div
         data-surface="deep"
-        className="relative mx-3 overflow-hidden rounded-[28px] bg-deep px-5 py-14 sm:mx-6 sm:flex sm:min-h-[820px] sm:flex-col sm:justify-center sm:rounded-sheet sm:px-20 sm:py-24"
+        className="relative mx-3 overflow-hidden rounded-[28px] bg-deep px-5 py-14 sm:mx-6 sm:rounded-sheet sm:px-20 sm:py-24"
       >
         <div className={s.dust} aria-hidden />
         <div className={s.layout}>

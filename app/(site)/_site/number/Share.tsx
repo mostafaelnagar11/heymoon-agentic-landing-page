@@ -1,13 +1,15 @@
 "use client";
 /* Creators row 2, the share (§5.4). Left: the H2, the body, "Every order is counted through" and
    the two ways an order is attributed. Right: ShareScale, "10 to 16%" at figure size over one dot
-   per live campaign (16), whose dots fade in by tick once it enters. */
+   per live campaign (16), whose dots fade in by tick once it enters. ShareScale opens with its own
+   eyebrow and figure, like the paid row above it, so its column sits on the H2's cap line too. */
 import { useRef } from "react";
 import { COPY } from "../copy";
 import { view } from "../data/view";
 import { ShareScale } from "../mocks/ShareScale";
 import { WordReveal } from "../ui/WordReveal";
 import { COPY_COL, FIGURE_COL, ROW, useEntry } from "./parts";
+import s from "./number.module.css";
 
 export function Share({ className = "" }: { className?: string }) {
   const n = COPY.creators.number;
@@ -27,9 +29,8 @@ export function Share({ className = "" }: { className?: string }) {
         </ul>
       </div>
 
-      <div className={`${FIGURE_COL} md:self-center`}>
-        {/* An inline-size container, so ShareScale can fit its figure to the column (cqi). */}
-        <div ref={scale} className="w-full [container-type:inline-size]">
+      <div className={`${FIGURE_COL} ${s.capLine}`}>
+        <div ref={scale} className="w-full">
           <ShareScale {...view.share()} lit={lit} />
         </div>
       </div>

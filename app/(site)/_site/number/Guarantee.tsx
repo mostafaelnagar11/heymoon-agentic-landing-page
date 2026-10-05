@@ -16,7 +16,9 @@ import s from "./number.module.css";
 export function Guarantee({ titleId }: { titleId?: string }) {
   const n = COPY.brands.number;
   const { revenue, budget, roasText } = DEMO.brands.guarantee;
-  /* The curve starts with the count: same element box, same 50% threshold as CountUp's own trigger. */
+  /* The curve starts with the count: same element box, same 50% threshold as CountUp's own trigger.
+     The same entry keeps the figure line unseen while armed (.count), so whatever CountUp holds before
+     it starts (its start value, "$0") is never on screen: the line comes in as the count starts. */
   const figure = useRef<HTMLParagraphElement>(null);
   const entry = useEntry(figure, { threshold: 0.5 });
   const counting = entry !== "armed";
@@ -31,8 +33,8 @@ export function Guarantee({ titleId }: { titleId?: string }) {
 
       <div className={`${FIGURE_COL} ${s.capLine}`}>
         <p className="mono-caps text-ink/60">{n.eyebrow}</p>
-        <p ref={figure} data-entry={entry} className="mt-3">
-          <CountUp to={revenue.value} format="usd" className={`${s.figureUsd} block text-figure text-ink`} />
+        <p ref={figure} data-entry={entry} className={`${s.count} mt-3`}>
+          <CountUp to={revenue.value} format="usd" className={`${s.figureUsd} ${s.fit} block text-figure text-ink`} />
         </p>
         <p className="mt-4 text-lead text-ink/72">{withNums(n.figureNote(budget.text, roasText), [budget.text, roasText])}</p>
         <Curve drawn={counting} className="mt-8 block h-24 w-full" />

@@ -3,7 +3,8 @@
  *
  * Every state is reachable from the toolbar: the audience switch, rm (?rm=1 forces the JS side of
  * reduced motion, which shows the stacked layout), and the global pause (freezes the working glyph).
- * Phone width (or a window under 600px tall) shows the stacked layout with motion. The readout at the
+ * Phone width, a window under 600px tall, or one where the step list would not keep 24px of air above
+ * and below it (1280x720 creators, 1366x657 brands) shows the stacked layout with motion. The readout at the
  * bottom left is read from the DOM, so it never re-renders the stage: the layout, the active step,
  * the scroll progress through the track and the rail fill's timeline. */
 import { useEffect, useState } from "react";

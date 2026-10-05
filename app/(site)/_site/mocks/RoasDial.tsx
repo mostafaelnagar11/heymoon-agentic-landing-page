@@ -8,7 +8,7 @@
    Fluid: it fills its wrapper's width (WP4 sets 360px, phone 300) and takes its height from the ratio. */
 import { useId, type CSSProperties } from "react";
 import type { RoasDialProps } from "../contracts";
-import { svgId } from "./parts";
+import { drawStroke, svgId } from "./parts";
 
 /* Radius 80 about (100,100) in a 200x124 box: the sweep runs from (20,100) round to (180,100).
    Angles are the ordinary mathematical ones, 180 at the floor and 0 at the ceiling. */
@@ -44,7 +44,7 @@ export function RoasDial({ value, min, max, label, note, drawn }: RoasDialProps)
         <path
           className="draw" pathLength={1}
           d={`M ${sx} ${sy} A ${R} ${R} 0 0 1 ${vx} ${vy}`}
-          fill="none" stroke={`url(#${id}g)`} strokeWidth="10" strokeLinecap="round"
+          fill="none" stroke={`url(#${id}g)`} strokeWidth="10" strokeLinecap="round" style={drawStroke(drawn)}
         />
         <circle
           className="dial-dot" cx={sx} cy={sy} r="7.5" fill="#fff" stroke="#7C5CE0" strokeWidth="3.5"

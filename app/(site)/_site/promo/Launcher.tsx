@@ -5,17 +5,29 @@
 
    Two levels (rule 2.4.6): the <button> shows and hides by a 200 ms opacity and scale transition, and
    only the inner span plays the appear and pulse keyframes (their `both` fill would otherwise pin the
-   button visible). Hidden means inert, aria-hidden, opacity 0, scale .8 and no pointer events. */
+   button visible). Hidden means inert, aria-hidden, opacity 0, scale .8 and no pointer events.
+   When the card closes back into it, the disc "catches" it: a small give and a ring that blooms once. */
 import { forwardRef, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { Phase } from "../contracts";
-import { GLYPH } from "../tokens";
+import { EASE_CSS, GLYPH } from "../tokens";
 import { COPY } from "../copy";
 import { inertProp } from "../lib/iso";
 import { Moon } from "../ui/Moon";
 import s from "./promo.module.css";
 
-/** Which keyframe the disc plays, and a nonce so the same one can play again. */
-export interface LauncherAnim { kind: "in" | "pulse" | null; n: number }
+/** Which keyframe the disc plays, and a nonce so the same one can play again. "in" and "pulse" are
+    CSS keyframes on the inner span, which is keyed by them (a remount restarts them). "catch" (the card
+    has just come back in) plays through the Web Animations API on the same span, without a remount, so
+    it never cuts the X-to-Moon cross-fade that is still running under it. */
+export interface LauncherAnim { kind: "in" | "pulse" | "catch" | null; n: number }
+
+/** The catch: a small give, a settle a hair past rest; the ring blooms outward once. */
+const CATCH_GIVE: Keyframe[] = [
+  { transform: "none" }, { transform: "scale(.93)", offset: 0.32 }, { transform: "scale(1.025)", offset: 0.68 }, { transform: "none" },
+];
+const CATCH_BLOOM: Keyframe[] = [
+  { opacity: 0, transform: "scale(.96)" }, { opacity: 0.9, offset: 0.18 }, { opacity: 0, transform: "scale(1.5)" },
+];
 
 export interface LauncherProps {
   open: boolean;
@@ -67,8 +79,21 @@ export const Launcher = forwardRef<HTMLButtonElement, LauncherProps>(function La
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === "Escape" && open) { e.preventDefault(); onEscape(); }
   };
-  const animClass = reduced || !anim.kind ? ""
-    : anim.kind === "in" ? "motion-safe:animate-launcher-in" : "motion-safe:animate-launcher-pulse";
+  /* The CSS keyframe in force: a catch leaves it (and the span) as they are. */
+  const keyed = useRef<LauncherAnim>({ kind: null, n: 0 });
+  if (anim.kind !== "catch") keyed.current = anim;
+  const k = keyed.current;
+  const animClass = reduced || !k.kind ? ""
+    : k.kind === "in" ? "motion-safe:animate-launcher-in" : "motion-safe:animate-launcher-pulse";
+
+  const animRef = useRef<HTMLSpanElement>(null);
+  const bloomRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (anim.kind !== "catch" || reduced || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const give = animRef.current?.animate?.(CATCH_GIVE, { duration: 520, easing: EASE_CSS.out });
+    const bloom = bloomRef.current?.animate?.(CATCH_BLOOM, { duration: 720, easing: EASE_CSS.out });
+    return () => { give?.cancel(); bloom?.cancel(); };
+  }, [anim.kind, anim.n, reduced]);
 
   return (
     <button
@@ -88,8 +113,9 @@ export const Launcher = forwardRef<HTMLButtonElement, LauncherProps>(function La
       onPointerEnter={(e) => { if (e.pointerType === "mouse") cycle.play(); }}
       className={`${s.launcher} ${inline ? s.launcherInline : ""} dawn-fade`}
     >
-      <span key={`${anim.kind}-${anim.n}`} className={`${s.anim} ${animClass}`}>
+      <span key={`${k.kind}-${k.n}`} ref={animRef} className={`${s.anim} ${animClass}`}>
         <span className={`${s.face} shadow-launcher`}>
+          <span ref={bloomRef} className={s.bloom} aria-hidden />
           <span className={`${s.glyph} ${s.moonG}`}>
             <Moon phase={cycle.phase} size={20} />
           </span>

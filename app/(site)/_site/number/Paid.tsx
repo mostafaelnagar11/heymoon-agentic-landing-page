@@ -30,7 +30,7 @@ export function Paid({ titleId }: { titleId?: string }) {
 
       <div className={`${FIGURE_COL} ${s.capLine}`}>
         <p className="mono-caps text-ink/60">{n.eyebrow}</p>
-        <p ref={word} data-entry={setIn} className={`${s.figure} ${s.weekly} mt-3 text-figure text-ink`}>{n.figure}</p>
+        <p ref={word} data-entry={setIn} className={`${s.figure} ${s.fit} ${s.weekly} mt-3 text-figure text-ink`}>{n.figure}</p>
         <p className="mt-4 max-w-[40ch] text-lead text-ink/72">{n.note}</p>
         <div ref={rail} className="mt-8">
           <PayoutRail steps={steps} lit={lit} />

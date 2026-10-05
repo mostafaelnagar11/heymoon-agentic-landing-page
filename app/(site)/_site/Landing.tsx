@@ -29,7 +29,9 @@ const AgentsBand = dynamic(() => import("./agents/AgentsBand").then((m) => m.Age
 const Connects = dynamic(() => import("./close/Connects").then((m) => m.Connects));
 const Close = dynamic(() => import("./close/Close").then((m) => m.Close));
 const Footer = dynamic(() => import("./close/Footer").then((m) => m.Footer));
-const Promo = dynamic(() => import("./promo/Promo").then((m) => m.Promo));
+/* Client-only: the launcher shows after 4s or a first scroll and does nothing without JS, so its markup
+   and its stylesheet stay off the first paint (lead ruling 5 Oct, the CSS budget). */
+const Promo = dynamic(() => import("./promo/Promo").then((m) => m.Promo), { ssr: false });
 
 /** div.landing-root: data-dawn is set by startDawn(); relative; isolate. */
 function LandingRoot({ children }: { children: ReactNode }) {

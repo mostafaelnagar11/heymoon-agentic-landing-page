@@ -34,7 +34,7 @@ export function Roas({ className = "" }: { className?: string }) {
       </div>
 
       <div className={`${FIGURE_COL} md:self-center`}>
-        <div ref={dial} className="mx-auto w-full max-w-[300px] [container-type:inline-size] sm:max-w-[360px]">
+        <div ref={dial} className="mx-auto w-full max-w-[300px] sm:max-w-[360px]">
           <RoasDial {...view.dial()} label={n.dialLabel} note={n.dialNote} drawn={drawn} />
         </div>
       </div>

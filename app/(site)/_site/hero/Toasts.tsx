@@ -28,9 +28,10 @@ interface Item { key: string; agent: string; work: string; land: string | null; 
 /* Lane geometry. Each lane is 300 wide with its inner edge 338px from the centre (the field's 290 half-width
    + 48), and toasts hug that inner edge. A toast (62px) rests centred on the apex, level with the field,
    unless that would put the limb through its inner-bottom corner (wide screens, where the limb is flatter):
-   then it rests 4px above the limb there. The lane runs `rise` px lower, into its mask, so an entering
-   toast (y 12 → 0) surfaces out of the horizon. */
-const LANE = { inner: 338, toast: 62, clear: 4, rise: 12, height: 96 } as const;
+   then it rests 4px above the limb there. The lane runs `rise` px lower: its 14px mask (§5.1.4) sits under
+   the resting toast, so an entering toast (y 12 → 0) surfaces out of the horizon. `rise` = the lane's
+   padding-bottom in hero.module.css. */
+const LANE = { inner: 338, toast: 62, clear: 4, rise: 14, height: 96 } as const;
 const TWO_LANES = "(min-width: 1200px)";
 /** One lane (1024 to 1199): a landed toast holds this long before the next one (already working) replaces it,
     so its produces label is read; with two lanes the other lane carries the overlap instead. */

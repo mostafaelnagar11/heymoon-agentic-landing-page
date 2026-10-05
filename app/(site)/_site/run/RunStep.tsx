@@ -79,7 +79,7 @@ export function RunStep({ index, title, body, creditLabel, credit, state, mode, 
       <Box className={s.content}>
         {!stacked && <span aria-hidden className={s.card} />}
         {/* The block keeps the step's direction (start-aligned under RTL); the number inside is LTR. */}
-        <Box id={`${uid}-n`} className={`${s.num} mono-data text-ink/60`}><span className="num">{n}</span></Box>
+        <Box id={`${uid}-n`} className={`${s.num} mono-data text-ink/60`}><span className="num" dir="ltr">{n}</span></Box>
         <Title id={`${uid}-t`} className={`${s.title} text-h3 ${lead ? "text-ink" : state === "done" ? "text-ink/72" : "text-ink/60"}`}>
           {title}
         </Title>

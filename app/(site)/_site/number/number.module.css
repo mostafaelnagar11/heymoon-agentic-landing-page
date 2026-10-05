@@ -1,27 +1,32 @@
-/* WP4 owns this file (§5.4). Use the §2.3 CSS variables; never @apply or theme() here. */
-
-/* ── Lunar divider. The glyph dots ease between lit and unlit, so the 60 ms sequence reads as the
-      moon waxing rather than as nine cuts. Static under reduced motion. ── */
-.divider :global(.moon circle) { transition: fill-opacity .32s var(--ease-out); }
+/* WP4 owns this file (§5.4). Use the §2.3 CSS variables; never @apply or theme() here.
+   Motion opts in (rule 2.4.6): every transition sits in the no-preference block near the end, apart
+   from the 200 ms reduced fade for "Weekly". Outside them are only the states, which JS keeps "final"
+   under reduced motion anyway. */
 
 /* ── The 2px rule grows from the start edge (scaleX, 600 ms --ease-out, §5.4). Static by default:
       the server HTML carries data-entry="final". ── */
 .rule { transform-origin: left center; }
 :global([dir="rtl"]) .rule { transform-origin: right center; }
 .rule[data-entry="armed"] { transform: scaleX(0); }
-.rule[data-entry="in"] { transition: transform .6s var(--ease-out); }
 
-/* ── Rows. Below 768 the two columns stack. In the figure rows (guarantee, paid) the figure column
-      sits on the copy column's cap line: the eyebrow's cap top meets the H2's (measured at 1440: H2
-      caps start .168em below its box, the 11px mono caps 2px below theirs), so the offset follows the
-      H2's own clamp. The chart rows (ROAS, share) centre their mock on the copy instead. ── */
+/* ── Rows. Below 768 the two columns stack. Every figure column that opens with an eyebrow and a
+      figure (guarantee, paid, share) sits on the copy column's cap line: the eyebrow's cap top meets
+      the H2's (measured at 1440: H2 caps start .168em below its box, the 11px mono caps 2px below
+      theirs), so the offset follows the H2's own clamp. Only the ROAS row, a dial with no eyebrow,
+      centres its mock on the copy. ── */
 .row { align-items: start; }
-.figureCol { margin-top: 48px; }
+.figureCol { margin-top: 48px; container-type: inline-size; }
 @media (max-width: 639px) { .figureCol { margin-top: 56px; } }
 @media (min-width: 768px) {
   .figureCol { margin-top: 0; }
   .capLine { padding-top: calc(clamp(30px, 3.3vw, 48px) * .168 - 2px); }
 }
+
+/* ── One figure size per section. The text-figure token (clamp(64px, 9vw, 132px)) capped at 23% of
+      the figure column, the cap WP8's ShareScale uses so "10 to 16%" fits 520px. From about 1,300 px
+      wide the cap binds, so "$63,050", "Weekly" and "10 to 16%" stay one size. The column is the
+      inline-size container (.figureCol). Two classes, so it outranks the utility in any order. ── */
+.figureCol .fit { font-size: min(clamp(64px, 9vw, 132px), 23cqi); }
 
 /* Optical edge: at figure size Geist's "W" carries about .04em of side bearing and the tabular "$"
    about .06em, so each figure is pulled back onto the column edge it shares with the eyebrow and the
@@ -32,15 +37,32 @@
 :global([dir="rtl"]) .figure, :global([dir="rtl"]) .figureUsd { margin-inline-start: 0; }
 
 /* ── Creators: "Weekly" sets in at figure size (S5): out of a soft blur, rising a seventh of an em,
-      once it is 60% in view. Transitions, not animations (rule 2.4.6). ── */
+      once it is 60% in view. ── */
 .weekly[data-entry="armed"] { opacity: 0; filter: blur(10px); transform: translateY(.14em); }
-.weekly[data-entry="in"] {
-  transition: opacity .7s var(--ease-out), filter .8s var(--ease-out), transform 1s var(--ease-out-expo);
+
+/* ── Brands: the guarantee figure is not shown before its count starts (rule 2.4.7: never a visible
+      jump from final to zero, and never a "$0" while it waits, whatever CountUp holds while armed).
+      Armed, the line keeps its box and shows nothing. On entry it comes in over 240 ms with the count,
+      so the start frame is painted at opacity 0 and the first value seen is already rising. ── */
+.count[data-entry="armed"] { opacity: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The divider's dots ease between lit and unlit, so the 60 ms sequence reads as the moon waxing
+     rather than as nine cuts. */
+  .divider :global(.moon circle) { transition: fill-opacity .32s var(--ease-out); }
+  .rule[data-entry="in"] { transition: transform .6s var(--ease-out); }
+  .count[data-entry="in"] { transition: opacity .24s var(--ease-out); }
+  /* Transitions, not animations (rule 2.4.6). */
+  .weekly[data-entry="in"] {
+    transition: opacity .7s var(--ease-out), filter .8s var(--ease-out), transform 1s var(--ease-out-expo);
+  }
 }
 
+/* Reduced motion: JS keeps every data-entry "final", so these are a second guard. Static states only,
+   plus the deliberate 200 ms opacity fade for "Weekly" (§5.9's reduced fade). */
 @media (prefers-reduced-motion: reduce) {
-  .divider :global(.moon circle) { transition: none; }
-  .rule[data-entry] { transform: none; transition: none; }
+  .rule[data-entry] { transform: none; }
   .weekly[data-entry] { filter: none; transform: none; }
   .weekly[data-entry="in"] { transition: opacity .2s var(--ease-out); }
+  .count[data-entry] { opacity: 1; }
 }

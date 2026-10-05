@@ -9,7 +9,7 @@
             the tiers. It loops with RUN.compactGapMs.
 
    Both are aria-hidden: the section carries the spoken summary. The caller decides `playing`. */
-import { useRef, useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import type { MotionValue } from "motion/react";
 import type { WorkingWindowProps } from "../contracts";
 import { Moon } from "../ui/Moon";
@@ -105,7 +105,7 @@ function TitleBar({ sch, snap, t }: { sch: Schedule; snap: Snap; t: MotionValue<
     Exported for the lab's frozen views; WorkingWindow is the only production caller. */
 export function PageWindow({ sch, snap, t, live, done }: { sch: Schedule; snap: Snap; t: MotionValue<number>; live: boolean; done: boolean }) {
   return (
-    <div className={s.win} aria-hidden data-a={sch.audience}>
+    <div className={s.win} aria-hidden data-a={sch.audience} data-live={live ? "1" : "0"} style={{ "--read-n": sch.read.length } as CSSProperties}>
       <TitleBar sch={sch} snap={snap} t={t} />
       <div className={s.body}>
         <div className={s.listCol}>

@@ -12,7 +12,11 @@
    Pull the track up under the head's bottom: the inner box is transparent and the list is centred
    lower, so nothing overlaps; the head simply scrolls away as the stage pins. */
 .outer { margin-top: -72px; }
+/* The track and the pinned box take no pointer: pulled up under the head, they would otherwise sit on
+   the H2's and the sub's last lines (no selection, no hit-testing). Their content takes pointers back. */
+.outer { pointer-events: none; }
 .inner { position: sticky; top: 0; height: 100svh; overflow: clip; padding-top: 96px; }
+.listWrap, .panel { pointer-events: auto; }
 
 /* The step list, natural row heights. The wrapper is the stacking context the card (z −1), the
    rail (z 1) and the glyphs (z 2) share. */
@@ -56,7 +60,7 @@ button.step:focus-visible { outline: none; }
 /* The glyph sits on the "01" row. Its paper disc hides the rail behind it. */
 .glyph {
   position: relative; z-index: 2; display: grid; place-items: center;
-  width: 16px; height: var(--row1, 16px); transition: color .3s var(--ease-out);
+  width: 16px; height: var(--row1, 16px);
 }
 .glyph::before {
   content: ""; position: absolute; inset: -4px; z-index: -1; border-radius: 50%; background: var(--paper);
@@ -75,7 +79,7 @@ button.step:focus-visible { outline: none; }
   position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
   background: #fff;
   box-shadow: 0 0 0 1px rgb(18 21 27 / .04), 0 1px 2px rgba(25, 18, 52, .04), 0 24px 48px -32px rgba(25, 18, 52, .22);
-  opacity: 0; transition: opacity .3s var(--ease-out);
+  opacity: 0;
 }
 .step[data-state="active"] .card { opacity: 1; }
 @media (hover: hover) {
@@ -83,7 +87,13 @@ button.step:focus-visible { outline: none; }
 }
 button.step:focus-visible .card { opacity: 1; outline: 2px solid var(--v500); outline-offset: 3px; }
 
-.num, .title, .body, .credit { display: block; transition: color .3s var(--ease-out); }
+.num, .title, .body, .credit { display: block; }
+/* Rule 2.4.6: CSS motion opts in. (Reduced motion always gets the stacked layout, which never changes
+   state; the rule holds anyway.) */
+@media (prefers-reduced-motion: no-preference) {
+  .glyph, .num, .title, .body, .credit { transition: color .3s var(--ease-out); }
+  .card { transition: opacity .3s var(--ease-out); }
+}
 .num { line-height: var(--row1, 16px); }
 .title { margin-top: 10px; }
 .body { margin-top: 6px; max-width: 46ch; text-wrap: pretty; }
@@ -134,3 +144,18 @@ button.step:focus-visible .card { opacity: 1; outline: 2px solid var(--v500); ou
 .mount {
   position: relative; overflow: hidden; height: 300px; border-radius: 24px; isolation: isolate;
 }
+/* Creators' tall sheets (RunStage TALL). MockTerms and MockCheck show whole at every width: "what you
+   agree to" and "what you do not" in the same weight, and all three misses with their fixes. MockRead
+   shows its header and most of its nine rows, the last under the fade (its whole list is 572px on a
+   phone). Heights are the cards' measured heights plus the sheet's padding (24, from 640 32), with a
+   few px of air; MockCheck's card stays under its 360px compaction query. */
+.tallRead { height: 440px; }
+.tallTerms { height: 412px; }
+.tallCheck { height: 380px; }
+@media (max-width: 359px) { .tallTerms { height: 468px; } }
+@media (min-width: 640px) {
+  .tallRead { height: 448px; }       /* whole wherever its rows fit one line (a mount ≥ 464 wide) */
+  .tallTerms { height: 432px; }
+  .tallCheck { height: 396px; }
+}
+@media (min-width: 1024px) { .tallCheck { height: 340px; } }

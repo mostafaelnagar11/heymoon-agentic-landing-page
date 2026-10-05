@@ -26,10 +26,13 @@ const TONE: Record<ChipTone, string> = {
   float: "bg-white text-good-deep shadow-[0_1px_2px_rgba(18,21,27,.08),0_0_0_1px_rgba(18,21,27,.05)]",
 };
 
-/** The product's small status chip: 20px tall, 11px semibold. */
-export function Chip({ tone, icon, children, className = "" }: { tone: ChipTone; icon?: ReactNode; children: ReactNode; className?: string }) {
+/** The product's small status chip: 20px tall, 11px semibold. `pill` is the round variant the plan
+    card's "Guaranteed" pill uses (v1 `rounded-full`); every other chip is the 6px tag. */
+export function Chip({ tone, icon, pill = false, children, className = "" }: {
+  tone: ChipTone; icon?: ReactNode; pill?: boolean; children: ReactNode; className?: string;
+}) {
   return (
-    <span className={`inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-[6px] px-1.5 text-[11px] font-semibold leading-none ${TONE[tone]} ${className}`}>
+    <span className={`inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-semibold leading-none ${pill ? "rounded-full px-2" : "rounded-[6px] px-1.5"} ${TONE[tone]} ${className}`}>
       {icon}
       {children}
     </span>
@@ -94,6 +97,15 @@ export function Chevron({ dir }: { dir: "start" | "end" }) {
     </svg>
   );
 }
+
+/** Inline style for every `.draw` stroke (MockCurve, Curve, RoasDial). globals.css draws with
+    `stroke-dasharray: 1; stroke-dashoffset: 1`, which leaves a zero-length dash exactly on the path's
+    end; a round cap turns it into a dot on 2x screens before the line draws. A "1 2" pattern puts a gap
+    after the one dash, and while the stroke is undrawn the offset sits just past 1, so no dash touches
+    either end. Drawn, the inline offset goes and the globals rule (0, with its 1.2s transition) takes
+    over; reduced motion's `stroke-dashoffset: 0 !important` still beats both and shows the full line. */
+export const drawStroke = (drawn: boolean): CSSProperties =>
+  drawn ? { strokeDasharray: "1 2" } : { strokeDasharray: "1 2", strokeDashoffset: "1.02" };
 
 /** useId() returns ":r1:"; strip the colons so it is safe inside url(#…). */
 export const svgId = (id: string) => `mk${id.replace(/[^a-zA-Z0-9_-]/g, "")}`;

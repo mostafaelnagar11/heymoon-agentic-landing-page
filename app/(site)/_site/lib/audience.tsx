@@ -13,7 +13,7 @@ import type { Audience } from "../data/types";
 import { COPY } from "../copy";
 import { DUR, EASE, WORLD } from "../tokens";
 import { announce } from "../ui/SrStatus";
-import { getReducedMotion, useReducedMotionPref } from "./prefs";
+import { getReducedMotion } from "./prefs";
 import { anchorOf, captureAnchor, restoreAnchor, scrollToY, type Anchor } from "./scroll";
 import { getSignal, setSignal } from "./signals";
 import { useIsoLayoutEffect } from "./iso";
@@ -153,7 +153,6 @@ export function Swap({ children }: { children: (a: Audience) => ReactNode }) {
   const { switches } = useAudience();
   const deferred = useDeferredAudience();
   const anchor = need(useContext(AnchorContext), "Swap");
-  const reduced = useReducedMotionPref();
   const first = useRef(true);
 
   useIsoLayoutEffect(() => {
@@ -165,17 +164,35 @@ export function Swap({ children }: { children: (a: Audience) => ReactNode }) {
     return () => cancelAnimationFrame(id);
   }, [deferred]);
 
+  /* The sections are built once per deferred audience. A render of <Swap> that is not a deferred
+     commit (the urgent half of a switch) hands React the same elements, so the old sections bail out
+     instead of re-rendering while the new ones wait. (`children` is Landing's inline function, stable
+     because Landing never re-renders.) */
+  const sections = useMemo(() => children(deferred), [children, deferred]);
+
+  /* Reduced motion is read when a switch renders, not subscribed to: a subscription's server snapshot
+     ("reduced") flips right after hydration, and that one re-render reached every section while their
+     Suspense boundaries were still hydrating, which made React retry the hydration about a dozen
+     times (WP3 R2). Before the first switch the value is unused (initial={false}). */
+  const reduced = switches > 0 && getReducedMotion();
   return (
     <m.div
       key={deferred}
-      initial={switches === 0 ? false : reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={reduced ? { duration: 0.15 } : { duration: 0.3, ease: EASE.out }}
+      initial={switches === 0 ? false : reduced ? SWAP_FADE : SWAP_RISE}
+      animate={SWAP_SHOWN}
+      transition={reduced ? SWAP_REDUCED : SWAP_EASE}
     >
-      {children(deferred)}
+      {sections}
     </m.div>
   );
 }
+
+/* Swap's motion props are constants, so a render of <Swap> never hands its m.div new objects. */
+const SWAP_SHOWN = { opacity: 1, y: 0 };
+const SWAP_RISE = { opacity: 0, y: 8 };
+const SWAP_FADE = { opacity: 0 };
+const SWAP_EASE = { duration: 0.3, ease: EASE.out };
+const SWAP_REDUCED = { duration: 0.15 };
 
 /** Props for a plain <a> to an audience route (rule 2.4.11). A plain click: preventDefault, then
     select(to, source), or a Lenis scroll to the top when `to` is already the audience. Modified and

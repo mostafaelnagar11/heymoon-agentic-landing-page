@@ -4,13 +4,17 @@
    the agent at work sends a white beam into the star. SVG and CSS plus motion's frame loop, never a
    second canvas.
 
-   Two modes:
-   - static (the server, no-JS, reduced motion, and until the band is first seen): a face-on
-     near-circle (ry = .9 rx), every glyph at white/56, every label shown. Pure CSS: positions are
+   One picture in every mode: the server, no-JS, reduced motion and the live orbit all draw the same
+   tilted ellipse, so the stage is only as tall as the orbit needs and the band has no empty sky
+   (§5.5 asks for a face-on circle when static; a circle needs a stage almost as tall as it is
+   wide, and the tilted orbit then floats in a quarter-screen of nothing above and below it).
+   - static (the server, no-JS, reduced motion, and until the band is first seen): the orbit at its
+     starting angle, every glyph full size at white/56, every label shown. Pure CSS: positions are
      custom properties in container units (cqw of the stage), one set per geometry, so the server
      HTML is right at every width with no JS.
-   - live: the first time the band is active, the circle TILTS into the inclined orbit (1.8 s, the
-     same positions at tilt 0, so the hand-off never jumps) and starts to revolve. Every position is
+   - live: the first time the band is active, depth settles in (1.8 s: the back of the orbit shrinks
+     and dims, its labels step down to names) and the orbit starts to revolve. At depth 0 and angle 0
+     the positions are the static layout exactly, so the hand-off never jumps. Every position is
      written straight to style.transform from one frame.update callback, keyed on `running`: there is
      no React state per frame and nothing runs while the band is offscreen, paused or held.
 
@@ -19,8 +23,8 @@
    so they never reach past the orbit toward the fence's side locks or the stage edge. A label changes
    side only while it is faded out.
 
-   Geometry is in design units (desktop 640x560, phone 358x300): the SVG scales through its viewBox
-   and the HTML through cqw, so the stage needs no measuring to lay out. */
+   Geometry is in design units (desktop 640 wide, phone 358; the height per audience): the SVG
+   scales through its viewBox and the HTML through cqw, so the stage needs no measuring to lay out. */
 import { useCallback, useEffect, useId, useRef, type CSSProperties } from "react";
 import { cancelFrame, frame, type FrameData, type MotionValue } from "motion/react";
 import type { AgentName, AgentRole, Audience } from "../data/types";
@@ -42,7 +46,7 @@ export interface OrbitProps {
   agents: OrbitAgent[];
   /** Per agent, in AGENTS order. Ignored while static (every glyph sits at white/56). */
   states: AgentState[];
-  /** false: the static face-on circle. true: the tilted, revolving orbit. */
+  /** false: the static picture (no depth, no motion). true: the revolving orbit. */
   live: boolean;
   /** The revolution advances (live, in view, visible, not paused, nothing held). */
   running: boolean;
@@ -64,21 +68,23 @@ export interface OrbitProps {
 interface Geo {
   w: number; h: number;
   rx: number; ry: number;          // the tilted orbit (§5.5)
-  rxS: number; ryS: number;        // the static face-on circle (ry = .9 rx)
-  frx: number; fry: number;        // the creators fence, tilted
-  frxS: number; fryS: number;      // the fence, face-on
+  frx: number; fry: number;        // creators: the fence
   core: number;                    // core diameter
   bow: number;                     // the beam's control-point offset
 }
-/* Static (face-on) sizes, scaled to fit. Desktop: fence fryS 264 keeps the 270° lock clear of the
-   label above MoonShot down to a 560 px stage. Phone (no labels): the fence's bottom (fryS 128) stays
-   above the readout hairline, and the circle (106 x 95) keeps MoonShot's glyph 10 px under the lock. */
-const DESK: Geo = { w: 640, h: 560, rx: 250, ry: 96, rxS: 210, ryS: 189, frx: 300, fry: 140, frxS: 276, fryS: 264, core: 96, bow: 40 };
-const PHONE: Geo = { w: 358, h: 300, rx: 150, ry: 58, rxS: 106, ryS: 95, frx: 172, fry: 86, frxS: 158, fryS: 128, core: 60, bow: 24 };
+/* The stage is the orbit's extent plus a little air, never more. Brands (desktop): the back labels
+   above (two lines when static) and the front labels below. Creators: the fence. It is rounder than
+   the orbit on purpose: it is the boundary around every agent, not a second ring in the orbit's
+   plane, and its top lock clears the back labels by a full line. The phone draws no labels. */
+const DESK_B: Geo = { w: 640, h: 336, rx: 250, ry: 96, frx: 0, fry: 0, core: 96, bow: 40 };
+const DESK_C: Geo = { ...DESK_B, h: 482, frx: 300, fry: 220 };
+const PHONE_B: Geo = { w: 358, h: 184, rx: 150, ry: 58, frx: 0, fry: 0, core: 60, bow: 24 };
+const PHONE_C: Geo = { ...PHONE_B, h: 286, frx: 172, fry: 126 };
+const geoOf = (phone: boolean, creators: boolean) => (phone ? (creators ? PHONE_C : PHONE_B) : creators ? DESK_C : DESK_B);
 
 const N = 7;
 const LOCK_DEG = [200, 270, 340];
-const TILT_MS = 1800;            // the face-on circle tilts into the orbit: a camera move, eased in and out
+const DEPTH_MS = 1800;           // depth settles in on first sight, eased in and out
 const GLYPH = 24;                  // px, fixed at every width
 /* A comet: three dashes with their heads aligned, so the tail fades. Lengths in pathLength units. */
 const COMET = [
@@ -101,8 +107,11 @@ const smooth = (a: number, b: number, x: number) => {
   const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return k * k * (3 - 2 * k);
 };
-/** θi = 2π(i/7 + θt/120 000) − π/2: node 0 starts at the top, the orbit turns clockwise. */
-const angle = (i: number, ms: number) => 2 * Math.PI * (i / N + ms / (ORBIT.revS * 1000)) - Math.PI / 2;
+/** θi = 2π((i + ½)/7 + θt/120 000) − π/2, clockwise. Half a step on from §5.5's start, so no node
+    sits dead at the top: MoonShot starts at the back right (its beam a clear diagonal into the
+    star), MoonWriter at the front centre, and the fence's top lock sits in the gap between the two
+    back labels instead of on one. */
+const angle = (i: number, ms: number) => 2 * Math.PI * ((i + 0.5) / N + ms / (ORBIT.revS * 1000)) - Math.PI / 2;
 /** Near the ends of the ellipse a label leans inward: 0 over the middle, ±1 at the ends (cos θ = ±1). */
 const lean = (cs: number) => Math.sign(cs) * smooth(0.8, 1, Math.abs(cs));
 /** The label's inline transform: lean L (signed, with the direction), side, glyph scale. Matches the
@@ -115,25 +124,32 @@ const labelTransform = (L: number, up: boolean, sc: number) =>
 const cq = (v: number, g: Geo) => (v / g.w) * 100;
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
-/** The static custom properties for one point, in both geometries. */
+/** The static custom properties for one point, in both geometries (the orbit is the same for both
+    audiences; only creators has a fence). */
 function staticVars(deg: number | null, i: number, kind: "node" | "lock"): CSSProperties {
   const a = deg === null ? angle(i, 0) : (deg * Math.PI) / 180;
-  const pick = (g: Geo) => (kind === "node" ? [g.rxS, g.ryS] : [g.frxS, g.fryS]);
-  const [dx, dy] = pick(DESK);
-  const [px, py] = pick(PHONE);
+  const d = kind === "node" ? DESK_B : DESK_C;
+  const p = kind === "node" ? PHONE_B : PHONE_C;
+  const [dx, dy] = kind === "node" ? [d.rx, d.ry] : [d.frx, d.fry];
+  const [px, py] = kind === "node" ? [p.rx, p.ry] : [p.frx, p.fry];
   return {
-    "--dx": r2(cq(dx * Math.cos(a), DESK)), "--dy": r2(cq(dy * Math.sin(a), DESK)),
-    "--px": r2(cq(px * Math.cos(a), PHONE)), "--py": r2(cq(py * Math.sin(a), PHONE)),
+    "--dx": r2(cq(dx * Math.cos(a), d)), "--dy": r2(cq(dy * Math.sin(a), d)),
+    "--px": r2(cq(px * Math.cos(a), p)), "--py": r2(cq(py * Math.sin(a), p)),
     ...(kind === "node" ? { "--lean": r2(lean(Math.cos(a))) } : null),
   } as CSSProperties;
 }
 const NODE_VARS = Array.from({ length: N }, (_, i) => staticVars(null, i, "node"));
-/** Static (and live at θ 0): the label sits above the glyph on the back half (MoonShot and its two neighbours). */
+/** Static (and live at θ 0): the label sits above the glyph on the back half (MoonShot, MoonMatch,
+    MoonScore, MoonLearning). */
 const UP0 = Array.from({ length: N }, (_, i) => Math.sin(angle(i, 0)) < 0);
 const LOCK_VARS = LOCK_DEG.map((d, j) => staticVars(d, j, "lock"));
+/** The stage's aspect ratio per geometry: CSS picks desktop or phone, so the server is right too. */
+const stageVars = (creators: boolean) => {
+  const d = geoOf(false, creators), p = geoOf(true, creators);
+  return { "--ar-desk": `${d.w} / ${d.h}`, "--ar-phone": `${p.w} / ${p.h}` } as CSSProperties;
+};
 
 interface BeamEls { g: SVGGElement | null; tether: SVGPathElement | null; comets: (SVGPathElement | null)[] }
-interface PlaneEls { disc?: SVGEllipseElement | null; inner?: SVGEllipseElement | null; ring?: SVGEllipseElement | null; fence?: SVGEllipseElement | null }
 const INNER = 0.6;                 // the inner ring, as a share of the orbit
 
 export function Orbit(p: OrbitProps) {
@@ -148,25 +164,23 @@ export function Orbit(p: OrbitProps) {
   const glyphs = useRef<(HTMLSpanElement | null)[]>([]);
   const labels = useRef<(HTMLSpanElement | null)[]>([]);
   const lockEls = useRef<(HTMLSpanElement | null)[]>([]);
-  /* The orbital plane, per geometry: the lit disc, the inner ring, the orbit ring and (creators) the fence. */
-  const planes = useRef<Record<"desk" | "phone", PlaneEls>>({ desk: {}, phone: {} });
   const beamEls = useRef<BeamEls[]>(Array.from({ length: N }, () => ({ g: null, tether: null, comets: [] })));
   const core = useRef<HTMLDivElement>(null);
   const ripple = useRef<HTMLDivElement>(null);
 
   /* Everything the frame callback reads, kept current without re-subscribing it. */
   const theta = useRef(0);         // accumulated revolution ms: resumes exactly where it stopped
-  const tilt = useRef(0);          // 0 face-on → 1 inclined
+  const depth = useRef(0);         // 0 flat (the static picture) → 1 full depth
   const k = useRef(1);             // stage px per design unit (the comet's start radius only)
   const view = useRef({ phone, dir, beams, held, creators, states });
   view.current = { phone, dir, beams, held, creators, states };
   const cache = useRef<{
-    z: string[]; hidden: boolean[]; beamOn: boolean[]; plane: string;
+    z: string[]; hidden: boolean[]; beamOn: boolean[];
     /** The side each label is drawn on, its role faded (a back label shows the name only), the ms
         left of a pending side change (-1: none), and which fence locks a label covers. */
     up: boolean[]; far: boolean[]; flip: number[]; under: boolean[];
   }>({
-    z: Array(N).fill(""), hidden: Array(N).fill(false), beamOn: Array(N).fill(false), plane: "",
+    z: Array(N).fill(""), hidden: Array(N).fill(false), beamOn: Array(N).fill(false),
     up: [...UP0], far: Array(N).fill(false), flip: Array(N).fill(-1), under: LOCK_DEG.map(() => false),
   });
   /** Per label, in px: width, the name line's height, the whole label's height (layout sizes, read on
@@ -176,31 +190,30 @@ export function Orbit(p: OrbitProps) {
   /** Per node, 0..1: how much it is lit as the agent at work (eased, so a landing never pops). */
   const lit = useRef<number[]>(Array(N).fill(0));
 
-  /** Write every position for the current revolution and tilt. Cheap: about 30 style writes.
+  /** Write every position for the current revolution and depth. Cheap: about 30 style writes.
       `dt` (ms) eases the lit factors; 0 when called outside the frame loop. */
   const place = useCallback((dt = 0) => {
     const { phone: ph, dir: sx, beams: bs, held: hd, creators: cr, states: st } = view.current;
-    const g = ph ? PHONE : DESK;
-    const e = inOutCubic(tilt.current);
-    const rx = g.rxS + (g.rx - g.rxS) * e;
-    const ry = g.ryS + (g.ry - g.ryS) * e;
+    const g = geoOf(ph, cr);
+    const e = inOutCubic(depth.current);
+    const { rx, ry } = g;
     const cx = g.w / 2, cy = g.h / 2;
-    const pts: { x: number; y: number; a: number; sc: number; L: number }[] = [];
+    const pts: { x: number; y: number; a: number; sc: number; L: number; sn: number }[] = [];
     const c = cache.current;
+    const kk = k.current, ms = metrics.current;
 
     for (let i = 0; i < N; i++) {
       const a = angle(i, theta.current);
       const sn = Math.sin(a), cs = Math.cos(a);
       const x = rx * cs * sx, y = ry * sn;
       const f = smooth(-0.25, 0.25, sn);
-      const sc = 1 + (0.74 + 0.26 * f - 1) * e;           // scale .74 + .26f once tilted
-      /* Opacity .45 + .55f once tilted. The agent at work is a light, so depth never dims it. */
+      const sc = 1 + (0.74 + 0.26 * f - 1) * e;           // scale .74 + .26f at full depth
+      /* Opacity .45 + .55f at full depth. The agent at work is a light, so depth never dims it. */
       const want = st[i] === "working" ? 1 : 0;
       lit.current[i] += (want - lit.current[i]) * (1 - Math.exp(-dt / 180));
       const depthOp = 1 + (0.45 + 0.55 * f - 1) * e;
       const op = depthOp + (1 - depthOp) * lit.current[i];
-      const L = lean(cs) * sx;
-      pts.push({ x, y, a, sc, L });
+      pts.push({ x, y, a, sc, L: lean(cs) * sx, sn });
 
       const node = nodes.current[i];
       if (!node) continue;
@@ -209,97 +222,20 @@ export function Orbit(p: OrbitProps) {
       if (c.z[i] !== z) { node.style.zIndex = z; c.z[i] = z; }
       const gl = glyphs.current[i];
       if (gl) { gl.style.transform = `scale(${sc.toFixed(4)})`; gl.style.opacity = op.toFixed(3); }
-      const lb = labels.current[i];
-      if (lb) {
-        /* Deep at the back of a tilted orbit a label steps out (250 ms): the far agents are dim and
-           small, and the readout names whoever works. The agent at work and a held node always keep
-           theirs. */
-        const hide = e > 0.25 && sn < -0.62 && hd !== i && st[i] !== "working";
-        if (c.hidden[i] !== hide) { lb.toggleAttribute("data-hidden", hide); c.hidden[i] = hide; }
-        /* The side away from the core: above a back node, below a front one. It changes at the ends
-           of the ellipse, and a visible label never jumps: it fades out (data-flip), changes side,
-           then fades back in. */
-        const up = sn < 0;
-        if (c.up[i] !== up && c.flip[i] < 0) {
-          if (hide || hd === i || dt === 0) c.flip[i] = 0;
-          else { c.flip[i] = FLIP_MS; lb.setAttribute("data-flip", ""); }
-        }
-        if (c.flip[i] >= 0) {
-          c.flip[i] -= dt;
-          if (c.flip[i] <= 0 || hide || hd === i) {
-            c.up[i] = up; c.flip[i] = -1;
-            lb.toggleAttribute("data-up", up);
-            lb.removeAttribute("data-flip");
-          }
-        }
-        /* Once tilted, a back label shows the name only: a depth cue, and it keeps the label under
-           the fence's top lock. */
-        const far = c.up[i] && e > 0.25;
-        if (c.far[i] !== far) { lb.toggleAttribute("data-far", far); c.far[i] = far; }
-        lb.style.transform = labelTransform(L, c.up[i], sc);
-      }
-    }
-
-    const frx = g.frxS + (g.frx - g.frxS) * e;
-    const fry = g.fryS + (g.fry - g.fryS) * e;
-    /* The plane moves only while it tilts in: written once per change, never every frame. */
-    const planeKey = `${ph ? "p" : "d"}${sx}${cr ? "c" : ""}${e.toFixed(4)}`;
-    if (c.plane !== planeKey) {
-      c.plane = planeKey;
-      const pl = planes.current[ph ? "phone" : "desk"];
-      const set = (el: SVGEllipseElement | null | undefined, a: number, b: number) => {
-        el?.setAttribute("rx", a.toFixed(2));
-        el?.setAttribute("ry", b.toFixed(2));
-      };
-      set(pl.disc, rx, ry);
-      set(pl.ring, rx, ry);
-      set(pl.inner, rx * INNER, ry * INNER);
-      if (cr) {
-        set(pl.fence, frx, fry);
-        LOCK_DEG.forEach((d, j) => {
-          const el = lockEls.current[j];
-          if (!el) return;
-          const a = (d * Math.PI) / 180;
-          el.style.transform = `translate3d(${cq(frx * Math.cos(a) * sx, g).toFixed(3)}cqw, ${cq(fry * Math.sin(a), g).toFixed(3)}cqw, 0)`;
-        });
-      }
-    }
-
-    /* Creators: the fence runs behind the orbit, so a label passing over one of its locks draws in
-       front and the lock steps back (data-under) until it has passed. Labels are off on phone. */
-    if (cr && !ph) {
-      const kk = k.current, ms = metrics.current;
-      LOCK_DEG.forEach((d, j) => {
-        const a = (d * Math.PI) / 180;
-        const lx = (cx + frx * Math.cos(a) * sx) * kk, ly = (cy + fry * Math.sin(a)) * kk;
-        let under = false;
-        for (let i = 0; i < N && !under; i++) {
-          const m = ms[i], pt = pts[i];
-          if (!m || !pt || c.hidden[i] || c.flip[i] >= 0) continue;
-          const nx = (cx + pt.x) * kk, ny = (cy + pt.y) * kk;
-          const left = nx - m.w / 2 - pt.L * (m.w / 2 - LEAN_PX);
-          const top = c.up[i] ? ny - (GLYPH / 2) * pt.sc - LABEL_ABOVE - (c.far[i] ? m.name : m.full) : ny + (GLYPH / 2) * pt.sc + LABEL_BELOW;
-          const bottom = c.up[i] ? ny - (GLYPH / 2) * pt.sc - LABEL_ABOVE : top + m.full;
-          under = left + m.w > lx - LOCK_R && left < lx + LOCK_R && bottom > ly - LOCK_R && top < ly + LOCK_R;
-        }
-        if (c.under[j] !== under) { lockEls.current[j]?.toggleAttribute("data-under", under); c.under[j] = under; }
-      });
     }
 
     /* Beams: a quadratic from the glyph's edge to the core's edge, bowed off the midpoint on the side
-       the node is leaving, so the light trails the motion. */
-    const now = t.get();
-    const on = Array(N).fill(false) as boolean[];
+       the node is leaving, so the light trails the motion. Built before the labels, which give way to
+       them. */
+    const curves: { agent: number; startMs: number; s: [number, number]; q: [number, number]; e: [number, number] }[] = [];
     for (const b of bs) {
-      const el = beamEls.current[b.agent];
       const pt = pts[b.agent];
-      if (!el?.g || !el.tether || !pt) continue;
-      on[b.agent] = true;
+      if (!pt) continue;
       const px = cx + pt.x, py = cy + pt.y;
       let dx = cx - px, dy = cy - py;
       const len = Math.hypot(dx, dy) || 1;
       dx /= len; dy /= len;
-      const r0 = ((GLYPH / 2) * pt.sc + 3) / k.current;
+      const r0 = ((GLYPH / 2) * pt.sc + 3) / kk;
       const r1 = g.core / 2 + 3;
       const sxp = px + dx * r0, syp = py + dy * r0;
       const exp = cx - dx * r1, eyp = cy - dy * r1;
@@ -311,10 +247,102 @@ export function Orbit(p: OrbitProps) {
          runs flat into the core with its label just above or below it, so the bow eases to straight
          there and never lifts the light into the name. */
       const bow = g.bow * Math.min(1, Math.hypot(exp - sxp, eyp - syp) / (g.bow * 4)) * smooth(0, 0.5, Math.abs(Math.sin(pt.a)));
-      const qx = (sxp + exp) / 2 + nx * bow, qy = (syp + eyp) / 2 + ny * bow;
-      const d = `M${sxp.toFixed(1)} ${syp.toFixed(1)}Q${qx.toFixed(1)} ${qy.toFixed(1)} ${exp.toFixed(1)} ${eyp.toFixed(1)}`;
+      curves.push({ agent: b.agent, startMs: b.startMs, s: [sxp, syp], q: [(sxp + exp) / 2 + nx * bow, (syp + eyp) / 2 + ny * bow], e: [exp, eyp] });
+    }
+
+    /** A label's text box in stage px, on the side and in the form it is drawn now (labels are fixed
+        px, so this needs the measured sizes and k). */
+    const labelBox = (i: number, far: boolean) => {
+      const m = ms[i], pt = pts[i];
+      if (!m || !m.w) return null;
+      const nx = (cx + pt.x) * kk, ny = (cy + pt.y) * kk;
+      const l = nx - m.w / 2 - pt.L * (m.w / 2 - LEAN_PX);
+      const gap = (GLYPH / 2) * pt.sc;
+      const top = c.up[i] ? ny - gap - LABEL_ABOVE - (far ? m.name : m.full) : ny + gap + LABEL_BELOW;
+      const bottom = c.up[i] ? ny - gap - LABEL_ABOVE : top + m.full;
+      return { l, r: l + m.w, t: top, b: bottom };
+    };
+    /** Another agent's beam runs through this label (on a small stage a neighbour's beam can). */
+    const crossed = (i: number, far: boolean) => {
+      if (ph || !curves.length) return false;
+      const bx = labelBox(i, far);
+      if (!bx) return false;
+      for (const cv of curves) {
+        if (cv.agent === i) continue;
+        for (let n = 0; n <= 12; n++) {
+          const u = n / 12, v = 1 - u;
+          const X = (v * v * cv.s[0] + 2 * v * u * cv.q[0] + u * u * cv.e[0]) * kk;
+          const Y = (v * v * cv.s[1] + 2 * v * u * cv.q[1] + u * u * cv.e[1]) * kk;
+          if (X > bx.l && X < bx.r && Y > bx.t + 1 && Y < bx.b - 1) return true;
+        }
+      }
+      return false;
+    };
+
+    for (let i = 0; i < N; i++) {
+      const lb = labels.current[i];
+      if (!lb) continue;
+      const { sn, sc, L } = pts[i];
+      /* With depth in, a back label shows the name only: a depth cue, and it keeps the label under
+         the fence's top lock. */
+      const farNow = c.up[i] && e > 0.25;
+      /* A label steps out (250 ms) deep at the back of the orbit, where the far agents are dim and
+         small and the readout names whoever works, and while another agent's beam runs through it:
+         the light always reads, never a name with a line through it. The agent at work and a held
+         node always keep theirs. */
+      const keep = hd === i || st[i] === "working";
+      const hide = !keep && ((e > 0.25 && sn < -0.62) || crossed(i, farNow));
+      if (c.hidden[i] !== hide) { lb.toggleAttribute("data-hidden", hide); c.hidden[i] = hide; }
+      /* The side away from the core: above a back node, below a front one. It changes at the ends
+         of the ellipse, and a visible label never jumps: it fades out (data-flip), changes side,
+         then fades back in. */
+      const up = sn < 0;
+      if (c.up[i] !== up && c.flip[i] < 0) {
+        if (hide || hd === i || dt === 0) c.flip[i] = 0;
+        else { c.flip[i] = FLIP_MS; lb.setAttribute("data-flip", ""); }
+      }
+      if (c.flip[i] >= 0) {
+        c.flip[i] -= dt;
+        if (c.flip[i] <= 0 || hide || hd === i) {
+          c.up[i] = up; c.flip[i] = -1;
+          lb.toggleAttribute("data-up", up);
+          lb.removeAttribute("data-flip");
+        }
+      }
+      const far = c.up[i] && e > 0.25;
+      if (c.far[i] !== far) { lb.toggleAttribute("data-far", far); c.far[i] = far; }
+      lb.style.transform = labelTransform(L, c.up[i], sc);
+    }
+
+    /* The plane, the fence and its locks never move: the static CSS draws them once. */
+    const { frx, fry } = g;
+
+    /* Creators: the fence runs behind the orbit, so a label passing over one of its locks draws in
+       front and the lock steps back (data-under) until it has passed. Labels are off on phone. */
+    if (cr && !ph) {
+      LOCK_DEG.forEach((d, j) => {
+        const a = (d * Math.PI) / 180;
+        const lx = (cx + frx * Math.cos(a) * sx) * kk, ly = (cy + fry * Math.sin(a)) * kk;
+        let under = false;
+        for (let i = 0; i < N && !under; i++) {
+          if (c.hidden[i] || c.flip[i] >= 0) continue;
+          const bx = labelBox(i, c.far[i]);
+          if (bx) under = bx.r > lx - LOCK_R && bx.l < lx + LOCK_R && bx.b > ly - LOCK_R && bx.t < ly + LOCK_R;
+        }
+        if (c.under[j] !== under) { lockEls.current[j]?.toggleAttribute("data-under", under); c.under[j] = under; }
+      });
+    }
+
+    /* Draw the beams: the comet runs from the node into the star over ORBIT.beamMs; the tether holds. */
+    const now = t.get();
+    const on = Array(N).fill(false) as boolean[];
+    for (const cv of curves) {
+      const el = beamEls.current[cv.agent];
+      if (!el?.g || !el.tether) continue;
+      on[cv.agent] = true;
+      const d = `M${cv.s[0].toFixed(1)} ${cv.s[1].toFixed(1)}Q${cv.q[0].toFixed(1)} ${cv.q[1].toFixed(1)} ${cv.e[0].toFixed(1)} ${cv.e[1].toFixed(1)}`;
       el.tether.setAttribute("d", d);
-      const since = now - b.startMs;
+      const since = now - cv.startMs;
       el.tether.style.opacity = (TETHER * smooth(0, 300, since)).toFixed(3);
       const head = outExpo(since / ORBIT.beamMs) * (1 + COMET[0].len);
       el.comets.forEach((cm, n) => {
@@ -343,7 +371,7 @@ export function Orbit(p: OrbitProps) {
     };
     const ro = new ResizeObserver(([en]) => {
       const w = en.contentBoxSize?.[0]?.inlineSize ?? en.contentRect.width;
-      k.current = w / (view.current.phone ? PHONE.w : DESK.w) || 1;
+      k.current = w / geoOf(view.current.phone, view.current.creators).w || 1;
       measure();
     });
     ro.observe(el);
@@ -352,19 +380,19 @@ export function Orbit(p: OrbitProps) {
     return () => { alive = false; ro.disconnect(); };
   }, []);
 
-  /* Mode changes. Going live: start face-on (tilt 0 is exactly the static layout) and write before
-     paint, so the hand-off never shows a frame out of place. Going static: drop every inline write and
-     let the CSS layout take over again. */
+  /* Mode changes. Going live: start flat (depth 0 at θ 0 is exactly the static layout) and write
+     before paint, so the hand-off never shows a frame out of place. Going static: drop every inline
+     write and let the CSS layout take over again. */
   useIsoLayoutEffect(() => {
     const c = cache.current;
     if (live) {
-      /* θ 0 and tilt 0 are the static layout exactly, labels included. */
+      /* θ 0 and depth 0 are the static layout exactly, labels included. */
       theta.current = 0;
-      tilt.current = 0;
+      depth.current = 0;
       lit.current.fill(0);
       /* The cache mirrors the DOM as the static branch (or the server) left it: no beam on, no label
          hidden, labels on their static sides. */
-      c.z.fill(""); c.hidden.fill(false); c.beamOn.fill(false); c.plane = "";
+      c.z.fill(""); c.hidden.fill(false); c.beamOn.fill(false);
       c.up = [...UP0]; c.far.fill(false); c.flip.fill(-1); c.under.fill(false);
       place();
       return;
@@ -377,9 +405,9 @@ export function Orbit(p: OrbitProps) {
       l.removeAttribute("data-hidden"); l.removeAttribute("data-flip"); l.removeAttribute("data-far");
       l.toggleAttribute("data-up", UP0[i]);
     });
-    lockEls.current.forEach((l) => { if (l) { l.style.transform = ""; l.removeAttribute("data-under"); } });
+    lockEls.current.forEach((l) => l?.removeAttribute("data-under"));
     beamEls.current.forEach((b) => b.g?.removeAttribute("data-on"));
-    c.z.fill(""); c.hidden.fill(false); c.beamOn.fill(false); c.plane = "";
+    c.z.fill(""); c.hidden.fill(false); c.beamOn.fill(false);
     c.up = [...UP0]; c.far.fill(false); c.flip.fill(-1); c.under.fill(false);
   }, [live, place]);
 
@@ -395,7 +423,7 @@ export function Orbit(p: OrbitProps) {
     const tick = ({ delta }: FrameData) => {
       const d = Math.min(delta, 40);
       theta.current += d;
-      if (tilt.current < 1) tilt.current = Math.min(1, tilt.current + d / TILT_MS);
+      if (depth.current < 1) depth.current = Math.min(1, depth.current + d / DEPTH_MS);
       place(d);
     };
     frame.update(tick, true);
@@ -415,10 +443,11 @@ export function Orbit(p: OrbitProps) {
     );
   }, [pulseAt, live]);
 
+  /* The orbital plane, per geometry: the fence (creators), the lit disc, the inner ring, the ring.
+     Drawn once; it never moves. */
   const svgPlane = (g: Geo, which: "desk" | "phone") => {
     const gid = `${uid}-${which}`;
-    const pl = planes.current[which];
-    const rx = live ? g.rx : g.rxS, ry = live ? g.ry : g.ryS;
+    const { rx, ry } = g;
     return (
       <svg className={`${s.svg} ${which === "desk" ? s.onDesk : s.onPhone}`} viewBox={`0 0 ${g.w} ${g.h}`} aria-hidden focusable="false">
         <defs>
@@ -436,26 +465,29 @@ export function Orbit(p: OrbitProps) {
           </radialGradient>
         </defs>
         {creators && (
-          <ellipse
-            ref={(el) => { pl.fence = el; }}
-            className={s.fence}
-            cx={g.w / 2} cy={g.h / 2}
-            rx={live ? g.frx : g.frxS} ry={live ? g.fry : g.fryS}
-          />
+          <ellipse className={s.fence} cx={g.w / 2} cy={g.h / 2} rx={g.frx} ry={g.fry} />
         )}
-        <ellipse ref={(el) => { pl.disc = el; }} fill={`url(#${gid}-disc)`} cx={g.w / 2} cy={g.h / 2} rx={rx} ry={ry} />
-        <ellipse ref={(el) => { pl.inner = el; }} className={s.inner} cx={g.w / 2} cy={g.h / 2} rx={rx * INNER} ry={ry * INNER} />
-        <ellipse ref={(el) => { pl.ring = el; }} className={s.ring} stroke={`url(#${gid}-ring)`} cx={g.w / 2} cy={g.h / 2} rx={rx} ry={ry} />
+        <ellipse fill={`url(#${gid}-disc)`} cx={g.w / 2} cy={g.h / 2} rx={rx} ry={ry} />
+        <ellipse className={s.inner} cx={g.w / 2} cy={g.h / 2} rx={rx * INNER} ry={ry * INNER} />
+        <ellipse className={s.ring} stroke={`url(#${gid}-ring)`} cx={g.w / 2} cy={g.h / 2} rx={rx} ry={ry} />
       </svg>
     );
   };
-  const g = phone ? PHONE : DESK;
+  const g = geoOf(phone, creators);
 
   return (
-    <div ref={stage} className={s.stage} data-live={live ? "" : undefined} data-audience={audience} role="group" aria-labelledby={labelledBy}>
+    <div
+      ref={stage}
+      className={s.stage}
+      style={stageVars(creators)}
+      data-live={live ? "" : undefined}
+      data-audience={audience}
+      role="group"
+      aria-labelledby={labelledBy}
+    >
       <div className={s.coreGlow} aria-hidden />
-      {svgPlane(DESK, "desk")}
-      {svgPlane(PHONE, "phone")}
+      {svgPlane(geoOf(false, creators), "desk")}
+      {svgPlane(geoOf(true, creators), "phone")}
 
       {/* The beams: only ever drawn live, so one SVG in the current geometry is enough. */}
       <svg className={s.svg} viewBox={`0 0 ${g.w} ${g.h}`} aria-hidden focusable="false">

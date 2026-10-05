@@ -31,10 +31,19 @@
 }
 .launcher:active .face { transform: scale(.94); }
 
+/* The catch ring: invisible at rest; it blooms once when the card comes back into the launcher (the
+   Launcher animates it, with the disc's give, through the Web Animations API, motion allowed only). */
+.bloom {
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 0 0 2px var(--v300), 0 0 18px 2px rgb(167 139 250 / .35); opacity: 0;
+}
+
 .glyph {
   position: absolute; inset: 0; display: grid; place-items: center; color: #fff;
   transition: opacity .22s var(--ease-out), transform .22s var(--ease-out);
 }
+/* The auto-close: the X waits for the card to fold in (Promo sets data-lag just before it closes). */
+.launcher[data-lag] .glyph { transition-delay: .2s; }
 .launcher[data-open="true"] .moonG { opacity: 0; transform: rotate(90deg) scale(.7); }
 .xG { opacity: 0; transform: rotate(-90deg) scale(.7); }
 .launcher[data-open="true"] .xG { opacity: 1; transform: none; }
@@ -57,9 +66,13 @@
 }
 :global([dir="rtl"]) .dock { transform-origin: 0 100%; }
 .dock > * { pointer-events: auto; }
+/* Phone: 12px clear of the launcher's disc, as on desktop (92 = 24 + 56 + 12). The disc sits at
+   max(16px, safe area) and is 52px tall, so the card sits 64px above that. (SPEC said 74px with the safe
+   area added: that put the card's edge on the launcher's halo, and 34px off it on a phone with a home
+   indicator.) */
 @media (max-width: 639px) {
   .dock {
-    inset-inline: 12px; bottom: calc(74px + env(safe-area-inset-bottom)); width: auto; max-width: 400px;
+    inset-inline: 12px; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px); width: auto; max-width: 400px;
     margin-inline: auto; transform-origin: 50% 100%;
   }
 }
@@ -80,14 +93,12 @@
 :global([dir="rtl"]) .card { transform-origin: 28px calc(100% + 40px); }
 @media (max-width: 639px) {
   .card {
-    /* launcher centre: 42px from the viewport end, (max(16px, safe) + 26px) from its bottom */
-    transform-origin: calc(100% - 42px + max(12px, (100vw - 400px) / 2))
-      calc(100% + 74px + env(safe-area-inset-bottom, 0px) - max(16px, env(safe-area-inset-bottom, 0px)) - 26px);
+    /* launcher centre: 42px from the viewport end, and 12 + 26 = 38px below the card at any safe area */
+    transform-origin: calc(100% - 42px + max(12px, (100vw - 400px) / 2)) calc(100% + 38px);
     touch-action: none;   /* the swipe down dismisses; the page never scrolls under a finger on the card */
   }
   :global([dir="rtl"]) .card {
-    transform-origin: calc(42px - max(12px, (100vw - 400px) / 2))
-      calc(100% + 74px + env(safe-area-inset-bottom, 0px) - max(16px, env(safe-area-inset-bottom, 0px)) - 26px);
+    transform-origin: calc(42px - max(12px, (100vw - 400px) / 2)) calc(100% + 38px);
   }
 }
 @media (max-height: 520px) and (min-width: 640px) {
@@ -119,6 +130,12 @@
 .stack { display: grid; }
 .stack > * { grid-area: 1 / 1; }
 .thumb { position: relative; display: block; }
+/* Creators: the compact window's tiers end with the foot line ("12 more, each a request to join"),
+   which lands at card y 304 to 327: under the fade, half drawn, behind the pill, and clipped by the
+   window's own bottom edge (323). The thumbnail drops it, so the tiers end on the "Request to join" row,
+   whole, above the fade. A workaround inside WP7 until WP2's compact branch stops rendering it (see
+   WP7.md, requests to the lead); the page's window keeps its foot. */
+.thumb :global([data-mock="tiers"]) p { display: none; }
 .scrim {
   position: absolute; z-index: 2; inset-inline: 0; bottom: 0; height: calc(var(--floor) + 22px);
   pointer-events: none;

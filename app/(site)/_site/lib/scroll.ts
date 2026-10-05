@@ -112,11 +112,41 @@ function realign(a: Anchor) {
   scrollToY(window.scrollY + delta, { immediate: true });
 }
 
-/** lenis.resize() first (Lenis debounces its dimensions by 250 ms and clamps scrollTo to a stale
-    limit), then an immediate scroll so a.slot's top returns to a.top; re-checks on the next frame,
-    because content-visibility estimates heights. */
+/* After a switch the sections above the anchor keep changing height for a moment: a remounted
+   content-visibility section is laid out at its size hint, then renders at its real height for the
+   new audience one or more frames later (the number section +27px and the agents band +222px going
+   brands → creators at 1440x900), long after a one-frame re-check. So restoreAnchor keeps watching. */
+const SETTLE_MS = 600;     // stop this long after the last size change…
+const CAP_MS = 1500;       // …and never watch longer than this
+const USER_INPUT = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
+let stopWatching: (() => void) | null = null;
+
+/** Puts a.slot's top back at a.top, and keeps it there while the page settles: lenis.resize() first
+    each time (Lenis debounces its dimensions by 250 ms and clamps scrollTo to a stale limit), then an
+    immediate scroll. It re-checks on the next frame and on every resize of a [data-slot] (a
+    ResizeObserver runs after layout and before paint, so a correction lands in the same frame as the
+    change and never shows), until 600 ms pass without one (1.5 s at most). The visitor's own input
+    (wheel, touch, key, pointer) ends the watch at once: their scroll wins. */
 export function restoreAnchor(a: Anchor): void {
-  lenis?.resize();
-  realign(a);
-  requestAnimationFrame(() => { lenis?.resize(); realign(a); });
+  stopWatching?.();
+  const fix = () => { lenis?.resize(); realign(a); };
+  fix();
+  if (typeof ResizeObserver === "undefined") { requestAnimationFrame(fix); return; }
+
+  let settle = 0;
+  const ro = new ResizeObserver(() => { fix(); arm(); });
+  const raf = requestAnimationFrame(fix);
+  const cap = window.setTimeout(() => stop(), CAP_MS);
+  function arm() { window.clearTimeout(settle); settle = window.setTimeout(() => stop(), SETTLE_MS); }
+  function stop() {
+    ro.disconnect();
+    cancelAnimationFrame(raf);
+    window.clearTimeout(settle); window.clearTimeout(cap);
+    USER_INPUT.forEach((t) => window.removeEventListener(t, stop, true));
+    if (stopWatching === stop) stopWatching = null;
+  }
+  document.querySelectorAll("[data-slot]").forEach((el) => ro.observe(el));
+  USER_INPUT.forEach((t) => window.addEventListener(t, stop, { capture: true, passive: true }));
+  arm();
+  stopWatching = stop;
 }

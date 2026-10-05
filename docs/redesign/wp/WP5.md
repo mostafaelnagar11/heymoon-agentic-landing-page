@@ -32,10 +32,10 @@ Probes are in `scratchpad/tools/` (`wp5v-*` are the verifier's, `wp5r2-*` are mi
 **Data.** Brands cycles `DEMO.brands.build.units` (7 rows, 10,768 ms; safety rides the creators step, so MoonMatch and MoonSearch work together). Creators cycles `DEMO.creators.read.units` (9 rows, 16,242 ms). Marks are every unit start and end, sorted and unique; the band derives every state from the timeline's `mark` (React state that changes only on a crossing), so nothing re-renders per frame. At the end: `ORBIT.restMs` of rest (all done), then reset. MoonLive AI and MoonLearning AI have no unit on either side and never work. Every string is `COPY`, `SHARED` or a bound unit `note`; nothing is typed.
 
 **Two modes.**
-- *Static* (server, no-JS, reduced motion, and until the band is first active): a face-on near-circle (ry = .9 rx), every glyph full at white/56, every label shown (the three upper ones above their glyph), readout on MoonShot's first unit. Pure CSS: positions and label lean are custom properties in **container query units** (`cqw` of the stage), one set per geometry, so the server HTML is correct at every width without JS.
-- *Live*: the first time `useActive` is true, the band flips to orbiting and restarts the cycle in one commit. The circle then **tilts into the inclined orbit** (1.8 s, ease-in-out cubic). At θ 0 and tilt 0 the positions equal the static layout exactly, labels included, so the hand-off never jumps. Then it revolves at 120 s per turn.
+- *Static* (server, no-JS, reduced motion, and until the band is first active): the tilted orbit itself at its starting angle (since the fix round; it was a face-on near-circle), every glyph full size at white/56, every label shown (the four on the back half above their glyph), readout on MoonShot's first unit. Pure CSS: positions and label lean are custom properties in **container query units** (`cqw` of the stage), one set per geometry, so the server HTML is correct at every width without JS.
+- *Live*: the first time `useActive` is true, the band flips to orbiting and restarts the cycle in one commit. **Depth settles in** (1.8 s, ease-in-out cubic: the back of the orbit shrinks to .74 and dims, back labels step down to names) and it revolves at 120 s per turn. At θ 0 and depth 0 the positions equal the static layout exactly, labels included, so the hand-off never jumps. (Before the fix round the face-on circle tilted into the orbit here.)
 
-**Motion engineering.** One `frame.update(tick, true)` in an effect keyed on `running` (`orbiting && active && nothing held`); the cleanup calls `cancelFrame`. `tick` adds `min(delta, 40)` to a ref, so the angle resumes exactly where it stopped (hover, offscreen, pause, hidden tab). Each frame writes about 40 inline styles: node `translate3d(…cqw)`, z-index only on change, glyph scale and opacity, label transform, beam `d` and dash offsets. Attributes (`data-hidden`, `data-up`, `data-far`, `data-flip`, lock `data-under`) are written only on change. The plane (ring, disc, inner ring, fence, lock positions) is written only while it tilts. A ResizeObserver supplies `k` (stage px per design unit) and the label sizes for the lock test; both are layout reads, made there and after `document.fonts.ready`, never in the frame loop. The readout's working glyph uses the shared ticker only while the band is active, or paused (where the ticker freezes it).
+**Motion engineering.** One `frame.update(tick, true)` in an effect keyed on `running` (`orbiting && active && nothing held`); the cleanup calls `cancelFrame`. `tick` adds `min(delta, 40)` to a ref, so the angle resumes exactly where it stopped (hover, offscreen, pause, hidden tab). Each frame writes about 40 inline styles: node `translate3d(…cqw)`, z-index only on change, glyph scale and opacity, label transform, beam `d` and dash offsets. Attributes (`data-hidden`, `data-up`, `data-far`, `data-flip`, lock `data-under`) are written only on change. The plane (ring, disc, inner ring, fence, locks) never moves; the static SVG and CSS draw it once. A ResizeObserver supplies `k` (stage px per design unit) and the label sizes for the lock test; both are layout reads, made there and after `document.fonts.ready`, never in the frame loop. The readout's working glyph uses the shared ticker only while the band is active, or paused (where the ticker freezes it).
 
 **Look.**
 - **Ring:** dotted (0 8, round), with a white-only vertical gradient so the near arc reads brighter.
@@ -46,7 +46,7 @@ Probes are in `scratchpad/tools/` (`wp5v-*` are the verifier's, `wp5r2-*` are mi
 - **Labels:**
   - Placement: on the side of the glyph away from the core (12 + 8 px below a front glyph, 12 + 6 px above a back one), with the name next to the glyph.
   - Lean: near the ends of the ellipse a label leans inward, so its outer edge stops 6 px past the glyph centre.
-  - Back labels: once the orbit is tilted they show the name only, and deep at the back (sin θ < −.62) they step out unless that agent is working or held.
+  - Back labels: once depth is in they show the name only, and deep at the back (sin θ < −.62) they step out unless that agent is working or held. A label also steps out while another agent's beam runs through it (on a small stage a neighbour's beam can).
   - Changing side: only while faded out.
   - Never scaled or dimmed, so they keep the white/56 floor.
   - Under 520 px of stage: names only.
@@ -55,9 +55,10 @@ Probes are in `scratchpad/tools/` (`wp5v-*` are the verifier's, `wp5r2-*` are mi
 **Readout.** The line under a hairline: icon, name in Geist Mono, stage, then the note (two lines reserved, balanced, so a wrap never moves the copy), then the seven 11px white glyphs (waiting 0, working cycling, done 4). On a change the old line lifts and fades in 140 ms, then the new one rises in over 260 ms after 80 ms (about 340 ms in all), and the outgoing line leaves the DOM when its fade ends.
 
 **Layout.**
-- **≥1024:** a 5/7 split at a 24px gutter inside `max-w-text`. At 1440 the band's content edge (160px) lines up with the other sections. The copy, readout and locks group is centred on the stage's height.
-- **<1024:** stacked: copy, stage (centred, up to 640), readout, locks. The stage's empty top and bottom bands tuck by 8% of the width (creators: 4%, because its static fence reaches nearly to the stage edge).
-- **<640:** the 358x300 stage reaches 16px into the panel padding on each side, and tucks 28px under (creators: 8px). Nodes show only their glyph and have a 44px touch target.
+- **≥1024:** a 5/7 split at a 24px gutter inside `max-w-text`. At 1440 the band's content edge (160px) lines up with the other sections. The copy group and the stage are centred on each other; the panel is its content plus `py-24` (no min-height).
+- **<1024:** stacked: copy, stage (centred, up to 640, `mt` 24px), readout (`mt` 24px), locks.
+- **<640:** the 358-unit stage reaches 16px into the panel padding on each side (`mt` 16px, creators 24px; readout `mt` 16px). Nodes show only their glyph and have a 44px touch target.
+- **Stage heights** (design units, fix round): desktop 640x336 brands, 640x482 creators; phone 358x184 brands, 358x286 creators.
 
 **Accessibility.**
 - **Nodes:** seven `<button type="button" aria-label="{agent}, {stage}" aria-describedby="agent-readout">` in AGENTS order. The stage is a `role="group"` named by the H2.
@@ -76,12 +77,12 @@ Probes are in `scratchpad/tools/` (`wp5v-*` are the verifier's, `wp5r2-*` are mi
 5. **Labels.**
    - Not scaled or depth-dimmed (only the glyph is), so their text never falls under the white/56 floor (§2.1; axe flattens opacity).
    - Placed on the side away from the core, never always below: a label below a back node sat on the beam's path and the core's corona.
-   - Back labels drop the role once tilted (a depth cue, and it keeps the name under the fence's top lock).
+   - Back labels drop the role once depth is in (a depth cue, and it keeps the name under the fence's top lock).
    - Lean inward near the ends.
    - Step out deep at the back unless working or held.
    - All labels show in static mode (the upper three above their glyph). Under a 520 px stage, names only.
 6. **Fence lock occlusion.** Not in the spec. With fixed-px labels on a scaling stage, a label can't clear every lock at every width (the top lock at 1024, for example). The fence runs behind the orbit, so the lock steps back under a passing label. Over full revolutions this happens only briefly. At 1440 it never happens. At 1024 it lasts about 0.5 s per side lock, and about 1.7 s for the top lock while MoonShot works directly under it.
-7. **Tilt-in.** Not in the spec. The static circle the server draws tilts into the live orbit on first activation, instead of cutting from one layout to the other.
+7. **Static picture = the tilted orbit (fix round; replaces the round-1 tilt-in).** §5.5 asks for a face-on near-circle when static. A circle needs a stage nearly as tall as it is wide (560 of 640), and once tilted the orbit used only the middle 335 px of it, which left about 250 px of empty panel above the H2 and below the orbit at 1440x900. The static picture is now the orbit itself at its starting angle, without depth; on first sight depth settles in and it starts to turn. The start angle is half a step on from §5.5 (MoonShot at the back right, MoonWriter at the front centre), so no node sits at the top, and the creators fence's top lock sits between the two back labels.
 8. **Plane and core dressing**, all white only, never the brand gradient:
    - the ring's vertical stroke gradient (spec: flat white/.10, shipped: .07 to .24);
    - the lit disc and inner ring;
@@ -89,16 +90,12 @@ Probes are in `scratchpad/tools/` (`wp5v-*` are the verifier's, `wp5r2-*` are mi
 9. **Readout extras.** A top hairline; a balanced note; the cross-fade is a 5px lift and rise, so two notes never sit on top of each other at full strength.
 10. **Spacing.**
     - **Section:** no vertical padding. Number ends with `py-24 sm:py-[120px]` and Connects starts with `py-24` plus its hairline.
-    - **Panel:** content is centred vertically (`sm:flex sm:flex-col sm:justify-center`) and capped at `max-w-text`.
-    - **Stacked stage:** its empty top and bottom bands are tucked by negative margins:
-      - phone: −28px below for brands, −8px for creators;
-      - tablet: 8% of the column width for brands, 4% for creators.
-
-      Once tilted, the orbit fills only the middle half of the stage. Creators tucks less because its static fence fills the stage.
+    - **Panel:** content height plus `py-24` (spec `min-h-[820px]` dropped in the fix round: it was what left the dead zones), capped at `max-w-text`.
+    - **Stacked stage:** no negative tucks any more; the stage is only as tall as the orbit (see Layout).
 11. **Lock rows** are `min-h-11 py-2` (not `h-11`), so a label too long for the row at 360 wraps instead of being cut off; single-line rows are still 44 px.
-12. **Static geometry** ("scaled to fit"), chosen so labels, locks, glyphs, the copy and the readout hairline clear each other at every width:
-    - **Desktop:** circle rx 210 / ry 189; fence 276 / 264.
-    - **Phone:** circle rx 106 / ry 95; fence 158 / 128.
+12. **Geometry** (fix round; static and live are the same picture):
+    - **Desktop:** orbit rx 250 / ry 96 (spec); creators fence 300 / 220 (spec 300 / 140). The fence is rounder than the orbit on purpose: it is the boundary around every agent, not a second ring in the orbit's plane, and its top lock clears the back labels by a full line.
+    - **Phone:** orbit 150 / 58 (spec); fence 172 / 126 (spec 172 / 86).
 
 ## Requests to the lead
 
@@ -107,7 +104,8 @@ Probes are in `scratchpad/tools/` (`wp5v-*` are the verifier's, `wp5r2-*` are mi
 - **For verifiers.**
   - In headless Chromium with `isMobile: true`, an IntersectionObserver's first entry arrives about 2.3 s late. I measured the same delay with a bare observer, outside the site. Phone captures need a wait of 3 s or more before the band goes live.
   - A long-running `page.evaluate` poll starves rAF in that harness. Use timed waits, not in-page polling, to measure motion.
-  - A capture taken right after an edit to a WP5 file can catch a dev-server recompile and show the orbit live but not yet tilted. Re-run it.
+  - A capture taken right after an edit to a WP5 file can catch a dev-server recompile and show the orbit live but still flat. Re-run it.
+  - On `/brands` and `/creators` in headless swiftshader the frame rate is low, so the clamped delta (40 ms a frame) makes the orbit crawl; motion checks belong on the lab page.
 - **Budget.** The band adds no dependency. Its lazy chunk carries 10 Phosphor icons: 9 agent icons and Lock. If the lazy-chunk budget gets tight, the icons are the bulk.
 - **Dev console under reduced motion.** motion prints "You have Reduced Motion enabled on your device…" in dev, from `MotionConfig reducedMotion="user"`. It is not WP5 code.
 
@@ -124,4 +122,34 @@ Probes are in `scratchpad/tools/` (`wp5v-*` are the verifier's, `wp5r2-*` are mi
 
 Probes: `scratchpad/tools/wp5-accept.cjs` (1440x900, motion on), `wp5-cycle.cjs`, the verifier's `wp5v-*`, and `wp5r2-*` for round 1. Screenshots are in `scratchpad/shots/WP5/`.
 
-ACCEPTANCE_TABLE
+This table was never filled in. The fix-round section below re-checks the acceptance lines that this round's changes could affect.
+
+## Fix round (4 Oct)
+
+Input: `scratchpad/fix/WP5-verify-issues.json` (the same nine verifier issues as round 1), plus the lead's note on dead zones in the desktop band. Files changed: `AgentsBand.tsx`, `Orbit.tsx`, `orbit.module.css`. `Readout.tsx`, `Locks.tsx` and the lab page were not changed. Screenshots and probe output are in `scratchpad/shots/fix/WP5/`, and the probes are in `scratchpad/tools/` (`wp5f-*` are new).
+
+| # | Item | Result | Evidence |
+|---|---|---|---|
+| L | **Lead: dead zones in the desktop band** (about 250 px empty above the H2 and below the orbit at 1440x900) | **FIXED** | **Cause.** The panel had a minimum height of 820 px, and the stage had to be 640x560 so the static face-on circle would fit. Once the orbit tilted, it used only the middle 335 px of that stage.<br>**Fix.**<br>• `min-h-[820px]` and the flex centring are gone, so the panel is its content plus `py-24`.<br>• The static picture is now the tilted orbit itself, so the stage is only as tall as the orbit: 640x336 for brands, 640x482 for creators.<br>• Creators' fence is 300/220, so it encloses the orbit.<br>• On first sight, depth settles in. This replaces the old tilt-in.<br>• The start angle moves half a step, so no node sits at the top and the top lock sits between the two back labels.<br>**Panel height:** 820 → 528 for brands, 820 → 750 for creators (1440).<br>**Gaps from the panel edge to the ink, top / bottom** (`wp5f-static.cjs`):<br>• brands: 130 / 118 at 1440, 126 / 115 at 1280;<br>• creators: 142 to the fence lock; the copy column runs from 96 to 96.<br>**Stacked layouts, body copy → orbit → readout hairline:** 48 / 37 at 768 brands, 44 / 38 at 390 brands, 30 / 32 at 360 creators (fence bottom to hairline).<br>**Viewport heights at 1920x1080:** 528 for brands, 752 for creators; 1280x720 is in `m-1280.png`.<br>**Screenshots:**<br>• `before-after-1440.png`: real `/brands` before, then `/brands` and `/creators` after;<br>• `v1-live-*-{1440,1280,1920,1024}.png` and `v1-rm-*-1440.png`;<br>• `m-768.png` and `m-390.png` (static and live, both audiences). |
+| 1 | medium · go-live glitch | **FIXED** (round 1 code, re-checked on the new geometry) | `wp5v-golive.cjs`, first 700 ms after going live: brands 44 samples, creators 43. Each sample shows a single readout layer, the correct line ("Setting the campaign goals…" / "Opening the profile"), and 0 samples with a core or ripple animation. |
+| 2 | medium · work offscreen | **FIXED** (round 1 code, re-checked) | `wp5v-offscreen.cjs`, offscreen for 3 s: 0 `data-lit`, 0 style and 0 other mutations, on both audiences. Paused: 0, 0 and 0. |
+| 3 | medium · labels hidden or colliding | **FIXED** (round 1 code, plus one new rule) | **Problem on the new geometry.** The first full-revolution run at 1024 found a neighbour's beam crossing a waiting label: MoonShot's beam through MoonLearning's label, for about 1 s per turn (5 hits on brands, 2 on creators).<br>**New rule.** A label now steps out while another agent's beam runs through it. `place()` builds the beams before the labels and tests 13 points along each curve against the label's box. A working or held agent's label never hides.<br>**After the fix** (`wp5r2-collide.cjs`, 126 s, about 600 samples each): **0 hits** on brands and creators at 1440, 1280 and 1024. The test covers beams, the core and corona, the other labels, the undimmed locks and the stage edge.<br>**Static picture** (`wp5f-static.cjs`): 0 hits at 1440, 1280, 1024, 768, 390 and 360 on both audiences. Labels are also tested against glyphs, and locks against glyphs.<br>**Screenshots:** `golive-c-strip.png` shows MoonShot lit with its name, and its comet on a clear diagonal into the star. `fix-hold-brands-1440.png` shows MoonScore held at the back, its label above it and clear of the corona, with the readout reading "Sizing the warm-up crew against the $1,000 Phase 1 budget". |
+| 4 | low · lock row cut off at 360 | **FIXED** (round 1) | At 360, "Join a campaign, or sign anything" wraps to a 58 px row, with scrollWidth equal to clientWidth (201/201). The other two rows are 44 px. |
+| 5 | low · phone fence crossing the readout hairline | **FIXED** (now by geometry) | The phone stage is the fence's own extent. At 360 with reduced motion, the fence bottom is at 577 and the hairline at 609 (32 px of air). |
+| 6 | low · lock rows are `tabIndex=0` with no action | **REJECTED (kept per spec, lead's call)** | §5.5 asks for "focusing a row" to brighten its lock, and that needs a tab stop. It is still listed under Requests to the lead. Dropping it is a one-line change. |
+| 7 | low · readout glyphs dimmed to 56% | **FIXED** (round 1) | The `.dot` dimming is gone. The 7-glyph row reads in every screenshot above (for example `v1-rm-brands-1440.png`: 5 full, 2 new moons). |
+| 8 | low · orphan word in the phone note | **FIXED** (round 1) | `.note { text-wrap: balance }`. `m-390.png` shows "Setting the campaign goals / and the markets to run in". |
+| 9 | low · labels crowded at 1024 | **FIXED** (round 1) | Below a 520 px stage, labels show names only (`m-1024.png`). Collision run at 1024: 0 hits. |
+
+**Other checks this round**
+- **Acceptance, revolution rate:** 30.00° in 10 s (`wp5f-angle.cjs`).
+- **RTL (creators, 1440):** the orbit and fence mirror, side locks sit at +282 and −282, and the page has no horizontal scroll (`rtl-c-1440.png`).
+- **Real pages:** `/brands` and `/creators` at 1440 show no console errors.
+- **`npx tsc --noEmit -p .`:** 0 errors.
+- **`npx next lint --dir "app/(site)"`:** clean.
+
+**Deviations added this round:** see deviation 7 (the static picture is the tilted orbit) and item 12 (geometry) above. In the spec's terms:
+- static is no longer a "near-circle (ry = .9 rx)";
+- θ starts half a step on;
+- the creators fence is 300/220, not 300/140 (phone 172/126, not 172/86);
+- the panel drops `min-h-[820px]`.

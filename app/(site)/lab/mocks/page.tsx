@@ -43,7 +43,7 @@ export default function Page({ searchParams }: { searchParams?: Search }) {
   const rtl = searchParams?.dir === "rtl";
   return (
     <LabFrame initial={labAudience(searchParams)} title="mocks" surface="paper">
-      {(a) => <Lab audience={a} mode={mode} rtl={rtl} />}
+      {(a) => <Lab audience={a} mode={mode} rtl={rtl} search={searchParams} />}
     </LabFrame>
   );
 }
@@ -81,12 +81,20 @@ const count = (t: number, at: number[]) => at.filter((ms) => t >= ms).length;
 function Label({ children }: { children: ReactNode }) {
   return <p className="mono-caps mb-3 text-ink/60">{children}</p>;
 }
-/** The run stage's sticky panel (524 × 480 at 1440) or a stacked mount (100% × 300). */
-function Panel({ h, label, children }: { h: 300 | 480; label: string; children: ReactNode }) {
+/** The run stage's sticky panel (524 × 480 at 1440), a stacked mount (100% × 300), or one of WP3's
+    taller stacked mounts for the creators' sheets (run.module.css .tallRead/.tallTerms/.tallCheck),
+    passed as its height classes. */
+const TALL = {
+  read: "h-[440px]",
+  terms: "h-[412px] max-[359px]:h-[468px] sm:h-[432px]",
+  check: "h-[380px] sm:h-[396px] lg:h-[340px]",
+} as const;
+function Panel({ h, label, children }: { h: 300 | 480 | (typeof TALL)[keyof typeof TALL]; label: string; children: ReactNode }) {
+  const size = h === 480 ? "h-[480px] max-w-[524px]" : h === 300 ? "h-[300px]" : h;
   return (
     <div>
       <Label>{label}</Label>
-      <div data-lab={label} className={`hm-media relative w-full overflow-hidden rounded-[24px] ring-1 ring-[var(--hair)] ${h === 480 ? "h-[480px] max-w-[524px]" : "h-[300px]"}`}>
+      <div data-lab={label} className={`hm-media relative w-full overflow-hidden rounded-[24px] ring-1 ring-[var(--hair)] ${size}`}>
         {children}
       </div>
     </div>
@@ -114,16 +122,19 @@ function Column({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Lab({ audience, mode, rtl }: { audience: Audience; mode: Mode; rtl: boolean }) {
+function Lab({ audience, mode, rtl, search }: { audience: Audience; mode: Mode; rtl: boolean; search?: Search }) {
   const t = useClock(mode);
   useEffect(() => {
     document.documentElement.dir = rtl ? "rtl" : "ltr";
     return () => { document.documentElement.dir = "ltr"; };
   }, [rtl]);
 
+  /* Built from the page's searchParams, which are the same on the server and the client, so the
+     links hydrate as rendered and keep every other parameter (&rm=1, &dir=rtl). Never window.location. */
   const href = (s: Mode) => {
-    if (typeof window === "undefined") return `?a=${audience}&s=${s}`;
-    const q = new URLSearchParams(window.location.search);
+    const q = new URLSearchParams(
+      Object.entries(search ?? {}).filter((e): e is [string, string] => typeof e[1] === "string"),
+    );
     q.set("a", audience); q.set("s", s);
     return `?${q.toString()}`;
   };
@@ -248,16 +259,19 @@ function Creators({ t }: { t: number }) {
       <Panel h={480} label="run 04 · MockCheck (misses at 120ms)">
         <MockCheck {...CHECK} shown={misses} />
       </Panel>
-      <Panel h={300} label="stacked 300 · MockRead">
+      <Panel h={TALL.read} label="stacked · MockRead (WP3 tall mount 440)">
+        <MockRead {...view.read()} />
+      </Panel>
+      <Panel h={300} label="short 300 · MockRead (clips in its card)">
         <MockRead {...view.read()} />
       </Panel>
       <Panel h={300} label="stacked 300 · MockPicks cards">
         <MockPicks {...PICKS} shown={picksShown} layout="cards" />
       </Panel>
-      <Panel h={300} label="stacked 300 · MockTerms">
+      <Panel h={TALL.terms} label="stacked · MockTerms (WP3 tall mount 412 to 468)">
         <MockTerms {...view.terms()} />
       </Panel>
-      <Panel h={300} label="stacked 300 · MockCheck">
+      <Panel h={TALL.check} label="stacked · MockCheck (WP3 tall mount 340 to 396)">
         <MockCheck {...CHECK} shown={misses} />
       </Panel>
       <Panel h={480} label="MockPicks rows">

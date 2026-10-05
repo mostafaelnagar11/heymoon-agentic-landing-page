@@ -13,6 +13,14 @@ import s from "./mocks.module.css";
 
 const L = LABELS.creators;
 
+/** The draft line from its label, with the due-in figure set in .num (rule 2.4.4). */
+function CheckLine({ product, brand, dueIn }: { product: string; brand: string; dueIn: string }) {
+  const line = L.checkLine(product, brand, dueIn);
+  const at = dueIn ? line.lastIndexOf(dueIn) : -1;
+  if (at < 0) return <>{line}</>;
+  return <>{line.slice(0, at)}<span className="num">{dueIn}</span>{line.slice(at + dueIn.length)}</>;
+}
+
 export function MockCheck({ product, brand, dueIn, misses, shown }: MockCheckProps) {
   const n = misses.length;
   const k = Math.max(0, Math.min(n, shown));
@@ -27,7 +35,7 @@ export function MockCheck({ product, brand, dueIn, misses, shown }: MockCheckPro
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-semibold leading-5 tracking-[-0.005em] text-ink">{L.preUpload}</p>
-            <p className="line-clamp-2 text-[11px] leading-4 text-ink/60">{L.checkLine(product, brand, dueIn)}</p>
+            <p className="line-clamp-2 text-[11px] leading-4 text-ink/60"><CheckLine product={product} brand={brand} dueIn={dueIn} /></p>
           </div>
           <span className={`${s.swap} shrink-0`}>
             <span data-on={done ? "0" : "1"} className="flex justify-end"><Moon phase={phase} size={15} className="text-brand" /></span>

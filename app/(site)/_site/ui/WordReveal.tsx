@@ -1,6 +1,8 @@
 "use client";
 /* Word blur-in for section H2s and chips (SPEC §5.0.10). Splits on spaces, keeping them; words are
-   the smallest split (rule 2.4.5). Once, at 60% in view. Keep it to 20 words at most. */
+   the smallest split (rule 2.4.5). Once, at 60% in view. Keep it to 20 words at most.
+   Each word carries data-word: check:site unwraps those spans before its badge-word rule, so a heading
+   that contains "live" is not read as a "live" badge (WP3 R1, WP4 R4). */
 import { useRef } from "react";
 import type { WordRevealProps } from "../contracts";
 import s from "./WordReveal.module.css";
@@ -15,7 +17,7 @@ export function WordReveal({ as: Tag = "h2", text, className = "", id }: WordRev
     <Tag ref={ref} id={id} className={`${s.root} ${className}`}>
       {parts.map((p, k) =>
         /^\s+$/.test(p) || p === "" ? p : (
-          <span key={k} className={s.word} style={{ "--i": i++ } as React.CSSProperties}>{p}</span>
+          <span key={k} data-word="" className={s.word} style={{ "--i": i++ } as React.CSSProperties}>{p}</span>
         ),
       )}
     </Tag>

@@ -1,5 +1,6 @@
 /* WP5 owns this file (§5.5). Uses the §2.3 CSS variables; never @apply or theme() here.
-   Geometry lives in design units (desktop 640x560, phone 358x300). The stage is a size container, so
+   Geometry lives in design units (desktop 640 wide, phone 358; the heights per audience come from
+   Orbit.tsx as --ar-desk and --ar-phone). The stage is a size container, so
    every position is a cqw length and scales with the stage without any measuring. Physical left/top
    on purpose: the orbit is a picture. Under dir="rtl" it mirrors through --flip, and JS multiplies by
    the same sign (rule 2.4.5). */
@@ -29,28 +30,22 @@
 /* Below 1024: copy, then the stage centred at up to 640, then the readout, then the locks. */
 @media (max-width: 1023px) {
   .layout { display: flex; flex-direction: column; }
-  /* The tilted orbit fills the middle half of the stage; its empty top and bottom bands (8% of the
-     width each) tuck into the spacing around it. % margins resolve against the column's width. */
-  .stageCol { margin-top: calc(40px - 8%); margin-bottom: -8%; width: 100%; }
-  /* Creators: the static fence reaches past the nodes (its top lock nearly to the stage edge), so
-     only half as much tucks in at either end. */
-  .stageCol[data-fence] { margin-top: calc(40px - 4%); margin-bottom: -4%; }
+  /* The stage is only as tall as the orbit, with its own 20-odd px of air above and below, so the
+     gaps to the copy and to the readout hairline come out even. */
+  .stageCol { margin-top: 24px; width: 100%; }
   .readoutArea { margin-top: 24px; max-width: 560px; }
   .locksArea { max-width: 560px; }
 }
-/* Phone: the 358x300 stage reaches 16px into the panel's padding on each side. Its top and bottom
-   bands are empty sky once the orbit tilts (ry 58 of 150), so they tuck into the spacing around it. */
+/* Phone: the 358-unit stage reaches 16px into the panel's padding on each side. */
 @media (max-width: 639px) {
   .stageCol {
-    margin-top: 0; margin-bottom: -28px;
+    margin-top: 16px;
     width: min(358px, calc(100% + 32px));
     margin-inline: calc((100% - min(358px, calc(100% + 32px))) / 2);
   }
-  /* Creators: the fence sits 28 units below the nodes, so the readout hairline clears the static
-     fence (bottom at 278 of 300) and keeps the same air under the tilted one as brands has under its
-     front node. */
-  .stageCol[data-fence] { margin-bottom: -8px; }
-  .readoutArea { margin-top: 0; }
+  /* Creators: the fence's top lock sits right at the stage's edge. */
+  .stageCol[data-fence] { margin-top: 24px; }
+  .readoutArea { margin-top: 16px; }
 }
 
 /* ── Stage ───────────────────────────────────────────────────────────────────────────────────── */
@@ -58,12 +53,12 @@
 .stage {
   --flip: 1;
   position: relative; width: 100%; max-width: 640px; margin-inline-start: auto;
-  aspect-ratio: 640 / 560;
+  aspect-ratio: var(--ar-desk, 640 / 336);
   container-type: inline-size;
 }
 [dir="rtl"] .stage { --flip: -1; }
 @media (max-width: 1023px) { .stage { margin-inline: auto; } }
-@media (max-width: 639px) { .stage { max-width: none; aspect-ratio: 358 / 300; } }
+@media (max-width: 639px) { .stage { max-width: none; aspect-ratio: var(--ar-phone, 358 / 184); } }
 
 .svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 0; }
 .onPhone { display: none; }

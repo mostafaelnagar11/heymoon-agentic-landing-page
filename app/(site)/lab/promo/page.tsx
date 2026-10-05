@@ -2,9 +2,12 @@
 /* lab/promo (WP7). Calls notFound() in production; WP-F deletes lab/.
 
    ?view=page     (default) the real thing on a stand-in page: a night hero with the real hero Field, the
-                  real WorkSection (it writes the `work` signal, so the auto-open is real), a paper run of
-                  space, a night close with the real close Field, and the real Promo. A readout shows the
-                  signals and the session record, with buttons to clear the record, block storage,
+                  real WorkSection (it writes the `work` signal, so the auto-open is real), stand-in run
+                  and number sections (data-slot "run" and "number", so the calm-moment rule is real: the
+                  card auto-opens over the run, never over the number), a night close with the real close
+                  Field, and the real Promo. A readout shows the signals, the section under the middle
+                  of the screen, who the card is open for (auto: it may close itself; kept: the visitor
+                  took it up) and the session record, with buttons to clear the record, block storage,
                   simulate the phone keyboard, and open the card. The surface under the nav line is
                   written here (there is no Nav in a lab) so the card's shadow follows it.
    ?view=gallery  both audiences side by side, on paper and on night: the launcher closed, hovered-free
@@ -17,6 +20,7 @@ import type { Audience } from "../../_site/data/types";
 import { Promo, PROMO_KEY } from "../../_site/promo/Promo";
 import { PromoCard } from "../../_site/promo/PromoCard";
 import { Launcher } from "../../_site/promo/Launcher";
+import { slotAt } from "../../_site/promo/dock";
 import { Field } from "../../_site/shell/Field";
 import { WorkSection } from "../../_site/window/WorkSection";
 import { COPY } from "../../_site/copy";
@@ -83,15 +87,15 @@ function useSurfaceWriter() {
   }, []);
 }
 
-function Night({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section data-surface="night" className={`relative bg-night-1 text-white ${className}`}>{children}</section>;
+function Night({ children, className = "", slot }: { children: ReactNode; className?: string; slot?: string }) {
+  return <section data-slot={slot} data-surface="night" className={`relative bg-night-1 text-white ${className}`}>{children}</section>;
 }
 
 function PageView({ a, debug }: { a: Audience; debug: boolean }) {
   useSurfaceWriter();
   return (
     <>
-      <Night className="mt-6 grid min-h-[calc(100svh-80px)] place-items-center px-[var(--gutter)] py-24">
+      <Night slot="hero" className="mt-6 grid min-h-[calc(100svh-80px)] place-items-center px-[var(--gutter)] py-24">
         <div className="flex w-full flex-col items-center gap-8">
           <p className="mono-caps text-white/56">Stand-in hero · {a}</p>
           <Field id="lab-hero" placement="hero" />
@@ -103,10 +107,13 @@ function PageView({ a, debug }: { a: Audience; debug: boolean }) {
         </div>
       </Night>
       <WorkSection audience={a} />
-      <div data-surface="paper" className="mx-auto grid min-h-[140svh] max-w-text place-items-center px-[var(--gutter)]">
-        <p className="mono-caps text-ink/60">Run, number, agents, connects</p>
-      </div>
-      <Night className="grid min-h-svh place-items-center px-[var(--gutter)] py-24">
+      <section data-slot="run" data-surface="paper" className="grid min-h-[160svh] place-items-center px-[var(--gutter)]">
+        <p className="mono-caps max-w-[44ch] text-center text-ink/60">Stand-in run stage · the card may open by itself here, at a calm moment</p>
+      </section>
+      <section data-slot="number" data-surface="paper" className="grid min-h-[110svh] place-items-center bg-canvas px-[var(--gutter)]">
+        <p className="mono-caps max-w-[44ch] text-center text-ink/60">Stand-in number, agents, connects · never by itself over these</p>
+      </section>
+      <Night slot="close" className="grid min-h-svh place-items-center px-[var(--gutter)] py-24">
         <div className="flex w-full flex-col items-center gap-8">
           <p className="mono-caps text-white/56">Stand-in close</p>
           <Field id="lab-close" placement="close" />
@@ -135,6 +142,8 @@ function Readout() {
   const reduced = useReducedMotionPref();
   const [session, setSession] = useState<string | null>(null);
   const [launcher, setLauncher] = useState("?");
+  const [card, setCard] = useState("closed");
+  const [slot, setSlot] = useState("?");
   const [blocked, setBlocked] = useState(false);
   const restore = useRef<(() => void) | null>(null);
 
@@ -142,6 +151,8 @@ function Readout() {
     const id = window.setInterval(() => {
       setSession(readSession(PROMO_KEY));
       setLauncher(document.querySelector<HTMLElement>("[data-promo-launcher]")?.dataset.shown ?? "?");
+      setCard(document.querySelector<HTMLElement>("#promo-card")?.dataset.by ?? "closed");
+      setSlot(slotAt(window.innerHeight / 2) ?? "none");
     }, 200);
     return () => window.clearInterval(id);
   }, []);
@@ -161,6 +172,8 @@ function Readout() {
   const rows: [string, string][] = [
     ["launcher shown", launcher],
     ["promoOpen", yes(open)],
+    ["card for", card],
+    ["section (mid)", slot],
     ["session", session ?? "(none)"],
     ["heroFieldVisible", yes(hero)],
     ["closeFieldVisible", yes(close)],

@@ -6,7 +6,9 @@
 
    A non-modal dialog (no focus trap, the page keeps scrolling), rendered only while open; the caller
    wraps it in AnimatePresence. It never decides when it opens or closes: every close goes through
-   onClose with its reason, and Promo owns focus return and the session record. */
+   onClose with its reason, and Promo owns focus return and the session record. The exit reads the
+   reason Promo recorded (`closing`): an auto-close folds back into the launcher, slower and softer
+   than a close the visitor asked for. */
 import {
   forwardRef, useEffect, useImperativeHandle, useRef, useState,
   type KeyboardEvent, type MouseEvent, type PointerEvent,
@@ -19,9 +21,11 @@ import { DEMO } from "../data/demo";
 import { EASE } from "../tokens";
 import { useIsoLayoutEffect } from "../lib/iso";
 import { WorkingWindow } from "../window/WorkingWindow";
+import { fitFor } from "./dock";
 import s from "./promo.module.css";
 
-export type CloseReason = "toggle" | "esc" | "outside" | "swipe" | "cta" | "hidden" | "external";
+/** Why the card closed. "auto": an auto-opened card closing itself (scrolled on, or 12 s untouched). */
+export type CloseReason = "toggle" | "esc" | "outside" | "swipe" | "cta" | "hidden" | "external" | "auto";
 
 export interface PromoCardProps {
   audience: Audience;
@@ -35,6 +39,11 @@ export interface PromoCardProps {
   surface: "night" | "paper";
   /** Phone: a swipe down of 64px or more on the card closes it. */
   swipe: boolean;
+  /** Who it is open for: "auto" (it may close itself), "kept" (an auto-open the visitor took up), "user". */
+  by?: "user" | "auto" | "kept";
+  /** The reason of the close in progress, read when the exit starts (the exiting card keeps its last
+      props, so the reason cannot arrive as a prop). */
+  closing?: { readonly current: CloseReason | null };
   onClose(reason: CloseReason): void;
   onCta(): void;
   /** Lab only: in flow, never fixed. */
@@ -45,10 +54,10 @@ export interface PromoCardHandle { el: HTMLDivElement | null }
 
 /** §5.7 choreography: the loop starts 500 ms after the open. */
 const LOOP_LEAD_MS = 500;
+/** The auto-close's fold into the launcher: ease-in cubic. */
+const FOLD_EASE = [0.32, 0, 0.67, 0] as const;
 /** A swipe closes past this many px; below it the card springs back. */
 const SWIPE_PX = 64;
-/** Space kept clear above the card when a short viewport scales it down. */
-const FIT_MARGIN = 12;
 
 const headline = (a: Audience) => (a === "brands" ? COPY.brands.promo.headline(DEMO) : COPY.creators.promo.headline(DEMO));
 
@@ -92,7 +101,7 @@ function Thumb({ audience, playing }: { audience: Audience; playing: boolean }) 
 }
 
 export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function PromoCard(
-  { audience, playing, reduced, focusOnOpen, openId = 0, surface, swipe, onClose, onCta, inline = false },
+  { audience, playing, reduced, focusOnOpen, openId = 0, surface, swipe, by = "user", closing, onClose, onCta, inline = false },
   ref,
 ) {
   const dockRef = useRef<HTMLDivElement>(null);
@@ -100,8 +109,11 @@ export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function Pr
   const headRef = useRef<HTMLHeadingElement>(null);
   useImperativeHandle(ref, () => ({ get el() { return cardRef.current; } }), []);
 
-  /* The headline that was there at the open rises; a switch later only crossfades. */
+  /* The headline that was there at the open rises; after the first switch every headline only
+     crossfades (a switch back to the first audience must not replay the rise). */
+  const switched = useRef(false);
   const [firstAudience] = useState(audience);
+  if (audience !== firstAudience) switched.current = true;
 
   /* +500 ms: the loop starts. */
   const [lead, setLead] = useState(false);
@@ -115,17 +127,16 @@ export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function Pr
     if (focusOnOpen) headRef.current?.focus({ preventScroll: true });
   }, [focusOnOpen, openId]);
 
-  /* Short viewports: scale the dock so the whole card fits between its bottom and the top edge. The
-     card's layout height ignores transforms, so the open animation never feeds back into this. */
+  /* Short viewports: scale the dock so the whole card fits between its bottom and the nav (it never
+     reaches over the nav). The card's layout height ignores transforms, so the open animation never
+     feeds back into this. dock.ts computes the same fit for the card before it opens. */
   useIsoLayoutEffect(() => {
     if (inline) return;
     const dock = dockRef.current, card = cardRef.current;
     if (!dock || !card) return;
     const fit = () => {
       const bottom = parseFloat(getComputedStyle(dock).bottom) || 0;
-      const h = card.offsetHeight;
-      const f = h > 0 ? Math.min(1, (window.innerHeight - bottom - FIT_MARGIN) / h) : 1;
-      dock.style.setProperty("--fit", String(Math.max(0.5, Math.round(f * 1000) / 1000)));
+      dock.style.setProperty("--fit", String(fitFor(card.offsetHeight, bottom)));
     };
     fit();
     window.addEventListener("resize", fit);
@@ -176,19 +187,29 @@ export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function Pr
   };
 
   /* Open: scale .92, y 12, blur 6 → rest over 420 ms outExpo, from the launcher's centre. Close: 240 ms
-     exit to scale .96, y 8, opacity 0 (a swipe keeps going down from where the finger let go).
-     Reduced motion: a 150 ms opacity fade both ways. Variant functions resolve when they run, so the
-     exit reads the drag at that moment. */
+     exit to scale .96, y 8, opacity 0; a swipe keeps going down from where the finger let go.
+     Auto-close: the card folds back into the launcher (which catches it) over 380 ms, accelerating
+     into it (ease-in cubic, never the slow start of an in-out, which read as a hesitation): scale .88
+     about the launcher's centre, y 10, blur 4, the fade held back 80 ms so the shrink reads first.
+     Reduced motion: a 150 ms opacity fade every way. Variant functions resolve when they run, so the
+     exit reads the drag and the close reason at that moment. */
   const variants: Variants = reduced
     ? { from: { opacity: 0 }, at: { opacity: 1, transition: { duration: 0.15 } }, gone: { opacity: 0, transition: { duration: 0.15 } } }
     : {
         from: { opacity: 0, scale: 0.92, y: 12, filter: "blur(6px)" },
         /* The filter is dropped once sharp, so the resting card keeps no filter layer. */
         at: { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.42, ease: EASE.outExpo }, transitionEnd: { filter: "none" } },
-        gone: () => ({
-          opacity: 0, scale: 0.96, y: Math.max(8, dragY.get() + 24),
-          transition: { duration: 0.24, ease: EASE.exit },
-        }),
+        gone: () => {
+          const dy = dragY.get();
+          if (dy > 0) return { opacity: 0, scale: 0.96, y: dy + 24, transition: { duration: 0.24, ease: EASE.exit } };
+          if (closing?.current === "auto") {
+            return {
+              opacity: 0, scale: 0.88, y: 10, filter: ["blur(0px)", "blur(4px)"],
+              transition: { duration: 0.38, ease: FOLD_EASE, opacity: { duration: 0.3, delay: 0.08, ease: FOLD_EASE } },
+            };
+          }
+          return { opacity: 0, scale: 0.96, y: 8, transition: { duration: 0.24, ease: EASE.exit } };
+        },
       };
 
   const a = COPY[audience].promo;
@@ -204,6 +225,7 @@ export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function Pr
         data-lenis-prevent=""
         data-promo-card=""
         data-motion={reduced ? "reduced" : "full"}
+        data-by={inline ? undefined : by}
         className={`${s.card} dawn-fade ${surface === "night" ? "shadow-promo-night" : "shadow-promo"}`}
         style={{ y: dragY }}
         variants={variants}
@@ -226,7 +248,7 @@ export const PromoCard = forwardRef<PromoCardHandle, PromoCardProps>(function Pr
             className={`${s.head} text-h3 text-ink`}
           >
             <AnimatePresence initial={false}>
-              <Headline key={audience} text={headline(audience)} rise={audience === firstAudience} />
+              <Headline key={audience} text={headline(audience)} rise={!switched.current} />
             </AnimatePresence>
           </h2>
         </div>

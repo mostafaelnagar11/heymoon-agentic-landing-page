@@ -3,8 +3,10 @@
  *
  * Two layouts.
  * - Stacked (the server render, the first client render, no JS, phone, reduced motion, short
- *   screens): each step, then its mock in a 300px hm-media mount. Mocks that draw do so on entry.
- * - Sticky (≥768 wide, motion allowed, innerHeight ≥ 600, and the list fits the stage): a
+ *   screens): each step, then its mock in a 300px hm-media mount (taller for creators' three tall
+ *   sheets, so they show whole: TALL). Mocks that draw do so on entry.
+ * - Sticky (≥768 wide, motion allowed, innerHeight ≥ 600, and the list fits the stage with 24px of
+ *   air above and below): a
  *   100svh + 3 × 60svh track around a sticky 12-column stage. The step list (cols 1 to 5) with its
  *   rail, and the panel (cols 7 to 12) that swaps one mock at a time. Scroll progress decides the
  *   active step (it changes only at the quarters); the rail fill is an accelerated ViewTimeline
@@ -57,6 +59,8 @@ const easeInOut = cubicBezier(...EASE.inOut);
 /** Misses appear 120 ms apart (§5.3), after the panel has started to arrive. */
 const MISS_STEP_MS = 120;
 const PANEL_LEAD_MS = 160;
+/** The sticky list needs this much spare height in the stage (24px above and below), or it stacks. */
+const FIT_AIR = 48;
 
 interface StepModel { title: string; body: string; credit: string }
 type StepCopy = { title: string; body: string; credit: (d: DemoData) => string };
@@ -110,7 +114,7 @@ function CheckPanel({ play }: { play: Play }) {
 function Mock({ a, i, play }: { a: Audience; i: number; play: Play }) {
   if (a === "brands") {
     switch (i) {
-      case 0: return <MockField kind="url" value={DEMO.brands.shownUrl} />;
+      case 0: return <MockField kind="url" value="yourstore.com" /* §5.3's literal; §4.3: sections never read DEMO for mocks */ />;
       case 1: return <MockPlan {...view.plan()} />;
       case 2: return <MockPay {...view.pay()} />;
       default: return <CurvePanel play={play} />;
@@ -191,11 +195,17 @@ function useEntry(ref: React.RefObject<HTMLElement>, enabled: boolean): Play {
   return play;
 }
 
+/** Creators' tall sheets get taller stacked mounts (run.module.css); every other mount is 300px. */
+const TALL: Record<Audience, readonly string[]> = {
+  brands: [],
+  creators: [s.tallRead, "", s.tallTerms, s.tallCheck],
+};
+
 function StackMount({ a, i, motionOk }: { a: Audience; i: number; motionOk: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const play = useEntry(ref, motionOk && i === STEPS - 1);
   return (
-    <div ref={ref} aria-hidden className={`${s.mount} hm-media ring-1 ring-[var(--hair)]`}>
+    <div ref={ref} aria-hidden className={`${s.mount} ${TALL[a][i] ?? ""} hm-media ring-1 ring-[var(--hair)]`}>
       <span className={`${s.dots} halftone`} />
       <div className={s.slot}><Mock a={a} i={i} play={play} /></div>
     </div>
@@ -248,13 +258,14 @@ const Stage = memo(function Stage({ a, steps, onOverflow }: { a: Audience; steps
   useMotionValueEvent(scrollYProgress, "change", sync);
   useEffect(() => { sync(scrollYProgress.get()); }, [scrollYProgress, sync]);   // a reload mid-stage
 
-  /* The list must fit the stage below the nav (pt-24). If it cannot (very short or narrow screens),
-     hand back to the stacked layout before paint rather than clip a step. */
+  /* The list must fit the stage below the nav (pt-24) with real air: at least 24px above and below it
+     (the list is centred), so a short laptop never runs it edge to edge. If it cannot, hand back to
+     the stacked layout before paint rather than crowd or clip a step. */
   useIsoLayoutEffect(() => {
     const o = inner.current, l = list.current;
     if (!o || !l || typeof ResizeObserver === "undefined") return;
     const check = () => {
-      const room = o.clientHeight - parseFloat(getComputedStyle(o).paddingTop) - 16;
+      const room = o.clientHeight - parseFloat(getComputedStyle(o).paddingTop) - FIT_AIR;
       if (l.offsetHeight > room) onOverflow();
     };
     check();

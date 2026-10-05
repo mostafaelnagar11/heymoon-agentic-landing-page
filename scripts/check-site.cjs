@@ -26,6 +26,13 @@ function visibleText(html) {
       .replace(/<[^>]+>/g, " "),
   ).replace(/\s+/g, " ").trim();
 }
+/* WordReveal (SPEC §5.0.10) wraps every word of a heading in its own span, marked data-word (its
+   CSS-module class, WordReveal_word__, is matched too). A word is never an element's whole text, so the badge rule
+   reads the HTML with those spans unwrapped (and comments dropped): "the live campaign." passes, while a
+   real badge, <span>Live</span>, still fails, and so does a WordReveal whose only word is "Live". */
+const WORD_SPAN = /<span\b(?=[^>]*(?:\sdata-word(?:=""|[\s>])|\sclass="[^"]*\bWordReveal_word__))[^>]*>([^<]*)<\/span>/gi;
+const unwrapWords = (html) => html.replace(/<!--[\s\S]*?-->/g, "").replace(WORD_SPAN, "$1");
+const BADGE = />\s*(live|live now|real time)\s*</i;
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const around = (text, i, n = 40) => text.slice(Math.max(0, i - n), i + n).replace(/\s+/g, " ");
 
@@ -55,7 +62,7 @@ async function main() {
     if (h1s !== 1) failures.push(`${route}: ${h1s} <h1> elements (expected exactly one)`);
 
     test(route, "time badge or timestamp", /\b(real time|just now|\d+\s*(min|mins|minutes?|hours?|days?)\s+ago)\b/i, text);
-    test(route, "badge word as an element's whole text", />\s*(live|live now|real time)\s*</i, html);
+    test(route, "badge word as an element's whole text", BADGE, unwrapWords(html));
     test(route, "webinar, recording or ©", /webinar|on-demand recording|©/i, text);
     if (route === "/creators") {
       test(route, "creator-size or rate word", /\b(followers?|CPM|per view|rate card)\b/i, text);
@@ -82,4 +89,5 @@ async function main() {
   console.log(`check:site ok · ${ROUTES.join(", ")} · ${handles.length} handles and ${names.length} names checked`);
 }
 
-main().catch((e) => { console.error(`check-site: ${e.message}`); process.exit(1); });
+if (require.main === module) main().catch((e) => { console.error(`check-site: ${e.message}`); process.exit(1); });
+module.exports = { unwrapWords, BADGE };

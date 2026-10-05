@@ -83,6 +83,18 @@
   display: flex; flex-direction: column; align-items: center;
   padding: calc(32px + 56px) 16px clamp(56px, 8svh, 96px);
 }
+/* The tuck. The height above keeps the switch clear of the nav at max scroll wherever the last screen
+   has room (1366x768, 1280x800, 1024x768 and up). Where it has none (1280x720, a laptop window under
+   its browser chrome, a short phone), the switch fades out as it slides under the nav pill, handing
+   over to the nav's own switch instead of doubling it through the translucent pill. A view timeline
+   inset to the nav: fully shown from 16px below the pill's bottom (72px, phone 64px), gone by the time
+   it touches the pill, and hidden there so it cannot be clicked or focused under the nav. CSS only, so
+   it also holds with no JS and under reduced motion (an opacity change, nothing moves). */
+@supports (animation-timeline: view()) {
+  .tuck { animation: tuck linear both; animation-timeline: view(block 88px 0px); animation-range: exit 0px exit 16px; }
+  @media (max-width: 639px) { .tuck { animation-timeline: view(block 80px 0px); } }
+}
+@keyframes tuck { to { opacity: 0; visibility: hidden; } }
 .fieldRow { grid-area: 2 / 1; z-index: 2; display: grid; place-items: center; }
 .hzCell { grid-area: 2 / 1; }
 /* The close has no canvas, so its CSS horizon is what ships. (The sky below the apex and the ground
