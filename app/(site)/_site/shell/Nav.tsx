@@ -150,7 +150,7 @@ export function Nav() {
       ref={navRef}
       data-at-hero={quiet ? "true" : "false"}
       data-skin={surface}
-      className={`group fixed inset-x-0 top-[var(--nav-top)] z-nav mx-auto flex h-[var(--nav-h)] w-[calc(min(1120px,100%)_-_2*var(--gutter))] items-center rounded-pill pe-2 ps-5 transition-[box-shadow,opacity,visibility] duration-[250ms] data-[yield]:pointer-events-none data-[yield]:invisible data-[yield]:opacity-0 ${entered ? "" : "motion-safe:animate-nav-in"} dawn-fade ${
+      className={`group fixed inset-x-0 top-[var(--nav-top)] z-nav mx-auto flex h-[var(--nav-h)] w-[min(1120px,calc(100%_-_2*var(--gutter)))] items-center rounded-pill pe-2 ps-5 transition-[box-shadow,opacity,visibility] duration-[250ms] data-[yield]:pointer-events-none data-[yield]:invisible data-[yield]:opacity-0 ${entered ? "" : "motion-safe:animate-nav-in"} dawn-fade ${
         night ? "shadow-[0_12px_32px_-12px_rgba(0,0,0,.6)]" : "shadow-[0_8px_24px_-12px_rgba(25,18,52,.18)]"
       }`}
     >
