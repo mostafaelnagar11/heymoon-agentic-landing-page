@@ -68,8 +68,8 @@ export const COPY = {
       ],
     },
     number: {
-      h2: "Miss the number? HeyMoon pays the difference.",                                                  // [A4] gate G2
-      body: "Every campaign comes with a sales figure, in writing, before you pay. If your sales come in under it, the shortfall is HeyMoon's to cover, not yours.", // [A4]
+      h2: "Every campaign is built to generate sales.",                                                     // [CHANGE] Mostafa 5 Oct: no "HeyMoon pays the difference"
+      body: "Before you pay, you see the sales figure the plan is built around. Then the agents run every phase toward it.", // [CHANGE] Mostafa 5 Oct: talk about generating sales, no shortfall promise
       eyebrow: "Guaranteed sales",                                                                          // [A4]
       figureNote: (budget: string, roas: string) => `${budget} across three phases, at ${roas}`,            // [A4]
       // No ladderLine (C14): Phases 2 and 3 are indicative (D4) and never stated beside "Guaranteed sales".
