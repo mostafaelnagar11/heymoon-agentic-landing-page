@@ -1,77 +1,55 @@
 # HeyMoon agentic landing page
 
-The brands landing and the creators landing in one project, with a
-Brands | Creators switch at the top of each hero. They are still two
-pages. Each tab is the whole of its original page: its own copy, its own
-field, and its own app behind the field.
+HeyMoon.AI's marketing site for its two audiences, brands and creators, plus the two agentic product
+prototypes it sends visitors into. One Next.js project.
 
 ```bash
+npm install
 npm run dev
 ```
 
-Opens on http://localhost:3004 (`heymoon-agentic-landing-page` in
-`.claude/launch.json`).
+Opens on http://localhost:3004. `npm run dev` first runs `npm run bind`, which computes the site's demo
+figures from the product code (see `scripts/bind-demo.cjs`).
 
 ## Routes
 
-| URL | What it is | From |
-| --- | --- | --- |
-| `/` | Redirects to `/brands` | `next.config.mjs` |
-| `/brands` | Brands landing: store-link field, Arabic toggle | `moontech-agentic-brands` `/` |
-| `/brands/c` | The brand conversation (`?read=ounass.com`) | `moontech-agentic-brands` `/c` |
-| `/brands/dashboard` | Brand dashboard | `moontech-agentic-brands` `/dashboard` |
-| `/creators` | Creators landing: handle field, log-in sheet | `moontech-agentic-creators` `/` |
-| `/creators/c` | The creator conversation (`?h=@handle`) | `moontech-agentic-creators` `/c` |
-| `/creators/dashboard` | Creator dashboard (needs a profile) | `moontech-agentic-creators` `/dashboard` |
+| URL | What it is |
+| --- | --- |
+| `/` | Redirects to `/brands` |
+| `/brands`, `/creators` | The site. One page with a Brands / Creators switch in the hero; switching swaps the copy and the story with no reload |
+| `/brands/c`, `/creators/c` | The agentic product: the conversation the hero field submits into (`?read=yourstore.com`, `?h=@handle`) |
+| `/brands/dashboard`, `/creators/login`, `/creators/dashboard` | The product dashboards |
+| `/brands/v1`, `/creators/v1` | The previous landing pages, kept for comparison |
+| `/preview/eclipse.html` | The original Eclipse Glass hero prototype |
 
-Anything else under `/brands/…` or `/creators/…` goes to that side's
-`/c`, as each original app's catch-all did.
+## The site (`app/(site)`)
 
-## How the two are kept apart
+- **Hero:** "Eclipse Glass", the four-point AI star as live WebGL glass in front of a total eclipse (a lazy
+  raw-WebGL renderer in `_site/sky/eclipse.ts`). On brands, two rings of creator profile pictures sit behind
+  the eclipse and an agent card shows the agents working. Switching audience tumbles the star from a glass
+  slab into pink liquid glass. The first paint is a poster rendered from the shader itself
+  (`scripts/hero-poster.cjs`), so the star is never flat.
+- **Below the hero:** a paper sheet lifts over the night with the agents' working window, a scroll stage,
+  the number, the seven-agent orbit, and a night close with a dotted wordmark.
+- **Stack:** Next 14 app router, React 18, Tailwind 3, `motion` and `lenis`. No GSAP, no three.js.
 
-The two apps share a stack but not a design system: their Tailwind
-configs give the same class names different values (`text-brand` is a
-colour on brands and an 11px size on creators; `bg-paper` and
-`text-title` differ too). So each side is isolated rather than merged:
+## How the three apps are kept apart
 
-```
-app/
-  (brands)/              root layout + globals.css for the brands side
-    brands/              the whole brands app, moved in unchanged
-  (creators)/            root layout + globals.css for the creators side
-    creators/            the whole creators app, moved in unchanged
-  _shared/
-    AudienceSwitch.tsx   the hero switch, the only code both sides use
-tailwind.brands.config.ts     brands tokens, scans app/(brands) + _shared
-tailwind.creators.config.ts   creators tokens, scans app/(creators) + _shared
-```
+The brands app, the creators app and the site give the same Tailwind class names different values, so each
+lives in its own route group with its own root layout, `globals.css` and Tailwind config (selected with
+`@config`): `app/(brands)`, `app/(creators)`, `app/(site)`. Moving between them is a full page load.
 
-- **Two root layouts.** Each route group has its own `<html>`, fonts,
-  and metadata, as in the original apps. A page only ever loads its own
-  side's stylesheet.
-- **Two Tailwind configs.** Each `globals.css` names its config with
-  `@config`. Each side compiles to the same CSS as its original project,
-  rule for rule (checked when the project was set up).
-- **The switch is a full page load.** Next always does a full load when
-  you move between root layouts. The thumb slides first (240 ms) and the
-  page follows. With reduced motion it goes straight away.
-- **Storage was already separate.** Brands keys start `mtab_`, creators
-  `mtac_`, so one origin holds both sides' state without collisions.
+## Checks
 
-## What changed from the originals
+| Command | What it does |
+| --- | --- |
+| `npm run check:site` | Against the running dev server: one h1, copy voice rules, and the honesty rules (no real names or handles in the page) |
+| `npm run measure` | A production build in its own folder (safe beside the dev server) with the performance budgets: first load ≤ 160 kB, CSS, lazy chunks, the renderer chunk |
+| `node scripts/hero-poster.cjs` | Re-renders the hero posters from the WebGL renderer (`--check` compares them with the live render) |
+| `npx tsc --noEmit -p .`, `npx next lint` | Types and lint |
 
-Only what the move required:
+## Docs
 
-- Every absolute route now has its side's prefix: `/c` → `/brands/c`,
-  `/dashboard` → `/creators/dashboard`, and `/` → `/brands` or
-  `/creators` (24 call sites).
-- The brands layout imports `DirSync` from its new path.
-- `AudienceSwitch` sits above the headline on both landings. On brands
-  it carries Arabic labels (`landing.for.*` in `lib/i18n.ts`) and
-  mirrors with the page. Creators has no Arabic, so its labels are
-  English only.
-- `public/` is the union of both apps' assets. The 72 files they share
-  are byte-identical.
-
-The original projects' docs are in `docs/brands/` and `docs/creators/`.
-Their file paths and URLs predate the move.
+`docs/redesign/` holds the research brief, the build spec, the hero brief (`HERO-V2.md`), Mostafa's inputs
+and decisions (`INPUTS.md`), and each work package's notes. `docs/brands` and `docs/creators` are the
+original apps' docs.
