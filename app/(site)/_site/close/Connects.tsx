@@ -1,7 +1,8 @@
 "use client";
 /* Connects (SPEC §5.6, B11): the last row on the sheet. Text on the start side, the marks on the end
    side, one hairline above, no box. Brands: the four store marks from public/platforms, grey, at
-   their optical heights, then a +6 circle. Creators: the two platform squares, bound to DEMO.creators.platforms.
+   their optical heights, then a +6 circle. Creators: the platform squares, DEMO.creators.platforms then
+   MORE_PLATFORMS.
    Plays once on entry (the hairline draws, the H2's words blur in, the rest rises); static by
    default, so no-JS and in-view-at-mount show the final state (rule 2.4.7). */
 import { useRef, type CSSProperties } from "react";
@@ -12,7 +13,7 @@ import { DEMO } from "../data/demo";
 import { Section } from "../ui/Section";
 import { WordReveal } from "../ui/WordReveal";
 import { useArmed } from "../ui/useArmed";
-import { InstagramLogo, TiktokLogo } from "../ui/icons";
+import { FacebookLogo, InstagramLogo, SnapchatLogo, TiktokLogo, XLogo } from "../ui/icons";
 import s from "./close.module.css";
 
 /* Natural size 96px tall, transparent PNGs. Heights are optical (§5.6): the two marks with a tall
@@ -29,6 +30,13 @@ const NATURAL_H = 96;
 const MORE = 6;
 
 const PLATFORM_ICON: Record<Platform, typeof InstagramLogo> = { Instagram: InstagramLogo, TikTok: TiktokLogo };
+/* After the two the demo's live offers deliver on (DEMO.creators.platforms), on Mostafa's call (6 Oct: "add snapchat
+   facebook and x"). */
+const MORE_PLATFORMS = [
+  { name: "Snapchat", Icon: SnapchatLogo },
+  { name: "Facebook", Icon: FacebookLogo },
+  { name: "X", Icon: XLogo },
+] as const;
 
 const rise = (i: number) => ({ "--i": i }) as CSSProperties;
 
@@ -70,16 +78,13 @@ function StoreMarks() {
 function PlatformMarks() {
   return (
     <ul className={s.marks} data-kind="platforms">
-      {DEMO.creators.platforms.map((p, i) => {
-        const Icon = PLATFORM_ICON[p];
-        return (
-          <li key={p} className={`${s.mark} ${s.rise}`} style={rise(i + 1)}>
-            <span role="img" aria-label={p} className={s.square}>
-              <Icon size={22} weight="regular" aria-hidden />
-            </span>
-          </li>
-        );
-      })}
+      {[...DEMO.creators.platforms.map((p) => ({ name: p, Icon: PLATFORM_ICON[p] })), ...MORE_PLATFORMS].map(({ name, Icon }, i) => (
+        <li key={name} className={`${s.mark} ${s.rise}`} style={rise(i + 1)}>
+          <span role="img" aria-label={name} className={s.square}>
+            <Icon size={22} weight="regular" aria-hidden />
+          </span>
+        </li>
+      ))}
     </ul>
   );
 }

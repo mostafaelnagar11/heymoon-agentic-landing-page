@@ -1,8 +1,9 @@
 "use client";
 /* The close (SPEC §5.6, B12, S7 moonset): the fork. Night returns under the sheet's rounded bottom
    (-mt-8, beneath the sheet's z), then the glass switch, the H2, the field on the close horizon
-   (apex at 56svh), the lock note and the credit. Reads the URGENT audience: a switch here is the fork
-   (select(a, "close") keeps the close where it is, via anchorOf("close")).
+   (apex at 56svh) and the lock note (the credit line under it was removed on 6 Oct: Mostafa, "remove this").
+   Reads the URGENT audience: a switch here is the fork (select(a, "close") keeps the close where it is, via
+   anchorOf("close")).
    - The rim re-ignites once, when the section first reaches 40% visibility. Static by default: only a
      close that is below the viewport at mount is armed to its pre-ignition state (rule 2.4.7).
    - The H2 is the odometer morph (globals .morph): still | in | out | idle. Both children remount on a
@@ -126,7 +127,6 @@ export function Close({}: CloseProps) {
             <Fragment key={i}>{i > 0 && " "}<span className={s.sentence}>{t}</span></Fragment>
           ))}
         </p>
-        <p className="mt-2 text-micro text-white/56">{COPY.shared.credit}</p>
       </div>
     </section>
   );

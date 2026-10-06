@@ -90,3 +90,9 @@ agent glints fixed on the rim (one per agent, lit in turn by the agent clock, by
 the shader, the renderer's state, the DOM fallback dots and the contract (GLINT_DEG, LEVEL, REST_AGENTS, setAgents).
 The diamond-ring bead is the rim's only star. The agent card, the bead's switch travel, the submit turn and the comet
 are unchanged. Posters re-rendered.
+
+**More platforms, no credit line (6 Oct).** "Add snapchat facebook and x": the creators Connects row shows Instagram,
+TikTok, Snapchat, Facebook and X squares (the last three are MORE_PLATFORMS in close/Connects.tsx, outside the demo's
+bound DEMO.creators.platforms, which stays Instagram and TikTok). The body line still says "Instagram or TikTok." until
+he rewrites it. "Remove this": the close's credit line "Built by AI. Backed by HeyMoon.AI, a Saudi company." is gone
+(COPY.shared.credit deleted; the signature under the number section stays).

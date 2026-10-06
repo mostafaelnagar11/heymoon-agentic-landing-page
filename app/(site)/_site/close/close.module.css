@@ -19,7 +19,7 @@
 .copy { max-width: 480px; }
 .connectsH2 { text-wrap: balance; }
 .marks { display: flex; align-items: center; gap: 48px; flex: none; }
-/* The two platform squares read as one pair (app-icon spacing), not as two marks 48px apart. */
+/* The platform squares read as one set (app-icon spacing), not as marks 48px apart. */
 .marks[data-kind="platforms"] { gap: 12px; }
 .body { text-wrap: pretty; }
 .mark { display: block; flex: none; }
@@ -35,12 +35,13 @@
 
 /* Below 1105 the store marks and the +6 (about 530px with their gaps) no longer fit beside a 480px text
    column, so the row stacks: text, then the marks on one line. On phone they take a 3-column grid
-   (Salla, Zid, Shopify over Magento and the +6), with 32px gaps so the first row fits a 320px screen. */
+   (Salla, Zid, Shopify over Magento and the +6), with 32px gaps so the first row fits a 320px screen. The five
+   platform squares (248px) stay on one row. */
 @media (max-width: 1104px) {
   .row { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 40px; }
 }
 @media (max-width: 639px) {
-  .marks { display: grid; grid-template-columns: repeat(3, max-content); justify-content: start;
+  .marks[data-kind="stores"] { display: grid; grid-template-columns: repeat(3, max-content); justify-content: start;
     align-items: center; column-gap: 32px; row-gap: 28px; }
 }
 
@@ -111,8 +112,8 @@
   padding: 72px 16px clamp(48px, 8svh, 88px);
 }
 .bottom { transition: opacity .2s var(--ease-out), visibility .2s; }
-/* Phone: the field's error wraps to two lines and would sit 16px over the lock note, so the note and
-   the credit step aside while it shows (the hero does the same with its chips). No layout shift. */
+/* Phone: the field's error wraps to two lines and would sit 16px over the lock note, so the note
+   steps aside while it shows (the hero does the same with its chips). No layout shift. */
 @media (max-width: 639px) {
   .close:has([data-invalid="true"]) .bottom { opacity: 0; visibility: hidden; }
 }
