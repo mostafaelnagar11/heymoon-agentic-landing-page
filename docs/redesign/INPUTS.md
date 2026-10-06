@@ -96,3 +96,11 @@ TikTok, Snapchat, Facebook and X squares (the last three are MORE_PLATFORMS in c
 bound DEMO.creators.platforms, which stays Instagram and TikTok). The body line still says "Instagram or TikTok." until
 he rewrites it. "Remove this": the close's credit line "Built by AI. Backed by HeyMoon.AI, a Saudi company." is gone
 (COPY.shared.credit deleted; the signature under the number section stays).
+
+**The shortfall row (6 Oct).** "Add a new section here for we pay the difference of the guaranteed ROAS if not
+achieved": a third brands row in the number section, after the ROAS dial, reverses the 5 Oct removal for this row
+only (row 1 keeps "Every campaign is built to generate sales."). H2 "Miss the ROAS? HeyMoon pays the difference."
+(the product's own line is "Miss the number? HeyMoon pays the difference.", lib/i18n landing.v2t; PlanCard: under the
+floor, HeyMoon pays the difference and the brand still banks the guaranteed figure). The figure is an example worked
+from DEMO's guarantee: a close at 4.3x instead of 5x on $12,500 makes $53,750, so HeyMoon pays $9,300 of the
+$63,050, labelled "An example, not a forecast." The promo headlines are one line each at one shared size.

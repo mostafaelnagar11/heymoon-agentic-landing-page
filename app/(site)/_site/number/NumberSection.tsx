@@ -1,6 +1,6 @@
 "use client";
-/* S5, the number (§5.4, B8, B9). Paper, opened by the lunar divider. Brands: the guarantee, then the
-   ROAS dial. Creators: when you get paid, then the share. Every number comes from demo.json, through
+/* S5, the number (§5.4, B8, B9). Paper, opened by the lunar divider. Brands: the guarantee, the ROAS
+   dial, then the shortfall HeyMoon pays (6 Oct). Creators: when you get paid, then the share. Every number comes from demo.json, through
    DEMO and data/view.ts. */
 import { useId } from "react";
 import type { NumberSectionProps } from "../contracts";
@@ -10,6 +10,7 @@ import { Guarantee } from "./Guarantee";
 import { Paid } from "./Paid";
 import { Roas } from "./Roas";
 import { Share } from "./Share";
+import { Shortfall } from "./Shortfall";
 
 export function NumberSection({ audience }: NumberSectionProps) {
   const titleId = useId();
@@ -22,6 +23,7 @@ export function NumberSection({ audience }: NumberSectionProps) {
             <>
               <Guarantee titleId={titleId} />
               <Roas className="mt-24 sm:mt-[120px]" />
+              <Shortfall className="mt-24 sm:mt-[120px]" />
             </>
           ) : (
             <>

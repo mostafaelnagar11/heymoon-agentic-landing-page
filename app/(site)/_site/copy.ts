@@ -98,6 +98,14 @@ export const COPY = {
       climb: "It climbs as the campaign earns it",                                                          // [A4]
       chip: (r: Rung) => `P${r.phaseNo} ${r.multipleText}`,                                                 // [A4]
       dialLabel: "Guaranteed ROAS", dialNote: "blended across all three phases",                            // [A4]
+      // The shortfall row (Mostafa, 6 Oct: "add a new section here for we pay the difference of the guaranteed ROAS if
+      // not achieved"). His call reverses the 5 Oct removal for this row; row 1 above keeps its sales-only line.
+      shortH2: "Miss the ROAS? HeyMoon pays the difference.",                                               // [CHANGE] Mostafa 6 Oct
+      shortBody: "If the campaign closes under the multiple you signed, HeyMoon pays you the gap in sales. You bank the figure it guaranteed either way.", // [CHANGE] Mostafa 6 Oct; the product's PlanCard rule
+      shortEyebrow: "Paid by HeyMoon",                                                                      // [CHANGE] Mostafa 6 Oct
+      shortNote: (guaranteed: string, made: string, signed: string) => `The rest of the ${guaranteed} it guaranteed, if the campaign closes at ${made} instead of ${signed}`, // [CHANGE] Mostafa 6 Oct
+      shortMade: "Sales the campaign made", shortPays: "HeyMoon's part",                                     // [CHANGE] Mostafa 6 Oct
+      shortExample: "An example, not a forecast.",                                                          // [CHANGE] Mostafa 6 Oct
     },
     agents: { h2: "Seven agents run the campaign.", body: "Each one owns a stage, and each one signs the work it did." }, // [A4]
     connects: { h2: "Connects to the store you already have.", body: "One tap, after you pay. It reads the orders that use a creator's code, and nothing else." }, // [A4] gate G4
