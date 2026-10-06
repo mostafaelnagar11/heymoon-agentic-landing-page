@@ -1,5 +1,5 @@
 /* The Eclipse Glass hero renderer: a bevelled glass four-point star raymarched in front of an eclipse
-   (disc, rim, corona, diamond-ring bead, the seven agent glints and, on brands, the creator rings). Reached only
+   (disc, rim, corona, diamond-ring bead and, on brands, the creator rings). Reached only
    through `import("./eclipse")`. No React and no site imports except the shared contract (./eclipse-api): the
    caller owns the poster, the handover, the agent clock and reduced motion. The canvas may cover the whole hero
    or only the 2 S poster box (CANVAS_BOX): the stage element's rect sets where and how big the star is drawn.
@@ -11,7 +11,7 @@
      clock eases in over SWAY_IN_S, so the pose leaves REST with zero velocity.
    - Exact night: the light is tone-mapped alone and screened over NIGHT1, so an unlit pixel is exactly the
      hero background, and all light fades out between LIGHT_FADE[0] and LIGHT_FADE[1] S from the centre.
-   - Screen-space marks (bead spikes, glints, the silhouette halo, the rim, the rings' edges) are in CSS px
+   - Screen-space marks (bead spikes, the silhouette halo, the rim, the rings' edges) are in CSS px
      (E.z = device px per CSS px), so a 2x capture and a 1x or 1.5x live frame differ only by resampling.
    - opts.capture: one REST frame at capture.dpr, read back in the draw's task, for the poster script (on brands
      after the rings' atlas has loaded, so onFrame may come after mountEclipse returns).
@@ -19,8 +19,8 @@
    Wave 2 (HERO-V2 "Wave 2 plan"):
    - The switch is LOCKED (SWITCH): HEAD's setAud, verbatim, on a per-switch clock that advances by at most
      SWITCH_FRAME_CAP_MS per drawn frame, so a stall delays the tumble instead of skipping it.
-   - Agents (item 1): seven glints fixed on the rim at GLINT_DEG, drawn after the glass, eased toward setAgents'
-     levels; spikes on the working index only. launch(): the turn, all seven lit, the comet once round the ring.
+   - No glints (Mostafa, 6 Oct: "keep only the big shiny one"): the seven agent glints that sat on the rim are gone,
+     so the bead is the rim's only star. launch(): the turn and the comet once round the ring.
    - The creator rings (item 9, brands only): two rings of faces on the eclipse plane, drawn from an atlas built
      here from AVATARS (never in the DOM), behind the disc and the glass. On high and mid the glass refracts them:
      sampled once per glass pixel along the central refracted ray (the dispersion samples share it; in all eight
@@ -32,8 +32,8 @@
    - Debug (SKY_DEBUG, ?skydebug or the dev server): window.__sky and window.__skyHandle; ?skyslow=N. */
 
 import {
-  AGENT_ORDER, ATLAS, atlasCell, AVATARS, ICON_SLOTS, PLATFORM_ICONS, BEAD_REST_RAD, CLUSTER_R, COMET_MS, DPR_CAP, FOCUS, GLINT_DEG, glintUv, initialTier,
-  LAUNCH, LIGHT_FADE, NIGHT1, PHONE_MQ, PLANE_TO_S, POSTER_TIER, RELEASE_FALLBACK_MS, REST, REST_AGENTS, RING,
+  ATLAS, atlasCell, AVATARS, ICON_SLOTS, PLATFORM_ICONS, BEAD_REST_RAD, CLUSTER_R, COMET_MS, DPR_CAP, FOCUS, initialTier,
+  LAUNCH, LIGHT_FADE, NIGHT1, PHONE_MQ, PLANE_TO_S, POSTER_TIER, RELEASE_FALLBACK_MS, REST,
   RING_SLOTS, RINGS, RINGS_AUDIENCE, ringsPresence, SKY_DEBUG, SWAY_IN_S, swayAt, SWITCH, SWITCH_FRAME_CAP_MS,
   TIERS, tierSteps, WATCHDOG,
 } from "./eclipse-api";
@@ -53,31 +53,17 @@ const rad = (d: number) => (d * Math.PI) / 180;
    has no `process`, so it reads false there). */
 const DEV = (() => { try { return process.env.NODE_ENV === "development"; } catch { return false; } })();
 
-/* The seven glints (AGENT_ORDER), baked as screen-space marks drawn after the glass.
-   Rim lift (wave-2 fixes, A-A7): on the bright half of the rim a waiting glint read only +7 to +13 L* over the rim
-   (creators MoonLive +6.8, brands MoonLearning +12.7, at 2x on an M1). Each glint's core level is lifted toward 1 by
-   m = min(GLINT_LIFT.max, GLINT_LIFT.k · p), p being the rim's own bright-side weight there (pow(side, 5), the rim
-   term's), from the audience's RESTING bead (BEAD_REST_RAD), crossfaded by the tint: v' = v + (1 − v)·m, so the
-   order idle < landed < working and waiting < idle holds everywhere, working is unchanged, and the moving bead never
-   flares a glint during the locked switch. The rim, the bead and the corona are untouched. */
-const GLINT_LIFT = { k: 8, max: 0.65 } as const;
-const glintLift = (deg: number, a: Audience) =>
-  Math.min(GLINT_LIFT.max, GLINT_LIFT.k * Math.pow(0.5 + 0.5 * Math.cos(rad(deg) - BEAD_REST_RAD[a]), 5));
-const GLINTS = AGENT_ORDER.map((n, i) => {
-  const [x, y] = glintUv(n), d = GLINT_DEG[n];
-  return `Lg+=glt(uv,vec2(${fl(x)},${fl(y)}),G[${i}],${i}.,px,mix(${fl(glintLift(d, "brands"))},${fl(glintLift(d, "creators"))},uWorld));`;
-}).join("");
 const RI = RINGS.inner, RO = RINGS.outer, LOOK = RINGS.look;
 
 const VS = "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
 
 /* Uniforms: St = star centre (px) and radius (px); M = star rotation; T = scene time (s); uWorld = the tint
    (0 brands, 1 creators); A = soft, aud, bead, focus; B = pulse, pulseR, intro, flash; C = -, comet, rimW, energy;
-   E = trail, glare sweep, device px per CSS px, working index (−1 none); R = rings' presence, inner and outer drift
-   (rad), the atlas cell's half texel; G = the seven glint levels; uAt = the rings' atlas. uv: 1 = S/2. */
+   E = trail, glare sweep, device px per CSS px, -; R = rings' presence, inner and outer drift
+   (rad), the atlas cell's half texel; uAt = the rings' atlas. uv: 1 = S/2. */
 const FS = `precision highp float;
 uniform vec3 St;uniform float T;uniform mat3 M;uniform float uWorld;
-uniform vec4 A;uniform vec4 B;uniform vec4 C;uniform vec4 E;uniform vec4 R;uniform float G[7];uniform sampler2D uAt;
+uniform vec4 A;uniform vec4 B;uniform vec4 C;uniform vec4 E;uniform vec4 R;uniform sampler2D uAt;
 #define S 1.12
 #define CZ 7.0
 #define DZ 3.2
@@ -90,7 +76,6 @@ uniform vec4 A;uniform vec4 B;uniform vec4 C;uniform vec4 E;uniform vec4 R;unifo
 #define NIGHT (vec3(${NIGHT1.map(fl).join(",")})/255.)
 #define LF0 ${fl(LIGHT_FADE[0] * 2)}
 #define LF1 ${fl(LIGHT_FADE[1] * 2)}
-#define GR ${fl(2 * RING)}
 #define PTS ${fl(PLANE_TO_S)}
 #define CLR ${fl(CLUSTER_R)}
 #define RSP ${fl((RI.r + RI.a + RO.r - RO.a) / 2)}
@@ -99,7 +84,6 @@ uniform vec4 A;uniform vec4 B;uniform vec4 C;uniform vec4 E;uniform vec4 R;unifo
 #define AC ${fl(ATLAS.cols)}
 #define AR ${fl(ATLAS.rows)}
 float AA;
-vec3 tn(){return mix(vec3(.62,.5,1.),vec3(1.,.45,.72),uWorld);}
 float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+1.),f.x),f.y);}
@@ -242,12 +226,6 @@ vec3 glass(vec3 p,vec3 rd){
  float q=(length(po.xy)-B.y)*7.;float rip=exp(-q*q)*B.x;
  vec3 rc=mix(vec3(.75,.65,1.),vec3(1.,.6,.85),uWorld);
  return mix(rr*tint+glow,rfl,fr)+rc*rip*.8+mix(vec3(1.),cc,.4)*pow(1.-ci,7.)*.9;}
-vec3 glt(vec2 uv,vec2 c,float v,float i,float px,float m){
- vec2 dv=abs(uv-c)*px;float d=length(dv);
- vec3 o=vec3(1.6*(.4+.6*(v+(1.-v)*m))*(1.-smoothstep(.6,2.2,d)))+tn()*v*v*.9*exp(-d/5.);
- if(abs(E.w-i)<.5){float kl=42.857/px;
-  o+=vec3(.9,.88,1.)*(exp(-dv.x*1.3)*exp(-dv.y*kl)+exp(-dv.y*1.3)*exp(-dv.x*kl))*.7*(1.+.12*sin(T*7.54));}
- return o;}
 void main(){
  vec2 fc=gl_FragCoord.xy;
  vec2 uv=(fc-St.xy)/St.z;
@@ -267,7 +245,6 @@ void main(){
   for(int i=0;i<MARCH;i++){float d=map(ro+rd*t);md=min(md,d/pf);if(d<.0006){hit=true;break;}t+=d*.9;if(t>tm)break;}
   if(hit)Lg=glass(ro+rd*t,rd);
   else Lg+=mix(vec3(.55,.45,1.),vec3(1.,.5,.8),uWorld)*(1.-smoothstep(0.,1.4,md))*.35*B.z;}
- if(abs(lu-GR)*px<48.){${GLINTS}}
  Lg*=1.-smoothstep(LF0,LF1,lu);
  vec3 lit=pow(max(1.-exp(-Lg*(1.15+.5*B.w)),0.),vec3(.4545));
  vec3 col=1.-(1.-NIGHT)*(1.-lit);
@@ -282,7 +259,7 @@ type Key = "soft" | "aud" | "bead" | "flip" | "spin";
 /* sw: the tween runs on the switch clock (ms), else on wall time (performance.now()). */
 type Tween = { k: Key; to: number; dur: number; st: number; ease: Ease; from: number | null; sw: boolean };
 type M3 = number[];
-const UNIFORMS = ["St", "T", "M", "uWorld", "A", "B", "C", "E", "R", "G", "uAt"] as const;
+const UNIFORMS = ["St", "T", "M", "uWorld", "A", "B", "C", "E", "R", "uAt"] as const;
 type Uni = (typeof UNIFORMS)[number];
 type Prog = { pr: WebGLProgram; fs: WebGLShader; tier: TierName; at: number; ok?: boolean; U: Partial<Record<Uni, WebGLUniformLocation | null>> };
 
@@ -504,8 +481,7 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
     });
   }
 
-  /* Animation state. At mount it is REST: no flip or spin, focus, pointer, pulse, sweep, trail 0; the glints at
-     REST_AGENTS. */
+  /* Animation state. At mount it is REST: no flip or spin, focus, pointer, pulse, sweep, trail 0. */
   const clk = () => performance.now();
   const V = { soft: 0, aud: 0, bead: BEAD_REST_RAD[opts.audience], kick: 0, focus: 0, flip: 0, spin: 0, pulse: 0, pr: 1.5, fT: 0, px: 0, py: 0, tx: 0, ty: 0 };
   /* The switch clock (ms; ?skyslow stretches the tweens on it, and switchMs reports it divided by the slow factor):
@@ -532,9 +508,6 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
   let aud: Audience = opts.audience;
   let launchT = -1e9, launching = false, comet = 0;
   let launchTimer: ReturnType<typeof setTimeout> | undefined, relT: ReturnType<typeof setTimeout> | undefined;
-  /* The glints: lv eased toward agT (setAgents), wk the working index (agW its target). */
-  const lv = Float32Array.from(REST_AGENTS.levels), agT = Float32Array.from(REST_AGENTS.levels);
-  let wk = -1, agW = REST_AGENTS.working;
   /** THE SWITCH, LOCKED (SWITCH; HEAD's setAud): jump sets material, tint and bead at once (a running flip lands
       on its target, none starts); otherwise flip +π about the diagonal, the material, the tint, the bead −π and
       the flash, all from this instant on the switch clock. */
@@ -586,9 +559,8 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
     g.uniform4f(U.A!, V.soft, V.aud, V.bead - V.kick, f);
     g.uniform4f(U.B!, V.pulse, V.pr, REST.intro, flash + lfl * 0.8);
     g.uniform4f(U.C!, 0, launching && cm > 0 && cm < 1 ? comet : 0, rimW, f * 0.5 + flash * 0.8 + lfl + introFl + 0.12 * Math.sin(tr * 1.1) * Math.sin(tr * 0.37));
-    g.uniform4f(U.E!, trail, gs < 1 ? REST.glare * (1 - eio(gs)) : ls2 > 0 && ls2 < 1 ? 1.1 - 2.4 * eio(ls2) : 0, kpx, held ? -1 : wk);
+    g.uniform4f(U.E!, trail, gs < 1 ? REST.glare * (1 - eio(gs)) : ls2 > 0 && ls2 < 1 ? 1.1 - 2.4 * eio(ls2) : 0, kpx, 0);
     g.uniform4f(U.R!, pres, rad(dIn), rad(dOut), atlasPx ? 0.5 / atlasPx : 0.5);
-    g.uniform1fv(U.G!, lv);
     if (DBG) dbg();
     g.drawArrays(g.TRIANGLES, 0, 3);
   }
@@ -599,9 +571,6 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
     tr += dt;
     sc += dt * sstep(0, SWAY_IN_S, tr);
     V.focus += (V.fT - V.focus) * (1 - Math.exp(-dt * FOCUS.rate));
-    const e8 = 1 - Math.exp(-8 * dt);
-    for (let i = 0; i < lv.length; i++) lv[i] += ((launching ? 1 : agT[i]) - lv[i]) * e8;
-    wk = launching ? -1 : agW;
     if (atlasPx && atlasP < 1) atlasP = Math.min(1, atlasP + dt / 0.4);
     V.px += (V.tx - V.px) * (1 - Math.exp(-dt * 2)); V.py += (V.ty - V.py) * (1 - Math.exp(-dt * 2));
     V.pulse *= Math.exp(-dt * 1.8); V.pr += dt * 1.25;
@@ -730,7 +699,7 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
     clearTimeout(relT);
     want = forced ?? initTier; stepDpr = steps[0].dpr;
     if (drawn) resize();
-    if (stopped()) { lv.set(agT); wk = agW; redraw(); }
+    if (stopped()) redraw();
     sync();
   }
   function fail(r: FailReason) {
@@ -775,7 +744,7 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
     const d: EclipseDebug & { bead0: number } = {
       running: running(), held, tier: cur?.tier ?? restTier, dpr: kpx, fps: Math.round(fps * 10) / 10, step: stepI,
       facing: r3(Math.abs(mat[8])), flip: r3(V.flip - flipFrom), soft: r3(V.soft), aud: r3(V.aud), bead: r3(V.bead),
-      switchMs: Math.round(swc / SLOW), comet: r3(comet), levels: Array.from(lv, r3), working: held ? -1 : wk,
+      switchMs: Math.round(swc / SLOW), comet: r3(comet),
       rings: [r3(pres), r3(dIn), r3(dOut)], bead0: r3(beadFrom),
     };
     W[SKY_DEBUG.state] = d;
@@ -808,25 +777,17 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
       release();
       launchT = clk();
       launching = true;
-      lv.fill(1); wk = -1;
       tween("spin", V.spin + TAU, LAUNCH.spinMs, 0, eio, false);
       clearTimeout(launchTimer);
       launchTimer = setTimeout(() => {
         launchTimer = undefined; launching = false; comet = 0;
-        if (stopped()) { lv.set(agT); wk = agW; redraw(); }
+        if (stopped()) redraw();
       }, LAUNCH.allLitMs * SLOW);
       if (DBG) dbg();
     },
     setPaused(p) { paused = p; sync(); },
     resize,
     release,
-    setAgents(s) {
-      if (destroyed) return;
-      for (let i = 0; i < agT.length; i++) agT[i] = s.levels[i] ?? REST_AGENTS.levels[i];
-      agW = s.working;
-      if (stopped() && !launching) { lv.set(agT); wk = agW; redraw(); }
-      if (DBG && drawn) dbg();
-    },
     setTier(t) {
       if (destroyed) return;
       forced = t; locked = true;

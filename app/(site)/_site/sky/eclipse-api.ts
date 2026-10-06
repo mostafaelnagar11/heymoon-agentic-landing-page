@@ -12,8 +12,8 @@
    The shader's uv is (fragment − stage centre) / (S/2), y up: a radius of k S is 2k in uv.
 
    Waves. WAVE 1 (plan item 6, "no flat star, ever") is built (2eab75a). WAVE 2 (HERO-V2 "Wave 2 plan", after
-   Mostafa's sketch of the hero's right side, 5 Oct) builds items 1 (agents read: glints on both audiences, the
-   agent card on brands only), 2 (focus faces the visitor; the glow behind the field; no spill), 3 (phone), 5
+   Mostafa's sketch of the hero's right side, 5 Oct) builds items 1 (agents read: the agent card on brands only; the
+   rim glints were removed on 6 Oct), 2 (focus faces the visitor; the glow behind the field; no spill), 3 (phone), 5
    (performance) and 9 (the creator rings, brands only). DEFERRED (Mostafa: "this is only for brands, for
    influencers we will do something else"): item 4 (the creators material) and item 7's cut wedge. LOCKED: the
    switch animation (SWITCH), exactly as HEAD's eclipse.ts setAud and the prototype. The members wave 2 made
@@ -23,7 +23,6 @@ import type { AgentName, Audience } from "../data/types";
 
 export type { Audience };
 
-const rad = (deg: number) => (deg * Math.PI) / 180;
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const sstep = (a: number, b: number, x: number) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 
@@ -62,8 +61,7 @@ export function swayAt(t: number): { yaw: number; pitch: number; roll: number } 
     Pose = swayAt(0) (yaw −0.0611, pitch 0.2289, roll 0), no flip or spin, focus 0, pointer 0, pulse 0,
     sweep 0, trail 0, flash 0, energy 0, intro fully lit (the corona never starts dimmed), the glare band at its
     start offset, shader time 0, the bead at BEAD_REST_RAD.
-    WAVE 2 adds to the resting frame: the seven glints at REST_AGENTS (all LEVEL.idle, nobody working) on both
-    audiences, and the creator rings at drift 0 (ringAngle(slot, 0)) with presence ringsPresence(audience) (1 on
+    WAVE 2 adds to the resting frame the creator rings at drift 0 (ringAngle(slot, 0)) with presence ringsPresence(audience) (1 on
     brands, 0 on creators: the creators frame has no rings). */
 export const REST = {
   ...swayAt(0),
@@ -338,56 +336,14 @@ export const PHONE_STAGE = { max: 240, min: 120, vw: 0.62, clearPx: 8 } as const
 export const phoneS = (vw: number, row: number): number =>
   Math.max(PHONE_STAGE.min, Math.min(PHONE_STAGE.max, PHONE_STAGE.vw * vw, (row - PHONE_STAGE.clearPx) / (2 * CLUSTER_R)));
 
-/* ── Agents on the ring (WAVE 2, item 1; glints on both audiences) ── */
+/* ── The agents (WAVE 2, item 1) ── */
 
-/** AGENTS order; equals DEMO.agents (assert it where both are in scope). Glint index i is this order. */
+/** AGENTS order; equals DEMO.agents (assert it where both are in scope). */
 export const AGENT_ORDER: readonly AgentName[] = [
   "MoonShot AI", "MoonMatch AI", "MoonSearch AI", "MoonWriter AI", "MoonLive AI", "MoonScore AI", "MoonLearning AI",
 ];
-/** Glint angles on the rim, FIXED (they do not travel with the bead), clockwise from the top in AGENT_ORDER: four in
-    the lower inline-end notch (−20 to −71, 17° apart) and three in the upper inline-start notch (160 to 126). Every
-    glint is ≥ 19° from an arm's centre (≥ 11° clear of its ±7.8° crossing) and ≥ 65° from the bead's resting
-    angles (45.8° brands, 225.8° creators), so the locked switch keeps its bead and every glint stays readable. The
-    bead passes over the lower four on the way to creators and over the upper three on the way back. */
-export const GLINT_DEG: Readonly<Record<AgentName, number>> = {
-  "MoonShot AI": -20, "MoonMatch AI": -37, "MoonSearch AI": -54, "MoonWriter AI": -71,
-  "MoonLive AI": 160, "MoonScore AI": 143, "MoonLearning AI": 126,
-};
-/** Never work in any stream (demo.json), so never shown on the card and never at the working level. */
+/** Never work in any stream (demo.json), so never shown on the card. */
 export const NEVER_WORKS: readonly AgentName[] = ["MoonLive AI", "MoonLearning AI"];
-
-/** A glint's centre in stage units (0..1, y down). */
-export function glintPoint(name: AgentName): { x: number; y: number } {
-  const t = rad(GLINT_DEG[name]);
-  return { x: 0.5 + RING * Math.cos(t), y: 0.5 - RING * Math.sin(t) };
-}
-/** A glint's centre in the shader's uv (y up, 1 = S/2). The renderer bakes these as GLSL literals: a negative
-    literal must be emitted in parentheses, never after a minus (`ph-(-0.349)`, not `ph--0.349`: GLSL reads `--` as
-    the decrement operator, which is the compile error that killed WebGL on the stopped wave-2 tree). */
-export function glintUv(name: AgentName): [number, number] {
-  const t = rad(GLINT_DEG[name]);
-  return [2 * RING * Math.cos(t), 2 * RING * Math.sin(t)];
-}
-
-/** Glint levels (HERO-V2 §5.3, review M8: typing never reaches the working level). Subtle but visible: idle and
-    waiting read as faint points on the rim, working as a lit point with four short spikes (A-A7). */
-export const LEVEL = { idle: 0.42, waiting: 0.18, working: 1, landed: 0.55, reduced: 0.55, typingMax: 0.82 } as const;
-/** Typing: each keystroke wakes the next glint in ring order (plan item 1); `typed` = the hero field's length. */
-export const typingLevel = (i: number, typed: number): number =>
-  LEVEL.waiting + (LEVEL.typingMax - LEVEL.waiting) * Math.min(1, Math.max(0, typed - i));
-/** levels: 7 values in AGENT_ORDER; working: the index whose agent works now, or −1 (drives spikes and shimmer,
-    never inferred from a level). */
-export interface AgentStates { levels: readonly number[]; working: number }
-const all = (v: number): AgentStates => ({ levels: AGENT_ORDER.map(() => v), working: -1 });
-/** The resting frame's glints (first paint, the poster, before the replay arms, no-JS). */
-export const REST_AGENTS: AgentStates = /*#__PURE__*/ all(LEVEL.idle);
-/** While the visitor types (the hero field focused or holding text): `typed` chars light glints 0..typed−1. */
-export const typingAgents = (typed: number): AgentStates => ({ levels: AGENT_ORDER.map((_, i) => typingLevel(i, typed)), working: -1 });
-/** A valid submit (and the dawn): every glint at 1. The renderer forces this itself in launch(). */
-export const LAUNCH_AGENTS: AgentStates = /*#__PURE__*/ all(1);
-/** A DOM glint dot's opacity over the poster while GL is off (W2-5): the poster already bakes REST_AGENTS, so a dot
-    only adds light above idle: 0 at idle or below, 1 at working. */
-export const dotOpacity = (level: number): number => clamp01((level - LEVEL.idle) / (LEVEL.working - LEVEL.idle));
 
 /* ── The replay: the read at its real pace (WAVE 2, item 1; HERO-V2 §5.1, §5.2) ── */
 
@@ -435,21 +391,6 @@ export function replayAt(r: Replay, ms: number): { item: ReplayItem; landed: boo
   for (const it of r.items) if (it.startMs <= ms) cur = it;
   return cur ? { item: cur, landed: ms >= cur.landMs } : null;
 }
-/** The seven levels at `ms` into the cycle: the working agent at LEVEL.working; agents that worked earlier in
-    this cycle at landed; the rest (NEVER_WORKS always) at waiting. Through the hold and the rest nobody works and
-    the landed set stays; the next cycle starts from waiting again. */
-export function statesAt(r: Replay, ms: number): AgentStates {
-  const levels: number[] = AGENT_ORDER.map(() => LEVEL.waiting);
-  let working = -1;
-  for (const it of r.items) {
-    if (it.index < 0 || it.startMs > ms) continue;
-    if (ms < it.landMs) working = it.index;
-    else levels[it.index] = LEVEL.landed;
-  }
-  if (working >= 0) levels[working] = LEVEL.working;
-  return { levels, working };
-}
-
 /* ── The poster (WAVE 1): files written by scripts/hero-poster.cjs, shown by sky/EclipsePoster.tsx ── */
 
 /** Poster box side, in S, centred on the stage (CSS: inset −50% on the stage). The cluster (CLUSTER_R 0.629) is
@@ -529,7 +470,7 @@ export const MAX_REMOUNTS = 2;
 
 /* ── Submit (WAVE 2, item 1) ── */
 
-/** A valid submit (launch()): the full turn (spinMs, ease-in-out-cubic, as HEAD), all seven glints at 1 for allLitMs,
+/** A valid submit (launch()): the full turn (spinMs, ease-in-out-cubic, as HEAD), held as launching for allLitMs,
     and the comet once round the ring from the bead, clockwise, over COMET_MS, ease-out-cubic from the press, so it
     lands before the 450 ms dawn navigates (review M2). */
 export const COMET_MS = 300;
@@ -609,11 +550,11 @@ export type FailReason = "nogl" | "link" | "atlas" | "lost" | "gaveup";
 export interface EclipseDebug {
   running: boolean; held: boolean; tier: TierName; dpr: number; fps: number; step: number;
   facing: number; flip: number; soft: number; aud: number; bead: number; switchMs: number;
-  comet: number; levels: readonly number[]; working: number; rings: readonly [number, number, number];
+  comet: number; rings: readonly [number, number, number];
 }
 /** The debug globals (the renderer sets them only under ?skydebug or on the dev server, and deletes them on
     destroy). state: window.__sky (EclipseDebug); handle: window.__skyHandle, the live EclipseHandle, so a verifier
-    can drive setAgents / setTier / launch before the packages that call them have landed. slow: ?skyslow=N multiplies
+    can drive setTier / launch before the packages that call them have landed. slow: ?skyslow=N multiplies
     every switch duration and delay (SWITCH) and the launch's (LAUNCH, COMET_MS) by N, for frame captures only. */
 export const SKY_DEBUG = { param: "skydebug", state: "__sky", handle: "__skyHandle", slow: "skyslow" } as const;
 
@@ -640,9 +581,9 @@ export interface EclipseHandle {
   setAudience(a: Audience, instant?: boolean): void;
   /** Focus 1 turns the star to face the visitor (FOCUS); focus 0 is REST's pose. */
   setFocus(on: boolean): void;
-  /** A keystroke: the ripple and the bead kick (the glints come from setAgents). */
+  /** A keystroke: the ripple and the bead kick. */
   pulse(): void;
-  /** A valid submit: the full turn, all seven glints at 1, the comet once round the ring over COMET_MS. */
+  /** A valid submit: the full turn and the comet once round the ring over COMET_MS. */
   launch(): void;
   setPaused(p: boolean): void;
   resize(): void;
@@ -652,9 +593,6 @@ export interface EclipseHandle {
       animated input (pulse, launch, setFocus(true), an animated setAudience) releases it first. Wave-2 setters
       called while held are stored and take effect after release (the held frame never changes). */
   release(): void;
-  /** WAVE 2 (item 1): the seven glint levels and the working index, from hero/Agents.tsx. The renderer eases each
-      level toward its target (1 − e^(−8 dt)); a stopped loop redraws once. */
-  setAgents(s: AgentStates): void;
   /** WAVE 2 (item 5): force a tier (debug and tests); the swap happens when the new program has linked. */
   setTier(t: TierName): void;
 }
@@ -663,19 +601,14 @@ export interface EclipseHandle {
 
 /** Agents' props. Refs are plain { current } objects (React's RefObject fits). EclipseSky mounts <Agents> as the
     .stage element's SIBLING (outside .stage, inside the hero section), so the card's containing block is the sticky
-    hero section; the DOM glint dots go into the stage through a portal on props.stage. Agents runs its clock on every
-    viewport while motion is allowed (the glints light in turn on phones and on creators too) and renders the card
-    only under CARD_MQ, on CARD_AUDIENCE, with `card` true. */
+    hero section. Agents runs its clock while motion is allowed and renders the card only under CARD_MQ, on
+    CARD_AUDIENCE, with `card` true. */
 export interface AgentsProps {
-  /** The .stage element: in view, uncovered and the like are measured on it; the dots are portalled into it. */
+  /** The .stage element: in view, uncovered and the like are measured on it; the card is placed against it. */
   stage: { readonly current: HTMLElement | null };
-  /** The live renderer, or null while GL is off (poster only). */
-  handle: { readonly current: EclipseHandle | null };
-  /** True while the stage says data-gl="on": Agents sends setAgents only then (the poster's glints rest at idle). */
-  gl: boolean;
-  /** Changes whenever a new renderer is mounted (a remount after a lost context), so Agents re-sends its state. */
+  /** Changes whenever a new renderer is mounted (a remount after a lost context), so Agents measures the stage again. */
   mountKey: number;
-  /** Gate G10 (Hero.tsx G10_SIGNED): false renders no card at any size; the glints still light. */
+  /** Gate G10 (Hero.tsx G10_SIGNED): false renders no card at any size. */
   card: boolean;
 }
 /** The card's DOM, for verifiers (A-A). The card root carries data-agent-card, aria-hidden, data-agent (the

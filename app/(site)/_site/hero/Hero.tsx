@@ -30,7 +30,7 @@ const HERO_VARIANT = "eclipse" as "eclipse" | "horizon";
 
 /** Gate G10 (ruling 34): the read replayed on the hero. On the eclipse hero that is the agent card (hero/Agents.tsx,
     brands only, at CARD_MQ), which replaces the toasts; on the horizon hero, the toasts. Refused → set false: no
-    card and no toast is ever mounted (or loaded) and nothing else changes; the glints still light. */
+    card and no toast is ever mounted (or loaded) and nothing else changes. */
 const G10_SIGNED: boolean = true;
 /** The toast lanes exist at ≥1024 only. Below that the chunk is never even requested. */
 const TOAST_MQ = `(min-width: ${TOAST.minWidth}px)`;

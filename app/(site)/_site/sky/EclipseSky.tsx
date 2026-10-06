@@ -4,7 +4,7 @@
    DOM: a wrapper (rowClassName: the phone layout's star row; display: contents on the split) holding .stage, the
    star's box. Inside the stage, in paint order: the GL canvas (the 2 S poster box, CANVAS_BOX, V4) and the poster
    (EclipsePoster, the same box). <Agents> (hero/Agents.tsx, lazy) is the wrapper's SIBLING, so the sticky hero
-   section is the agent card's containing block; its glint dots go into the stage through a portal.
+   section is the agent card's containing block.
 
    First paint: the poster, a frame of the real WebGL glass at its resting pose, server-rendered inside the stage.
    It is also the whole render under reduced motion, without JS, without WebGL, with Save-Data or ?sky=css, and
@@ -47,7 +47,7 @@ function glAllowed(): boolean {
   return !saveData || sky === "gl";
 }
 
-/* The agents (glints and, on brands at CARD_MQ, the card): client only, its own chunk, off the first load. */
+/* The agents (on brands at CARD_MQ, the card): client only, its own chunk, off the first load. */
 const Agents = dynamic(() => import("../hero/Agents").then((mod) => mod.Agents), { ssr: false });
 
 /* One request for the renderer chunk, started at module evaluation; a failed request can be retried. */
@@ -201,7 +201,7 @@ export function EclipseSky({ stageClassName = "", rowClassName = "", card = fals
           <EclipsePoster ref={posterRef} audience={audience} />
         </div>
       </div>
-      <Agents stage={stageRef} handle={handleRef} gl={ready} mountKey={mountKey} card={card} />
+      <Agents stage={stageRef} mountKey={mountKey} card={card} />
     </>
   );
 }

@@ -84,3 +84,9 @@ set side by side (Geist, Outfit, Sora, Urbanist, Readex Pro, Space Grotesk, Unbo
 wordmark is Sora SemiBold at -0.03em everywhere it appears: the landing's nav and footer, the giant dotted
 "HeyMoon" under the footer, and both product apps. Only the logo changes: every other line stays in Geist (landing)
 or Figtree (apps). The font ships as a 1.2 kB subset of the ten glyphs in "HeyMoon.AI".
+
+**No glints on the rim (6 Oct).** "The stars around the eclipse can you remove it keep only the big shiny one": the seven
+agent glints fixed on the rim (one per agent, lit in turn by the agent clock, by typing and on submit) are gone from
+the shader, the renderer's state, the DOM fallback dots and the contract (GLINT_DEG, LEVEL, REST_AGENTS, setAgents).
+The diamond-ring bead is the rim's only star. The agent card, the bead's switch travel, the submit turn and the comet
+are unchanged. Posters re-rendered.

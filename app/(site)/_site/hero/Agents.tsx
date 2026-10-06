@@ -3,16 +3,13 @@
    .stage element's sibling inside the hero section, with the contract's AgentsProps (sky/eclipse-api.ts).
 
    One agent clock (V11): the audience's read (DEMO[a].read, verbatim, through replayOf) replayed at its real pace on
-   lib/timeline, which renders on mark crossings only. It drives:
-   - the seven glints on the rim (statesAt; typingAgents while the visitor types; LAUNCH_AGENTS on a valid submit;
-     REST_AGENTS before the clock arms), sent to the renderer (setAgents) while GL draws, or drawn as DOM dots over the
-     poster (portalled into the stage) while GL is off and motion is allowed. Both audiences, every viewport.
-   - THE AGENT CARD (Mostafa's sketch, BRANDS ONLY, gate G10, CARD_MQ): one dark glass row at the hero's bottom right
-     on the nav box's end edge: the moon-dot glyph, the working agent's name in Geist Mono caps and its stream note,
-     verbatim, cut with an ellipsis. It changes in place by an opacity crossfade and never moves or resizes.
+   lib/timeline, which renders on mark crossings only. It drives THE AGENT CARD (Mostafa's sketch, BRANDS ONLY, gate
+   G10, CARD_MQ): one dark glass row at the hero's bottom right on the nav box's end edge: the moon-dot glyph, the
+   working agent's name in Geist Mono caps and its stream note, verbatim, cut with an ellipsis. It changes in place by
+   an opacity crossfade and never moves or resizes. (The seven glints the clock also lit on the rim were removed on
+   6 Oct: Mostafa, "keep only the big shiny one".)
    Nothing here is announced: the card is aria-hidden and there is no live region. */
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, useMotionValueEvent, useTransform } from "motion/react";
 import * as m from "motion/react-m";
 import { DEMO } from "../data/demo";
@@ -27,9 +24,8 @@ import { els, useSignal } from "../lib/signals";
 import { useTimeline } from "../lib/timeline";
 import { Moon } from "../ui/Moon";
 import {
-  AGENT_ORDER, AGENTS_DOM, CARD2, CARD_AUDIENCE, CARD_MQ, LAUNCH_AGENTS, LEVEL, REPLAY, REST_AGENTS, SWITCH,
-  dotOpacity, glintPoint, replayAt, replayOf, statesAt, typingAgents,
-  type AgentStates, type AgentsProps, type Replay, type ReplayItem,
+  AGENT_ORDER, AGENTS_DOM, CARD2, CARD_AUDIENCE, CARD_MQ, REPLAY, SWITCH, replayAt, replayOf,
+  type AgentsProps, type Replay, type ReplayItem,
 } from "../sky/eclipse-api";
 import s from "./agents.module.css";
 
@@ -37,19 +33,10 @@ if (process.env.NODE_ENV !== "production" && DEMO.agents.some((a, i) => a.name !
   console.error("Agents: AGENT_ORDER (eclipse-api.ts) differs from DEMO.agents");
 }
 
-/** A switch: every glint waits until the new audience's opener (HERO-V2 §7). */
-const WAITING: AgentStates = { levels: AGENT_ORDER.map(() => LEVEL.waiting), working: -1 };
-/** The DOM glints' halo ("r g b"): the renderer's corona tint on brands and on creators. */
-const TINT: Readonly<Record<Audience, string>> = { brands: "158 128 255", creators: "255 115 184" };
-/** A level as compared for a re-send ("1", "0.55"): no float noise. */
-const fmt = (v: number): string => String(Math.round(v * 1000) / 1000);
 /** The run each item belongs to (consecutive items of one agent share a run): the card's row crossfades only when the
     run changes, and inside a run only the note does. */
 const runsOf = (r: Replay): number[] =>
   r.items.reduce<number[]>((acc, it, k) => { acc.push(k === 0 ? 0 : acc[k - 1] + (it.agent !== r.items[k - 1].agent ? 1 : 0)); return acc; }, []);
-/** The hero field's length: what typingAgents lights. */
-const heroLength = (field?: Element | null): number =>
-  (els.heroInput ?? field?.querySelector("input") ?? null)?.value.length ?? 0;
 /** The card's in-place crossfade: opacity only, never a transform. */
 const FADE = { duration: 0.2, ease: EASE.out };
 /** The card's presence: in with the opener, out on a switch to creators, both over SWITCH.textOutMs. */
@@ -72,14 +59,14 @@ function useTail(on: boolean, ms: number): boolean {
   return tail && !on;
 }
 
-export function Agents({ stage, handle, gl, mountKey, card }: AgentsProps) {
+export function Agents({ stage, mountKey, card }: AgentsProps) {
   const { audience } = useAudience();
   const { dawn } = useWorld();
   const reduced = useReducedMotionPref();
   const wide = useMediaQuery(CARD_MQ);
 
-  /* The audience whose read is replayed. It lags the urgent one on a switch, as the toasts did: every glint waits,
-     the card (brands only) fades out, and SWITCH.replayAfterMs later the new queue starts from its opener. */
+  /* The audience whose read is replayed. It lags the urgent one on a switch, as the toasts did: the card (brands
+     only) fades out, and SWITCH.replayAfterMs later the new queue starts from its opener. */
   const [shown, setShown] = useState<Audience>(audience);
   const switching = shown !== audience;
   const replay = useMemo(() => replayOf(DEMO[shown].read), [shown]);
@@ -104,23 +91,17 @@ export function Agents({ stage, handle, gl, mountKey, card }: AgentsProps) {
   const [dawning, setDawning] = useState(() => dawn.get() > 0);
   useMotionValueEvent(dawn, "change", (v) => setDawning(v > 0));
 
-  /* The hero field: its length (each keystroke wakes the next glint) and a valid submit (data-going). */
-  const [typed, setTyped] = useState(0);
+  /* The hero field's valid submit (data-going): the clock freezes. */
   const [going, setGoing] = useState(false);
   useEffect(() => {
     const field = els.heroField ?? document.querySelector<HTMLElement>('[data-field="hero"]');
     if (!field) return;
-    const onInput = () => setTyped(heroLength(field));
     const onAttr = () => setGoing(field.dataset.going === "true");
-    onInput();
     onAttr();
     const mo = new MutationObserver(onAttr);
     mo.observe(field, { attributes: true, attributeFilter: ["data-going"] });
-    field.addEventListener("input", onInput);
-    return () => { mo.disconnect(); field.removeEventListener("input", onInput); };
+    return () => mo.disconnect();
   }, []);
-  /* A switch swaps the field's draft with no input event: read it again. */
-  useEffect(() => { setTyped(heroLength()); }, [audience, hasText]);
 
   /* The clock. It freezes off screen, in a hidden tab, under the nav pause (useActive), under the sheet, while the
      visitor types, during a switch, on a submit and on the dawn; it resumes where it stopped. */
@@ -136,20 +117,6 @@ export function Agents({ stage, handle, gl, mountKey, card }: AgentsProps) {
   useEffect(() => { restart(); }, [restart]);
   const at = mark < 0 ? -1 : marks[Math.min(mark, marks.length - 1)];
 
-  /* The seven levels and the working index (HERO-V2 §5.3), sent in the commit (a layout effect), so a verifier's
-     MutationObserver on the card already sees the renderer agree. */
-  const states: AgentStates = going || dawning ? LAUNCH_AGENTS
-    : typing ? typingAgents(typed)
-    : !armed ? REST_AGENTS
-    : switching ? WAITING
-    : statesAt(replay, at);
-  const key = `${states.levels.map(fmt).join(",")}|${states.working}`;
-  const statesRef = useRef(states);
-  statesRef.current = states;
-  useIsoLayoutEffect(() => {
-    if (gl && !reduced) handle.current?.setAgents(statesRef.current);
-  }, [key, gl, mountKey, reduced, handle]);
-
   /* The card's content: the item at the clock; from the hold's end through the rest, the cycle's last item landed
      (its produces). Reduced motion: that landed item, static. Frozen (typing, the pause, a submit), the clock is
      too, so the text holds and only the glyph comes to rest. */
@@ -157,13 +124,12 @@ export function Agents({ stage, handle, gl, mountKey, card }: AgentsProps) {
   const cur = reduced || at >= replay.holdEndMs ? (last ? { item: last, landed: true } : null) : replayAt(replay, at);
   const cardOn = card && wide && audience === CARD_AUDIENCE && shown === CARD_AUDIENCE && (reduced || armed) && cur !== null;
 
-  /* The stage, for the DOM glints' portal (the ref is set before this lazy chunk mounts). */
+  /* The stage, which the card is placed against (the ref is set before this lazy chunk mounts). */
   const [host, setHost] = useState<HTMLElement | null>(null);
   useIsoLayoutEffect(() => { setHost(stage.current); }, [stage, mountKey]);
 
   return (
     <>
-      {host && !gl && !reduced && createPortal(<Dots states={states} tint={TINT[audience]} />, host)}
       <AnimatePresence initial={!reduced}>
         {cardOn && cur && (
           <AgentCard
@@ -256,31 +222,3 @@ function AgentCard({ stage, item, landed, working, row, reduced }: {
     </m.div>
   );
 }
-
-/** The DOM glints while GL is off (motion allowed): one per agent at glintPoint, drawn as the GL glint is (HERO-V2
-    §4.4): a white core of about 2 px and a tint halo of about 5 px at dotOpacity(level) (the poster already shows
-    REST_AGENTS), and on the working agent four spikes of 0.035 S. Inline styles: the layer exists only after
-    hydration, so none of it is first-paint CSS. */
-function Dots({ states, tint }: { states: AgentStates; tint: string }) {
-  const halo = `radial-gradient(closest-side, #fff 1.2px, rgb(${tint} / .9) 2.4px, rgb(${tint} / .33) 5px, rgb(${tint} / .1) 10px, transparent)`;
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0" style={{ zIndex: 1 }}>
-      {AGENT_ORDER.map((name, i) => {
-        const p = glintPoint(name), at = { left: `${p.x * 100}%`, top: `${p.y * 100}%` };
-        const spike = i === states.working ? 0.85 : 0;
-        return (
-          <Fragment key={name}>
-            <i data-glint={name} data-w={i === states.working ? "" : undefined} style={{ ...DOT, ...at, background: halo, opacity: fmt(dotOpacity(states.levels[i])) }} />
-            <i style={{ ...RAY, ...at, opacity: spike, width: SPIKE, height: 1, background: `linear-gradient(90deg, ${RAY_FADE})` }} />
-            <i style={{ ...RAY, ...at, opacity: spike, width: 1, height: SPIKE, background: `linear-gradient(${RAY_FADE})` }} />
-          </Fragment>
-        );
-      })}
-    </div>
-  );
-}
-const DOT: CSSProperties = { position: "absolute", width: 32, height: 32, margin: -16, transition: "opacity .3s" };
-const RAY: CSSProperties = { position: "absolute", translate: "-50% -50%", transition: "opacity .3s" };
-const RAY_FADE = "transparent, #fff, transparent";
-/** A spike's full length: 2 × 0.035 S, as a percentage of the stage (the layer is the stage's box). */
-const SPIKE = "7%";
