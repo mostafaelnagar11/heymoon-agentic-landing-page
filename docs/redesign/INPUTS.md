@@ -103,4 +103,6 @@ only (row 1 keeps "Every campaign is built to generate sales."). H2 "Miss the RO
 (the product's own line is "Miss the number? HeyMoon pays the difference.", lib/i18n landing.v2t; PlanCard: under the
 floor, HeyMoon pays the difference and the brand still banks the guaranteed figure). The figure is an example worked
 from DEMO's guarantee: a close at 4.3x instead of 5x on $12,500 makes $53,750, so HeyMoon pays $9,300 of the
-$63,050, labelled "An example, not a forecast." The promo headlines are one line each at one shared size.
+$63,050, labelled "An example, not a forecast." Same day, "remove this and bring this bar above": the "Paid by HeyMoon" eyebrow and the
+$9,300 figure are gone; the bar and its legend lead the column, then "HeyMoon pays the rest of the $63,050 it
+guaranteed, if the campaign closes at 4.3x instead of 5x." The promo headlines are one line each at one shared size.
