@@ -32,6 +32,8 @@ const Footer = dynamic(() => import("./close/Footer").then((m) => m.Footer));
 /* Client-only: the launcher shows after 4s or a first scroll and does nothing without JS, so its markup
    and its stylesheet stay off the first paint (lead ruling 5 Oct, the CSS budget). */
 const Promo = dynamic(() => import("./promo/Promo").then((m) => m.Promo), { ssr: false });
+/* The login dialog (lib/login.ts opens it): client-only, off the first load. */
+const LoginDialog = dynamic(() => import("./login/LoginDialog").then((m) => m.LoginDialog), { ssr: false });
 
 /** div.landing-root: data-dawn is set by startDawn(); relative; isolate. */
 function LandingRoot({ children }: { children: ReactNode }) {
@@ -51,6 +53,7 @@ export function Landing({ initial }: { initial: Audience }) {
               never reached it. The skip link still jumps past it, and it stays out of the Tab order while
               hidden. */}
           <Promo />
+          <LoginDialog />
           <main id="main" tabIndex={-1} className="outline-none">
             <LiftProvider /* owns heroExit: LiftTrack AND Sheet must both be inside it */>
               <LiftTrack>

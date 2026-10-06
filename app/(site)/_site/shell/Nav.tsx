@@ -12,6 +12,7 @@ import { inertProp } from "../lib/iso";
 import { Wordmark } from "../ui/Wordmark";
 import { AudienceSwitch } from "./AudienceSwitch";
 import { PauseToggle } from "./PauseToggle";
+import { openLogin } from "../lib/login";
 
 type Kind = "night" | "deep" | "paper";
 const kindOf = (el: Element | null): Kind | null => {
@@ -201,6 +202,8 @@ export function Nav() {
         </span>
         <a
           href={copy.dashboardHref}
+          onClick={(e) => { e.preventDefault(); openLogin(e.currentTarget); }}
+          aria-haspopup="dialog"
           className={`inline-flex h-10 items-center rounded-pill text-small font-medium transition-colors duration-[250ms] max-md:group-data-[at-hero=false]:hidden ${
             startShown
               ? `px-2 ${night ? "text-white/72 hover:text-white" : "text-ink/72 hover:text-ink"}`

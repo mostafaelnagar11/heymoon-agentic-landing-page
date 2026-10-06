@@ -23,6 +23,27 @@ export const SHARED = {
   stages: ["Intake", "Matching", "Safety", "Creative", "Activation", "Optimization", "Learning"],            // [A4]
   footerNav: "Site",                                                                                        // [v1]
   footerLinks: { brands: "Brands", creators: "Creators", dashboard: "Login" },                              // [CHANGE] Mostafa 5 Oct: "Login", as in the nav
+  /* The login dialog (Mostafa, 6 Oct: "login by country code + phone number and OTP"). [NEW] throughout, in the
+     product's own words where it has them (the creators AccountSheet). */
+  login: {
+    title: "Log in",
+    sub: "Your phone number is your account. HeyMoon texts a code to confirm it is you.",
+    country: "Country code",
+    phone: "Phone number",
+    send: "Send code",
+    invalid: (digits: number) => `Enter the ${digits} digits of your number.`,
+    codeTitle: "Enter the code",
+    sentTo: (num: string) => `Sent to ${num}.`,
+    change: "Change number",
+    resendIn: (t: string) => `Send a new code in ${t}`,
+    resend: "Send a new code",
+    demo: (code: string) => `Prototype: your code is ${code}.`,
+    wrong: "That code does not match. Try again.",
+    verify: "Log in",
+    done: "You are in. Opening your dashboard.",
+    close: "Close",
+    digit: (n: number) => `Digit ${n} of 6`,
+  },
 } as const;
 
 export const COPY = {

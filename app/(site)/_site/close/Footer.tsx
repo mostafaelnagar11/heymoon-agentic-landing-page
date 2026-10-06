@@ -5,6 +5,7 @@
    (ruling 30). Links to /brands and /creators are plain anchors with useAudienceLink (rule 2.4.11):
    a plain click switches in place, or scrolls to the top when it is already the audience. */
 import { useRef } from "react";
+import { openLogin } from "../lib/login";
 import type { FooterProps } from "../contracts";
 import type { Audience } from "../data/types";
 import { COPY } from "../copy";
@@ -40,7 +41,7 @@ export function Footer({}: FooterProps) {
           <nav aria-label={COPY.shared.footerNav} className={s.links}>
             <AudienceLink to="brands" />
             <AudienceLink to="creators" />
-            <a href={COPY[audience].nav.dashboardHref} className={LINK}>{COPY.shared.footerLinks.dashboard}</a>
+            <a href={COPY[audience].nav.dashboardHref} onClick={(e) => { e.preventDefault(); openLogin(e.currentTarget); }} aria-haspopup="dialog" className={LINK}>{COPY.shared.footerLinks.dashboard}</a>
           </nav>
         </div>
       </div>
