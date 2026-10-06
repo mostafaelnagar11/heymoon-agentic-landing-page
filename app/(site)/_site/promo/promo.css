@@ -114,7 +114,7 @@
 }
 
 /* The band: eyebrow and headline on lilac. */
-.pm-band { padding: 20px 24px 22px; text-align: center; background: var(--lilac); }
+.pm-band { padding: 20px 24px 22px; text-align: center; background: var(--lilac); container-type: inline-size; }
 .pm-eyebrow { display: block; }
 .pm-head {
   display: grid; margin-top: 8px;
@@ -123,10 +123,11 @@
 /* The headline takes focus on a user open so a screen reader lands on the dialog's name. It is not a
    control, so it draws no ring; the next Tab reaches the pill, which does. */
 .pm-head:focus, .pm-head:focus-visible { outline: none; }
-/* The band's full measure (Mostafa, 6 Oct: "make this in one line"): "Watch HeyMoon read a grid" (252px at
-   text-h3) sits on one line; "Watch five agents build a campaign" (326px) is wider than the band and breaks
-   into a balanced pair, so the band is one line taller on brands. */
-.pm-headText { display: block; text-wrap: balance; }
+/* One line on both audiences (Mostafa, 6 Oct: "make this in one line", then "make this also in one line").
+   At text-h3's 20px "Watch five agents build a campaign" is 16.3em wide, more than the band's 312px, so both
+   headlines share one size, 6% of the band's measure capped at 20px: 18.7px in the 360px card (305px of 312),
+   and smaller on a narrow phone. One size and one line each, so the band never changes height on a switch. */
+.pm-headText { display: block; white-space: nowrap; font-size: min(20px, 6cqi); }
 .pm-mask { display: block; overflow: clip; padding-block-end: .1em; margin-block-end: -.1em; }
 .pm-maskIn { display: block; }
 
