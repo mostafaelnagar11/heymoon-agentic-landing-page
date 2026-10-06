@@ -123,9 +123,10 @@
 /* The headline takes focus on a user open so a screen reader lands on the dialog's name. It is not a
    control, so it draws no ring; the next Tab reaches the pill, which does. */
 .pm-head:focus, .pm-head:focus-visible { outline: none; }
-/* Two lines, always: both headlines break into balanced pairs at this measure, so the band never
-   changes height on a switch ("Watch five agents / build a campaign", "Watch HeyMoon / read a grid"). */
-.pm-headText { display: block; max-width: 232px; margin-inline: auto; text-wrap: balance; }
+/* The band's full measure (Mostafa, 6 Oct: "make this in one line"): "Watch HeyMoon read a grid" (252px at
+   text-h3) sits on one line; "Watch five agents build a campaign" (326px) is wider than the band and breaks
+   into a balanced pair, so the band is one line taller on brands. */
+.pm-headText { display: block; text-wrap: balance; }
 .pm-mask { display: block; overflow: clip; padding-block-end: .1em; margin-block-end: -.1em; }
 .pm-maskIn { display: block; }
 
