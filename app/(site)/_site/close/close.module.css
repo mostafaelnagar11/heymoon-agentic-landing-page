@@ -33,14 +33,15 @@
   background: var(--ink); color: #fff;
 }
 
-/* Below 1024 the four store marks (about 445px with their gaps) no longer fit beside a 480px text
-   column, so the row stacks: text, then the marks on one line. On phone they take a 2x2 grid. */
-@media (max-width: 1023px) {
+/* Below 1105 the store marks and the +6 (about 530px with their gaps) no longer fit beside a 480px text
+   column, so the row stacks: text, then the marks on one line. On phone they take a 3-column grid
+   (Salla, Zid, Shopify over Magento and the +6), with 32px gaps so the first row fits a 320px screen. */
+@media (max-width: 1104px) {
   .row { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 40px; }
 }
 @media (max-width: 639px) {
-  .marks { display: grid; grid-template-columns: repeat(2, max-content); justify-content: start;
-    align-items: center; column-gap: 48px; row-gap: 28px; }
+  .marks { display: grid; grid-template-columns: repeat(3, max-content); justify-content: start;
+    align-items: center; column-gap: 32px; row-gap: 28px; }
 }
 
 .row[data-armed] .rule { transform: scaleX(0); }

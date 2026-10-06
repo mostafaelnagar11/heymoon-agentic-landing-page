@@ -1,7 +1,7 @@
 "use client";
 /* Connects (SPEC §5.6, B11): the last row on the sheet. Text on the start side, the marks on the end
    side, one hairline above, no box. Brands: the four store marks from public/platforms, grey, at
-   their optical heights. Creators: the two platform squares, bound to DEMO.creators.platforms.
+   their optical heights, then a +6 circle. Creators: the two platform squares, bound to DEMO.creators.platforms.
    Plays once on entry (the hairline draws, the H2's words blur in, the rest rises); static by
    default, so no-JS and in-view-at-mount show the final state (rule 2.4.7). */
 import { useRef, type CSSProperties } from "react";
@@ -25,6 +25,8 @@ const STORES = [
   { key: "magento", name: "Magento", w: 329, h: 24 },
 ] as const;
 const NATURAL_H = 96;
+/* The platforms beyond these four (Mostafa, 6 Oct: "add +6 in a circle after magento"). */
+const MORE = 6;
 
 const PLATFORM_ICON: Record<Platform, typeof InstagramLogo> = { Instagram: InstagramLogo, TikTok: TiktokLogo };
 
@@ -49,6 +51,18 @@ function StoreMarks() {
           />
         </li>
       ))}
+      {/* The +6 takes the marks' own tone: .store's filter and opacity over ink text and an ink ring. The ring is
+          inline because the CSS budget has no room for a border-current rule (measure.cjs, css). */}
+      <li className={`${s.mark} ${s.rise}`} style={rise(STORES.length + 1)}>
+        <span
+          role="img"
+          aria-label={`and ${MORE} more store platforms`}
+          className={`${s.store} grid h-9 w-9 select-none place-items-center rounded-full text-small font-semibold leading-none text-ink`}
+          style={{ border: "1.5px solid currentColor" }}
+        >
+          +{MORE}
+        </span>
+      </li>
     </ul>
   );
 }
