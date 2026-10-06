@@ -75,5 +75,12 @@ named or described as HeyMoon creators). Every face circle now shows a different
 public/hero/creators file -> unsplash.com/photos/<id>:
 c11 ZBdKvfexoh0 · c12 f49XhYbpiA0 · c13 fLxvz8EjCoQ · c14 dvtRiyRaebk · c15 PuJlKSPNaS8 · c16 ctClE19woNI ·
 c17 1w9I6H4aftw · c18 lVhZ0aNzCWg · c19 ruWf1KGPPsY · c20 yQA11IaTA58 · c21 ny0LoUeptkI · c22 KD2h-E98RkM ·
-c23 prBNzhikrDo · c24 mtjZgt_PU_8 · c25 W2ux-aiCKpU · c26 tnQuaiP9njQ.
+c23 prBNzhikrDo · c24 mtjZgt_PU_8 · c25 W2ux-aiCKpU · c26 B0sP5phgEVQ (6 Oct: replaced tnQuaiP9njQ, a face wrapped
+in white cloth that read as a blur in the ring: "pick another influencer profile picture than this one").
 Ring opacity raised again ("by another 10%"): inner 60%, outer 45%. The nav button reads "Login".
+
+**The logo's typeface (6 Oct).** Asked for a suggestion for the wordmark's font, he chose Sora ("use sora") from eight
+set side by side (Geist, Outfit, Sora, Urbanist, Readex Pro, Space Grotesk, Unbounded, Plus Jakarta Sans). The
+wordmark is Sora SemiBold at -0.03em everywhere it appears: the landing's nav and footer, the giant dotted
+"HeyMoon" under the footer, and both product apps. Only the logo changes: every other line stays in Geist (landing)
+or Figtree (apps). The font ships as a 1.2 kB subset of the ten glyphs in "HeyMoon.AI".

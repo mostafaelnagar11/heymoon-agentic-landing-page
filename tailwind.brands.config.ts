@@ -30,6 +30,10 @@ const config: Config = {
            drawn at that tracking. `app/page.tsx` is the only root that
            may carry `font-geist`. */
         geist: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        /* The wordmark only: Sora, cut to "HeyMoon.AI" (app/_shared/logoFont.ts). No other var() in
+           the stack: one undefined variable voids the whole declaration (Figtree's was undefined on a dev
+           server once, and the mark fell back to its parent's face). */
+        logo: ["var(--font-logo)", "system-ui", "sans-serif"],
       },
       colors: {
         /* THE CREATOR APP'S PALETTE, adopted whole. Where a key existed

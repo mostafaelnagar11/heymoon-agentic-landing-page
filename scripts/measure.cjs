@@ -38,7 +38,7 @@ const BUDGET = {
   sky: 12 * KB,              // the lazy sky chunk, absent from first load
   css: 26 * KB,              // every stylesheet the prerendered HTML links (lead ruling 5 Oct: the hero's and the lazy sections' CSS is in the static HTML by design, so it all blocks first paint and all counts)
   html: 60 * KB,
-  fontPreloads: 1,           // exactly one: Geist Sans
+  fontPreloads: 2,           // exactly two: Geist Sans, and the logo's 1.2 kB Sora subset
 };
 /* Package attribution (step 4). The library packages of the §7.1 "motion + lenis" line, and the
    framework packages whose modules can land outside rootMainFiles (a polyfill, next/font stubs). */

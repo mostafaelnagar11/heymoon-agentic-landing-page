@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import { Figtree, IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import { DirSync } from "./brands/components/DirSync";
+import { logoFont } from "../_shared/logoFont";
 
 /* IBM Plex Sans Arabic, loaded the same way Geist is so nothing is
    fetched from a third-party origin at run time. It fills the
@@ -44,7 +45,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" dir="ltr" className={`${figtree.variable} ${GeistSans.variable} ${arabic.variable}`}>
+    <html lang="en" dir="ltr" className={`${figtree.variable} ${GeistSans.variable} ${arabic.variable} ${logoFont.variable}`}>
       <body className="font-sans antialiased">
         <DirSync />
         {children}

@@ -7,10 +7,10 @@
  * arrives, a wordmark that says the right name in the right typeface
  * beats a picture that says the wrong one.
  *
- * Two upsides while it stands in: it inherits the interface font, so it
- * never loads a second one, and it is text, so it is selectable,
- * searchable and read correctly aloud without an `alt` that has to be
- * kept in sync with the picture.
+ * It is set in Sora SemiBold (font-logo, app/_shared/logoFont.ts; Mostafa,
+ * 6 Oct), a 1.2 kB cut of just these ten glyphs. It is text, so it is
+ * selectable, searchable and read correctly aloud without an `alt` that
+ * has to be kept in sync with the picture.
  *
  * `.AI` carries the brand colour because the eyebrow and the credit
  * line say "HeyMoon.AI" while running copy says "HeyMoon" — the tint is
@@ -43,7 +43,7 @@ export function Wordmark({
       /* `ltr` because a brand name is not translated and not mirrored:
          in the Arabic build the mark still reads left to right. */
       dir="ltr"
-      className={`inline-block select-none whitespace-nowrap font-semibold leading-none tracking-[-0.03em] text-ink ${SIZE[size]} ${className}`}
+      className={`inline-block select-none whitespace-nowrap font-logo font-semibold leading-none tracking-[-0.03em] text-ink ${SIZE[size]} ${className}`}
     >
       HeyMoon<span className="text-main">.AI</span>
     </span>

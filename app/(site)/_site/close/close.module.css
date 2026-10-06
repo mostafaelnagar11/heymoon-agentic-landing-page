@@ -71,12 +71,12 @@
    collapses at the bottom of the page, the sheet's edge must still not peek in under the nav. */
 .close {
   --field-h: 76px; --apex-pref: 56svh;
-  --foot-h: calc(64px + 22vw * .8 * .62);
+  --foot-h: calc(64px + 20vw * .8 * .586);
   min-height: calc(100lvh - var(--foot-h) + 40px);
   display: grid; grid-template-columns: 100%;
   grid-template-rows: minmax(calc(var(--apex-pref) - var(--field-h) / 2), max-content) var(--field-h) 1fr;
 }
-@media (max-width: 639px) { .close { --field-h: 64px; --foot-h: calc(64px + 23vw * .8 * .62); } }
+@media (max-width: 639px) { .close { --field-h: 64px; --foot-h: calc(64px + 20.8vw * .8 * .586); } }
 
 .top {
   grid-area: 1 / 1; align-self: end; z-index: 2;
@@ -142,30 +142,32 @@
 .link { transition: color .2s var(--ease-out); }
 
 /* About 62% of the cap height shows above the page bottom (B13). The container crops the line box;
-   --crop is the visible share of the 0.8em line box that puts the crop at 62% of Geist's cap height
-   (measured, see WP6.md). */
+   --crop is the visible share of the 0.8em line box that puts the crop at 62% of the cap height. It is set
+   in the logo's face, Sora SemiBold (6 Oct): Sora's cap top sits 4% of an em higher in the box than Geist's
+   did, so .586 here shows what .62 showed in Geist (measured: 62.8% of the cap). */
 /* Keep in step with .close's --foot-h (64px row + this box). */
-.wmBox { --wm-size: 22vw; --crop: .62; --dot: 6px; --dot-r: 1.1px; position: relative; overflow: hidden; height: calc(var(--wm-size) * .8 * var(--crop)); }
-/* Phone: 23vw, not 26vw. "HeyMoon" is 4.0em wide in Geist 600 at -0.06em, so 26vw (104% of the width)
-   overflows and the line start-aligns, cutting the final "n"; 23vw ends exactly on the 16px gutters.
+.wmBox { --wm-size: 20vw; --crop: .586; --dot: 6px; --dot-r: 1.1px; position: relative; overflow: hidden; height: calc(var(--wm-size) * .8 * var(--crop)); }
+/* Sizes are Geist's (22vw, phone 23vw, landscape 12vw) times 0.905: "HeyMoon" is 4.52em wide in Sora 600 at
+   -0.06em against Geist's 4.09em, so the word keeps the width it had. Phone: 20.8vw ends on the 16px gutters;
+   any larger and the line overflows, start-aligns and cuts the final "n".
    The dot pitch drops to 4px with it, so the strokes stay about as many dots wide as on desktop. */
-@media (max-width: 639px) { .wmBox { --wm-size: 23vw; --dot: 4px; --dot-r: .75px; } }
+@media (max-width: 639px) { .wmBox { --wm-size: 20.8vw; --dot: 4px; --dot-r: .75px; } }
 /* Short landscape (a phone on its side, 844x390; final round). The page's last screen is the close and the
    footer together, and at 22vw the giant wordmark alone took 92px of a 390px screen: at max scroll the
    field rested under the nav, whose Pause and Dashboard drew over its Start. Here the wordmark drops to
-   12vw (the phone dot pitch, so the strokes keep their dot count), --foot-h follows it, and the note's
+   10.9vw (the phone dot pitch, so the strokes keep their dot count), --foot-h follows it, and the note's
    padding tightens. That lifts the field about 100px, clear of the pill, still on its horizon. Nav.tsx's
    yield covers any screen still too short (740x360). The note now starts 32px under the field, inside the
    reach of its error line, so the note steps aside while the error shows, as on phone. After the phone
    rules, so it wins on a landscape phone under 640. */
 @media (max-height: 520px) and (orientation: landscape) {
-  .wmBox { --wm-size: 12vw; --dot: 4px; --dot-r: .75px; }
-  .close { --foot-h: calc(64px + 12vw * .8 * .62); }
+  .wmBox { --wm-size: 10.9vw; --dot: 4px; --dot-r: .75px; }
+  .close { --foot-h: calc(64px + 10.9vw * .8 * .586); }
   .bottom { padding-block: 32px 24px; }
   .close:has([data-invalid="true"]) .bottom { opacity: 0; visibility: hidden; }
 }
 .wm {
-  display: block; font: 600 var(--wm-size) / 0.8 var(--font-geist-sans), system-ui, sans-serif;
+  display: block; font: 600 var(--wm-size) / 0.8 var(--font-logo), var(--font-geist-sans), system-ui, sans-serif;
   letter-spacing: -0.06em; white-space: nowrap; text-align: center;
   color: transparent; background: radial-gradient(circle, rgb(255 255 255 / .9) 0 var(--dot-r), transparent calc(var(--dot-r) + .4px)) 0 0 / var(--dot) var(--dot);
   -webkit-background-clip: text; background-clip: text;

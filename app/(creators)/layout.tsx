@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
 import "./globals.css";
+import { logoFont } from "../_shared/logoFont";
 
 /* Figtree is the Figma's only UI face — every text node in the file
    is Figtree Regular, Medium, SemiBold or Bold. Loaded through
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" dir="ltr" className={figtree.variable}>
+    <html lang="en" dir="ltr" className={`${figtree.variable} ${logoFont.variable}`}>
       <body className="font-sans antialiased">{children}</body>
     </html>
   );

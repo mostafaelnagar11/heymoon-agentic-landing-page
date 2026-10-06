@@ -35,6 +35,10 @@ const config: Config = {
            stack falls through to system-ui, which is why nothing but the
            landing root may carry `font-geist`. */
         geist: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        /* The wordmark only: Sora, cut to "HeyMoon.AI" (app/_shared/logoFont.ts). No other var() in
+           the stack: one undefined variable voids the whole declaration (Figtree's was undefined on a dev
+           server once, and the mark fell back to its parent's face). */
+        logo: ["var(--font-logo)", "system-ui", "sans-serif"],
       },
       colors: {
         /* Black: #12151B. Body text runs on alpha over it. */

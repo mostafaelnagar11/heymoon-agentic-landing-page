@@ -1,5 +1,6 @@
 "use client";
-/* The emblem, then "HeyMoon" plus a ".AI" span. Text only: callers wrap it in their own plain <a> (rule 2.4.11).
+/* The emblem, then "HeyMoon" plus a ".AI" span, set in Sora SemiBold (font-logo; Mostafa, 6 Oct). Text only:
+   callers wrap it in their own plain <a> (rule 2.4.11).
    The emblem is the page's own thread, the 5x5 moon-phase dot glyph (ui/Moon.tsx). At rest it is the full
    moon, static. Pointing at the logo (or focusing its link) runs one lunar cycle, full to full in about a
    second, then it rests again (Mostafa: "when hover only"). Under reduced motion it never moves. It takes the
@@ -76,7 +77,7 @@ export function Wordmark({ size = "md", tone = "night", className = "" }: {
 }) {
   const t = TONE[tone];
   return (
-    <span dir="ltr" className={`inline-flex select-none items-center gap-[0.42em] whitespace-nowrap font-semibold tracking-[-0.03em] transition-colors duration-[250ms] ${SIZE[size]} ${t.base} ${className}`}>
+    <span dir="ltr" className={`inline-flex select-none items-center gap-[0.42em] whitespace-nowrap font-logo font-semibold tracking-[-0.03em] transition-colors duration-[250ms] ${SIZE[size]} ${t.base} ${className}`}>
       <Emblem size={EMBLEM[size]} />
       <span>
         HeyMoon<span className={`transition-colors duration-[250ms] ${t.ai}`}>.AI</span>

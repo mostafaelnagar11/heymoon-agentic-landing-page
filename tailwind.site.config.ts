@@ -10,6 +10,8 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        /* The wordmark only: Sora, cut to "HeyMoon.AI" (layout.tsx), then Geist for anything else. */
+        logo: ["var(--font-logo)", "var(--font-geist-sans)", "system-ui", "sans-serif"],
       },
       colors: {
         night: { 0: C.night0, 1: C.night1, 2: C.night2 },
