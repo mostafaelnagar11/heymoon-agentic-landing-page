@@ -182,7 +182,7 @@ export const COPY = {
     agents: {
       h2: "Seven agents. None of them can act as you.",                                                     // [A7]
       body: "Each one owns a stage and puts its name to what it did.",                                      // [A7]
-      locked: "Locked for every agent", never: "Never",                                                     // [A7]
+      locked: "Locked for every agent",                                                                     // [A7]; "Never" pills removed (Mostafa, 7 Oct)
     },
     connects: { h2: "Your handle is all it needs.", body: "Instagram or TikTok. Nothing to connect to start, and HeyMoon holds no password to any account you have." }, // [A7]
     close: {

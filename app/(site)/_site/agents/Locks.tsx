@@ -1,7 +1,9 @@
 "use client";
 /* WP5 · Creators only: the three Never locks (SPEC §5.5). The rows are the product's own
-   DEFAULT_AUTONOMY rows locked at "never" (DEMO.creators.locks, bound). Hovering or focusing a row
-   brightens its lock on the orbit's fence, so the list and the picture read as one thing. */
+   DEFAULT_AUTONOMY rows locked at "never" (DEMO.creators.locks, bound), under "Locked for every agent".
+   Mostafa, 7 Oct ("switch these two and remove the never"): the first two rows swap places, so joining a
+   campaign or signing anything leads, and the rows carry no "Never" pill. Hovering or focusing a row brightens
+   its lock on the orbit's fence, so the list and the picture read as one thing. */
 import type { Audience } from "../data/types";
 import { COPY } from "../copy";
 import { Lock } from "../ui/icons";
@@ -18,11 +20,12 @@ export interface LocksProps {
 export function Locks({ audience, labels, hi, onHi, className = "" }: LocksProps) {
   if (audience !== "creators") return null;
   const c = COPY.creators.agents;
+  const rows = labels.length > 1 ? [labels[1], labels[0], ...labels.slice(2)] : labels;
   return (
     <div className={className}>
       <p className="mono-caps text-white/56" id="agent-locks">{c.locked}</p>
       <ul className={`mt-4 ${s.locks}`} aria-labelledby="agent-locks">
-        {labels.map((label, i) => (
+        {rows.map((label, i) => (
           <li
             key={label}
             tabIndex={0}
@@ -36,9 +39,6 @@ export function Locks({ audience, labels, hi, onHi, className = "" }: LocksProps
             <Lock size={14} className={`flex-none ${s.lockIcon}`} aria-hidden />
             {/* A product label is never cut: below about 375 px the longest row wraps instead. */}
             <span className={`min-w-0 text-small text-white/88 ${s.lockLabel}`}>{label}</span>
-            <span className="mono-caps ms-auto inline-flex h-6 flex-none items-center rounded-pill px-2.5 text-white/72 ring-1 ring-white/16">
-              {c.never}
-            </span>
           </li>
         ))}
       </ul>
