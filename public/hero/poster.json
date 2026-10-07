@@ -1,5 +1,5 @@
 {
-  "rendererHash": "828bb0a4617038c6ec440e155015a7a5954ce174",
+  "rendererHash": "2a90489993d090e83951a1bf2d732adb9998c121",
   "box": 2,
   "feather": [
     0.98,
@@ -14,50 +14,50 @@
     {
       "path": "/hero/poster-brands-960.avif",
       "width": 960,
-      "bytes": 14753,
-      "sha1": "fe76f59973d677a4fa45b2b6bc96786f419b12db"
+      "bytes": 14643,
+      "sha1": "252468208144fd2a4ea2d3dcda54d036d4c702a1"
     },
     {
       "path": "/hero/poster-brands-960.webp",
       "width": 960,
-      "bytes": 42690,
-      "sha1": "8f53d1bcfb81d7d06eecd8ab8fca238cb006601c"
+      "bytes": 42452,
+      "sha1": "eabd407456de376571ff24387d5b63595a5b9881"
     },
     {
       "path": "/hero/poster-brands-2240.avif",
       "width": 2240,
-      "bytes": 25398,
-      "sha1": "c09ccce500b4d63d42e5bfa9b38c305a38184ffc"
+      "bytes": 25216,
+      "sha1": "790b917d5d05e8b18dad87700a5c80b803559d4b"
     },
     {
       "path": "/hero/poster-brands-2240.webp",
       "width": 2240,
-      "bytes": 95694,
-      "sha1": "f0aa748eef51802bd301413083ed1a697ec3cc78"
+      "bytes": 95106,
+      "sha1": "3a81eb0eb87d9bd7441ea39e450f1a1be6ed4ac1"
     },
     {
       "path": "/hero/poster-creators-960.avif",
       "width": 960,
-      "bytes": 14989,
-      "sha1": "2b8c454d5bcdcea9391354fcc252c2aadbc9d332"
+      "bytes": 15185,
+      "sha1": "46b5c6ea60b87c35f76134e94244bc0a60d31dd3"
     },
     {
       "path": "/hero/poster-creators-960.webp",
       "width": 960,
-      "bytes": 41804,
-      "sha1": "3b33a6dd387c4385542452715b01449c94fb3baa"
+      "bytes": 42362,
+      "sha1": "0ed07e236d4ebe002c803cc4ad68e58222234c0a"
     },
     {
       "path": "/hero/poster-creators-2240.avif",
       "width": 2240,
-      "bytes": 25803,
-      "sha1": "217599c2a187fde0b75068e4fa2fe85352beb4ab"
+      "bytes": 26115,
+      "sha1": "f331bd820c436ea3494e91225e3439edad1abcee"
     },
     {
       "path": "/hero/poster-creators-2240.webp",
       "width": 2240,
-      "bytes": 92158,
-      "sha1": "b6b49322266e8eb531491f81081ab67f77a660da"
+      "bytes": 93224,
+      "sha1": "302a034851e6a157a6cad5e3107416d098582a0b"
     }
   ]
 }

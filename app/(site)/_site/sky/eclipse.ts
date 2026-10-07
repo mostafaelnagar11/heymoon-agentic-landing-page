@@ -69,6 +69,14 @@ const VS = "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
    (0 brands, 1 creators); A = soft, aud, bead, focus; B = pulse, pulseR, intro, flash; C = track steps drawn, comet, rimW, energy;
    E = trail, glare sweep, device px per CSS px, track undrawn level; R = rings' presence, inner and outer drift
    (rad), the atlas cell's half texel; uAt = the rings' atlas. uv: 1 = S/2. */
+/* The tips (star2's k): the slab's .02 and the liquid's .14 meet in the middle (Mostafa, 7 Oct), .045 to .095, so the
+   switch barely changes them. The slab stops at .045: rounder, its thin bevel shows a dark cap at the apex (a grazing
+   reflection of the dark studio, not a march limit; more steps or bounces do not clear it). soft (A.x) still sets the
+   bevel, the thickness and the bulge. */
+/* The payout track (Creators, TRACK): k the step (0 Campaign matched, 1 Held for you, 2 Orders counted, 3 Paid), t along it
+   from tail to head. pr: presence with the tint. C.x: steps drawn (P, from trackAt); E.w: the level of what is not
+   drawn. lv: drawn or not; hd: the pen's light at the front of the step drawing now. Lines are in CSS px; x is a display alpha (capped at .8, and Paid's pink kept deep, so
+   the tone map does not wash it to white), turned into light as rings() does. Paid's glow fades out over its head. */
 const FS = `precision highp float;
 uniform vec3 St;uniform float T;uniform mat3 M;uniform float uWorld;
 uniform vec4 A;uniform vec4 B;uniform vec4 C;uniform vec4 E;uniform vec4 R;uniform sampler2D uAt;
@@ -104,7 +112,7 @@ float star2(vec2 p,float k){
  return min(length(p-vec2(0.,1.)),length(p-vec2(1.,0.)))+k*.25;}
 float map(vec3 p){
  p=M*p;float sf=A.x;
- float d2=star2(abs(p.xy),.02+sf*.12);
+ float d2=star2(abs(p.xy),.045+sf*.05);
  float rb=mix(.2,.46,sf),h=mix(.16,.26,sf)
 #ifndef CHEAP_BEVEL
  +mix(.13,.04,sf)*smoothstep(.62,0.,length(p.xy))
@@ -186,10 +194,6 @@ vec3 rings(vec2 q){
  vec3 tc=texture2D(uAt,(vec2(floor(mod(i+.5,AC)),floor((i+.5)/AC))+st)/vec2(AC,AR)).rgb;
  vec3 x=(o?${fl(RO.alpha)}:${fl(RI.alpha)})*(1.-smoothstep(RF0,RF1,rs))*cv*R.x*mix(look(tc),lookIcon(tc),isIcon(i));
  return -log(max(1.-pow(x,vec3(2.2)),1e-4))/1.15;}
-/* The payout track (Creators, TRACK): k the step (0 Campaign matched, 1 Held for you, 2 Orders counted, 3 Paid), t along it
-   from tail to head. pr: presence with the tint. C.x: steps drawn (P, from trackAt); E.w: the level of what is not
-   drawn. lv: drawn or not; hd: the pen's light at the front of the step drawing now. Lines are in CSS px; x is a display alpha (capped at .8, and Paid's pink kept deep, so
-   the tone map does not wash it to white), turned into light as rings() does. Paid's glow fades out over its head. */
 vec3 track(vec2 uv,float px){
  float pr=smoothstep(.3,1.,A.y),d=abs(length(uv)-${fl(2 * TK.r)})*px;
  if(pr<=0.||d>14.)return vec3(0.);

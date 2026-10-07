@@ -122,3 +122,8 @@ draws clockwise like a pen stroke and its label fades in as its arc starts (Camp
 counted, then Paid), from 0.4 s after release on load and 1 s after a switch lands. The renderer is the one clock: it
 writes the label states on its canvas (data-track) and the labels follow. The idle loop dims the steps and draws them
 again. With no WebGL (reduced motion, Save-Data, a failure) there are no arcs and no labels.
+
+**The star's tips (7 Oct).** Asked why the two stars' corners differ (Brands sharp slab, Creators rounded liquid,
+morphing on the switch), he chose "meet in the middle": the tip rounding (star2's k) is now .045 on Brands (was .02)
+and .095 on Creators (was .14). The slab stops at .045 because a rounder slab tip shows a dark cap at its apex (a
+grazing reflection of the dark studio). The bevel, thickness and bulge still differ between the two materials.
