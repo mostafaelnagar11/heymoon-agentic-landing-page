@@ -1,5 +1,5 @@
 /* The Eclipse Glass hero renderer: a bevelled glass four-point star raymarched in front of an eclipse
-   (disc, rim, corona, diamond-ring bead and, on brands, the creator rings). Reached only
+   (disc, rim, corona, diamond-ring bead, on brands the creator rings, on creators the payout track). Reached only
    through `import("./eclipse")`. No React and no site imports except the shared contract (./eclipse-api): the
    caller owns the poster, the handover, the agent clock and reduced motion. The canvas may cover the whole hero
    or only the 2 S poster box (CANVAS_BOX): the stage element's rect sets where and how big the star is drawn.
@@ -21,6 +21,9 @@
      SWITCH_FRAME_CAP_MS per drawn frame, so a stall delays the tumble instead of skipping it.
    - No glints (Mostafa, 6 Oct: "keep only the big shiny one"): the seven agent glints that sat on the rim are gone,
      so the bead is the rim's only star. launch(): the turn and the comet once round the ring.
+   - The payout track (Creators, 7 Oct; TRACK): four arcs between the arms, Campaign matched, Held for you, Orders counted and
+     Paid, in track(). No new uniforms: presence is the tint (A.y), the switch reveal reads the bead (A.z), the idle
+     loop runs on T (0 at REST, so the poster is its resting frame) and typing dims it through focus (A.w).
    - The creator rings (item 9, brands only): two rings of faces on the eclipse plane, drawn from an atlas built
      here from AVATARS (never in the DOM), behind the disc and the glass. On high and mid the glass refracts them:
      sampled once per glass pixel along the central refracted ray (the dispersion samples share it; in all eight
@@ -35,7 +38,7 @@ import {
   ATLAS, atlasCell, AVATARS, ICON_SLOTS, PLATFORM_ICONS, BEAD_REST_RAD, CLUSTER_R, COMET_MS, DPR_CAP, FOCUS, initialTier,
   LAUNCH, LIGHT_FADE, NIGHT1, PHONE_MQ, PLANE_TO_S, POSTER_TIER, RELEASE_FALLBACK_MS, REST,
   RING_SLOTS, RINGS, RINGS_AUDIENCE, ringsPresence, SKY_DEBUG, SWAY_IN_S, swayAt, SWITCH, SWITCH_FRAME_CAP_MS,
-  TIERS, tierSteps, WATCHDOG,
+  TIERS, tierSteps, TRACK, WATCHDOG,
 } from "./eclipse-api";
 import type { Audience, EclipseDebug, EclipseHandle, EclipseOptions, FailReason, Tier, TierName } from "./eclipse-api";
 
@@ -54,6 +57,9 @@ const rad = (d: number) => (d * Math.PI) / 180;
 const DEV = (() => { try { return process.env.NODE_ENV === "development"; } catch { return false; } })();
 
 const RI = RINGS.inner, RO = RINGS.outer, LOOK = RINGS.look;
+/* The payout track's idle loop (TRACK): each step's start and length, as GLSL ternaries on the step index k. */
+const TK = TRACK, BEAD0 = (BEAD_REST_RAD.brands * 180) / Math.PI, TKEND = TK.holdS + TK.dimS;
+const tkSel = (i: 0 | 1) => TK.steps.map((st, k) => (k < 3 ? `k<${k}.5?${fl(st[i])}:` : fl(st[i]))).join("");
 
 const VS = "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
 
@@ -178,6 +184,28 @@ vec3 rings(vec2 q){
  vec3 tc=texture2D(uAt,(vec2(floor(mod(i+.5,AC)),floor((i+.5)/AC))+st)/vec2(AC,AR)).rgb;
  vec3 x=(o?${fl(RO.alpha)}:${fl(RI.alpha)})*(1.-smoothstep(RF0,RF1,rs))*cv*R.x*mix(look(tc),lookIcon(tc),isIcon(i));
  return -log(max(1.-pow(x,vec3(2.2)),1e-4))/1.15;}
+/* The payout track (Creators, TRACK): k the step (0 Campaign matched, 1 Held for you, 2 Orders counted, 3 Paid), t along it
+   from tail to head. pr: presence with the tint. rv: on the switch, Orders counted and Paid appear behind the bead
+   (tv: degrees it has travelled from the Brands rest; cb: this point's). lv: the idle loop on T. hd: the light at the
+   front of a step being lit. Lines are in CSS px; x is a display alpha (capped at .8, and Paid's pink kept deep, so
+   the tone map does not wash it to white), turned into light as rings() does. Paid's glow fades out over its head. */
+vec3 track(vec2 uv,float px){
+ float pr=smoothstep(.3,1.,A.y),d=abs(length(uv)-${fl(2 * TK.r)})*px;
+ if(pr<=0.||d>14.)return vec3(0.);
+ float a=degrees(atan(uv.y,uv.x)),c=mod(${fl(TK.tail0)}-a,360.),k=floor(c/90.),t=(c-k*90.)/${fl(TK.span)};
+ if(t>1.)return vec3(0.);
+ float tv=mod(${fl(BEAD0)}-degrees(A.z),360.),cb=mod(${fl(BEAD0)}-a,360.);
+ float rv=k<1.5?1.:max(smoothstep(cb,cb+6.,tv)*step(cb,180.5),smoothstep(168.,178.,tv));
+ float ph=mod(T,${fl(TK.loopS)}),f=clamp((ph-(${tkSel(0)}))/(${tkSel(1)}),0.,1.)*1.06,L=${fl((TK.span * Math.PI) / 90 * TK.r)}*px;
+ float lv=ph<${fl(TK.holdS)}?1.:ph<${fl(TKEND)}?mix(1.,${fl(TK.low)},smoothstep(${fl(TK.holdS)},${fl(TKEND)},ph)):mix(${fl(TK.low)},1.,smoothstep(0.,.06,f-t));
+ float hd=ph<${fl(TKEND)}?0.:exp(-pow((t-f)*L/10.,2.))*step(f,1.);
+ float w=.5+1.1*pow(t,.9),al=.05+.5*pow(t,1.5),cv,g=0.;vec3 col=vec3(1.);
+ if(k>2.5){float u=t<${fl(TK.paidPeak)}?pow(t/${fl(TK.paidPeak)},1.1):1.-(t-${fl(TK.paidPeak)})/${fl(1 - TK.paidPeak)}*.3;
+  w=.8+1.7*min(1.,u*1.1);al=.1+.9*u;col=vec3(1.,.28,.6);g=exp(-d*d/50.)*.3*u*smoothstep(1.,.85,t);}
+ if(k>1.5&&k<2.5){al=.1+.55*pow(t,1.4);cv=clamp(3.-d,0.,1.)*clamp(1.-abs(fract(t*${fl(TK.ticks)})-.5)*L/${fl(TK.ticks)},0.,1.);}
+ else cv=clamp(.5*max(w,1.)+.5-d,0.,1.)*min(w,1.);
+ float o=lv*pr*rv*mix(1.,${fl(TK.focusDim)},A.w),x=min(.8,(al+hd*.6)*cv)*o;
+ return col*(-log(max(1.-x,1e-4))/1.15+g*o);}
 vec3 env(vec3 p,vec3 d){vec3 c=studio(d);
  if(d.z<-.02){float t=(-DZ-p.z)/d.z;c+=corona(p.xy+d.xy*t,false);}return c;}
 vec3 ex(vec3 d,vec3 pe,vec3 ne,float eta){
@@ -235,7 +263,7 @@ void main(){
  vec3 ro=vec3(0.,0.,CZ);
  vec3 rd=normalize(vec3(uv*S/CZ,-1.));
  vec2 q=uv*S*(CZ+DZ)/CZ;
- vec3 Lg=corona(q,true)+rings(q);
+ vec3 Lg=corona(q,true)+rings(q)+track(uv,px);
  vec2 bu=vec2(cos(A.z),sin(A.z))*RM*CZ/(S*(CZ+DZ));
  vec2 dv=(uv-bu)*px;float kl=E.z/(.12*St.z);
  float sp=exp(-abs(dv.x)*1.3)*exp(-abs(dv.y)*kl)+exp(-abs(dv.y)*1.3)*exp(-abs(dv.x)*kl);

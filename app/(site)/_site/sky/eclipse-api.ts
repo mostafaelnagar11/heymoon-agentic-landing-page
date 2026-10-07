@@ -290,8 +290,6 @@ export const CARD_CSS = {
   bottom: `${HERO_EDGE.padBottom}px`,
   width: "min(408px, 42vw, 560px)",
 } as const;
-/** The card is shown on this audience only (on creators it fades out with the switch and stays out). */
-export const CARD_AUDIENCE: Audience = "brands";
 
 /** The split (≥ 768 px wide), at scrollY 0, in viewport CSS px: what hero.module.css draws (SPLIT_CSS) and what
     verifiers check. The stage column is the nav box's end, min(560px, 42vw) from 1024 and min(400px, 40vw) below;
@@ -335,6 +333,33 @@ export const clusterOf = (stage: { left: number; top: number; width: number }) =
 export const PHONE_STAGE = { max: 240, min: 120, vw: 0.62, clearPx: 8 } as const;
 export const phoneS = (vw: number, row: number): number =>
   Math.max(PHONE_STAGE.min, Math.min(PHONE_STAGE.max, PHONE_STAGE.vw * vw, (row - PHONE_STAGE.clearPx) / (2 * CLUSTER_R)));
+
+/* ── The payout track (Creators; Mostafa, 7 Oct: "apply this concept", concept 6 "Paid that week") ──
+   One thin ring at TRACK.r S, broken by the star's four arms into four arcs that run clockwise in the order the money
+   moves: Campaign matched, Held for you, Orders counted, Paid (COPY.creators.track). Each arc is a
+   light trail, faint at its tail and brighter at its head; Orders counted is a tally of ticks too dense to count;
+   Paid is the one pink arc and blooms beside the Creators bead (225.8°). The shader draws it on Creators only (its
+   presence follows the tint), so the poster carries it; on the switch Orders counted and Paid appear behind the
+   travelling bead. The labels are DOM in the agents chunk. Angles: degrees, counter-clockwise from +x, y up. */
+export const TRACK = {
+  r: 0.4,
+  /** The first step's tail. Each step starts 90° clockwise of the last and spans `span`; the gaps hold the arms. */
+  tail0: 166.3, span: 58.6,
+  /** Orders counted: this many ticks, 1 px wide and 5 px long. */
+  ticks: 44,
+  /** Paid's peak, as a fraction of its arc from the tail: the Creators bead's angle. */
+  paidPeak: 0.522,
+  /** The idle loop, one week, on the shader clock T (0 at REST, so 0 to holdS is the resting frame the poster shows):
+      hold, dim every step to `low` over dimS, then light the steps again in turn (`steps`: start and length, s). */
+  loopS: 24, holdS: 14, dimS: 1.6, low: 0.12,
+  steps: [[15.6, 1.2], [17.2, 1.2], [18.8, 3], [22, 1.4]] as const,
+  /** Typing dims the track to this (the star's focus value drives it). */
+  focusDim: 0.45,
+  /** Each label's inner corner, on its diagonal, this far in from the stage's nearer edges (S): its box sits about
+      26 px off its arc at the desktop S. Below labelMinS px of S only Paid keeps its label; below phoneS they set
+      smaller. */
+  label: 0.1829, labelMinS: 150, phoneS: 300,
+} as const;
 
 /* ── The agents (WAVE 2, item 1) ── */
 
@@ -601,10 +626,12 @@ export interface EclipseHandle {
 
 /** Agents' props. Refs are plain { current } objects (React's RefObject fits). EclipseSky mounts <Agents> as the
     .stage element's SIBLING (outside .stage, inside the hero section), so the card's containing block is the sticky
-    hero section. Agents runs its clock while motion is allowed and renders the card only under CARD_MQ, on
-    CARD_AUDIENCE, with `card` true. */
+    hero section. Agents runs its clock while motion is allowed, renders the card only under CARD_MQ with `card` true
+    (Brands: the agent at work; Creators: MoonScore AI's payout line), and portals the payout track's labels into the
+    stage on Creators. */
 export interface AgentsProps {
-  /** The .stage element: in view, uncovered and the like are measured on it; the card is placed against it. */
+  /** The .stage element: in view, uncovered and the like are measured on it; the card is placed against it and the
+      track labels are portalled into it. */
   stage: { readonly current: HTMLElement | null };
   /** Changes whenever a new renderer is mounted (a remount after a lost context), so Agents measures the stage again. */
   mountKey: number;

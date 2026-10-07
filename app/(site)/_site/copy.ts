@@ -132,6 +132,8 @@ export const COPY = {
       invalid: "Paste your Instagram or TikTok handle, or the link to your profile.", icon: "at", action: "/creators/c", param: "h", inputMode: "text",
     },
     chips: ["No sign-up to start", "No agency in the middle", "Paid on time"],                              // [A5]
+    track: ["Campaign matched", "Held for you", "Orders counted", "Paid"],                               // [CHANGE] Mostafa 7 Oct: the hero's payout track; "Campaign matched" for "Funded" (the number rail keeps "Funded")
+    heroCard: "Your share for this week is on its way",                                                    // [CHANGE] Mostafa 7 Oct: the payout track's card (MoonScore AI)
     nav: { dashboard: "Login", dashboardHref: "/creators/login", start: "Start" },                            // [CHANGE] Mostafa 5 Oct: "Login"
     work: {
       h2: "One handle. Every campaign that fits.",                                                          // [A5]

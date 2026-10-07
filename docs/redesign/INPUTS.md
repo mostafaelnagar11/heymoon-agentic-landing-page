@@ -106,3 +106,13 @@ from DEMO's guarantee: a close at 4.3x instead of 5x on $12,500 makes $53,750, s
 $63,050, labelled "An example, not a forecast." Same day, "remove this and bring this bar above": the "Paid by HeyMoon" eyebrow and the
 $9,300 figure are gone; the bar and its legend lead the column, then "HeyMoon pays the rest of the $63,050 it
 guaranteed, if the campaign closes at 4.3x instead of 5x." The promo headlines are one line each at one shared size.
+
+**The Creators hero: the payout track (7 Oct).** Asked what should sit around the star on Creators, he saw three
+concepts, then six more from a design round (12 ideas, three judges), and picked concept 6, "Paid that week" ("apply
+this concept"). One thin ring at 0.40 S, broken by the star's arms into four arcs clockwise: Campaign matched, Held for
+you, Orders counted, Paid. ("Change Funded to be Campaign matched": the hero's list is COPY.creators.track; the
+number section's rail keeps "Funded".) Each arc is a light trail; Orders counted is a tally of ticks; Paid is the one
+pink arc, peaking beside the Creators bead, with a pink check on its label. Drawn in the shader on Creators only, so it
+is in the poster; on the switch the Orders and Paid arcs appear behind the travelling bead; a 24 s idle loop (one
+week) dims the steps and lights them again in turn; typing dims it to 45%. The labels are DOM in the agents chunk, and
+the Creators card reads "MoonScore AI · Your share for this week is on its way".
