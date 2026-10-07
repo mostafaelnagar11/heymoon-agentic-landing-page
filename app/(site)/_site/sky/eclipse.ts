@@ -22,8 +22,10 @@
    - No glints (Mostafa, 6 Oct: "keep only the big shiny one"): the seven agent glints that sat on the rim are gone,
      so the bead is the rim's only star. launch(): the turn and the comet once round the ring.
    - The payout track (Creators, 7 Oct; TRACK): four arcs between the arms, Campaign matched, Held for you, Orders counted and
-     Paid, in track(). No new uniforms: presence is the tint (A.y), the switch reveal reads the bead (A.z), the idle
-     loop runs on T (0 at REST, so the poster is its resting frame) and typing dims it through focus (A.w).
+     Paid, in track(). Live: REST is undrawn (the poster is the star alone); the track clock tk draws each arc in
+     after release, or after a switch lands, then loops; its state reaches the shader through the two spare slots
+     (C.x steps drawn, E.w the undrawn level) and the DOM labels through TRACK_ATTR on the canvas. Presence is the
+     tint (A.y); typing dims it through focus (A.w).
    - The creator rings (item 9, brands only): two rings of faces on the eclipse plane, drawn from an atlas built
      here from AVATARS (never in the DOM), behind the disc and the glass. On high and mid the glass refracts them:
      sampled once per glass pixel along the central refracted ray (the dispersion samples share it; in all eight
@@ -38,7 +40,7 @@ import {
   ATLAS, atlasCell, AVATARS, ICON_SLOTS, PLATFORM_ICONS, BEAD_REST_RAD, CLUSTER_R, COMET_MS, DPR_CAP, FOCUS, initialTier,
   LAUNCH, LIGHT_FADE, NIGHT1, PHONE_MQ, PLANE_TO_S, POSTER_TIER, RELEASE_FALLBACK_MS, REST,
   RING_SLOTS, RINGS, RINGS_AUDIENCE, ringsPresence, SKY_DEBUG, SWAY_IN_S, swayAt, SWITCH, SWITCH_FRAME_CAP_MS,
-  TIERS, tierSteps, TRACK, WATCHDOG,
+  TIERS, tierSteps, TRACK, TRACK_ATTR, TRACK_DRAWN, trackAt, trackLabels, WATCHDOG,
 } from "./eclipse-api";
 import type { Audience, EclipseDebug, EclipseHandle, EclipseOptions, FailReason, Tier, TierName } from "./eclipse-api";
 
@@ -57,15 +59,15 @@ const rad = (d: number) => (d * Math.PI) / 180;
 const DEV = (() => { try { return process.env.NODE_ENV === "development"; } catch { return false; } })();
 
 const RI = RINGS.inner, RO = RINGS.outer, LOOK = RINGS.look;
-/* The payout track's idle loop (TRACK): each step's start and length, as GLSL ternaries on the step index k. */
-const TK = TRACK, BEAD0 = (BEAD_REST_RAD.brands * 180) / Math.PI, TKEND = TK.holdS + TK.dimS;
-const tkSel = (i: 0 | 1) => TK.steps.map((st, k) => (k < 3 ? `k<${k}.5?${fl(st[i])}:` : fl(st[i]))).join("");
+const TK = TRACK;
+/** The track clock while it is off (Brands). */
+const TK_OFF = -1e9;
 
 const VS = "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
 
 /* Uniforms: St = star centre (px) and radius (px); M = star rotation; T = scene time (s); uWorld = the tint
-   (0 brands, 1 creators); A = soft, aud, bead, focus; B = pulse, pulseR, intro, flash; C = -, comet, rimW, energy;
-   E = trail, glare sweep, device px per CSS px, -; R = rings' presence, inner and outer drift
+   (0 brands, 1 creators); A = soft, aud, bead, focus; B = pulse, pulseR, intro, flash; C = track steps drawn, comet, rimW, energy;
+   E = trail, glare sweep, device px per CSS px, track undrawn level; R = rings' presence, inner and outer drift
    (rad), the atlas cell's half texel; uAt = the rings' atlas. uv: 1 = S/2. */
 const FS = `precision highp float;
 uniform vec3 St;uniform float T;uniform mat3 M;uniform float uWorld;
@@ -185,26 +187,22 @@ vec3 rings(vec2 q){
  vec3 x=(o?${fl(RO.alpha)}:${fl(RI.alpha)})*(1.-smoothstep(RF0,RF1,rs))*cv*R.x*mix(look(tc),lookIcon(tc),isIcon(i));
  return -log(max(1.-pow(x,vec3(2.2)),1e-4))/1.15;}
 /* The payout track (Creators, TRACK): k the step (0 Campaign matched, 1 Held for you, 2 Orders counted, 3 Paid), t along it
-   from tail to head. pr: presence with the tint. rv: on the switch, Orders counted and Paid appear behind the bead
-   (tv: degrees it has travelled from the Brands rest; cb: this point's). lv: the idle loop on T. hd: the light at the
-   front of a step being lit. Lines are in CSS px; x is a display alpha (capped at .8, and Paid's pink kept deep, so
+   from tail to head. pr: presence with the tint. C.x: steps drawn (P, from trackAt); E.w: the level of what is not
+   drawn. lv: drawn or not; hd: the pen's light at the front of the step drawing now. Lines are in CSS px; x is a display alpha (capped at .8, and Paid's pink kept deep, so
    the tone map does not wash it to white), turned into light as rings() does. Paid's glow fades out over its head. */
 vec3 track(vec2 uv,float px){
  float pr=smoothstep(.3,1.,A.y),d=abs(length(uv)-${fl(2 * TK.r)})*px;
  if(pr<=0.||d>14.)return vec3(0.);
  float a=degrees(atan(uv.y,uv.x)),c=mod(${fl(TK.tail0)}-a,360.),k=floor(c/90.),t=(c-k*90.)/${fl(TK.span)};
  if(t>1.)return vec3(0.);
- float tv=mod(${fl(BEAD0)}-degrees(A.z),360.),cb=mod(${fl(BEAD0)}-a,360.);
- float rv=k<1.5?1.:max(smoothstep(cb,cb+6.,tv)*step(cb,180.5),smoothstep(168.,178.,tv));
- float ph=mod(T,${fl(TK.loopS)}),f=clamp((ph-(${tkSel(0)}))/(${tkSel(1)}),0.,1.)*1.06,L=${fl((TK.span * Math.PI) / 90 * TK.r)}*px;
- float lv=ph<${fl(TK.holdS)}?1.:ph<${fl(TKEND)}?mix(1.,${fl(TK.low)},smoothstep(${fl(TK.holdS)},${fl(TKEND)},ph)):mix(${fl(TK.low)},1.,smoothstep(0.,.06,f-t));
- float hd=ph<${fl(TKEND)}?0.:exp(-pow((t-f)*L/10.,2.))*step(f,1.);
+ float e=C.x-k,f=clamp(e,0.,1.)*1.06,L=${fl((TK.span * Math.PI) / 90 * TK.r)}*px;
+ float lv=mix(E.w,1.,smoothstep(0.,.06,f-t)),hd=e>0.&&e<1.?exp(-pow((t-f)*L/10.,2.)):0.;
  float w=.5+1.1*pow(t,.9),al=.05+.5*pow(t,1.5),cv,g=0.;vec3 col=vec3(1.);
  if(k>2.5){float u=t<${fl(TK.paidPeak)}?pow(t/${fl(TK.paidPeak)},1.1):1.-(t-${fl(TK.paidPeak)})/${fl(1 - TK.paidPeak)}*.3;
   w=.8+1.7*min(1.,u*1.1);al=.1+.9*u;col=vec3(1.,.28,.6);g=exp(-d*d/50.)*.3*u*smoothstep(1.,.85,t);}
  if(k>1.5&&k<2.5){al=.1+.55*pow(t,1.4);cv=clamp(3.-d,0.,1.)*clamp(1.-abs(fract(t*${fl(TK.ticks)})-.5)*L/${fl(TK.ticks)},0.,1.);}
  else cv=clamp(.5*max(w,1.)+.5-d,0.,1.)*min(w,1.);
- float o=lv*pr*rv*mix(1.,${fl(TK.focusDim)},A.w),x=min(.8,(al+hd*.6)*cv)*o;
+ float o=lv*pr*mix(1.,${fl(TK.focusDim)},A.w),x=min(.8,(al+hd*.6)*cv)*o;
  return col*(-log(max(1.-x,1e-4))/1.15+g*o);}
 vec3 env(vec3 p,vec3 d){vec3 c=studio(d);
  if(d.z<-.02){float t=(-DZ-p.z)/d.z;c+=corona(p.xy+d.xy*t,false);}return c;}
@@ -533,6 +531,8 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
   }
   /* tr: the released clock (s of running time since release). sc: the sway clock, which eases in with tr. */
   let tr = 0, sc = 0, bPrev = V.bead, trail = 0;
+  /* The payout track's clock (s; TRACK, trackAt) and the label states last written on the canvas. */
+  let tk = TK_OFF, tkShown = "";
   let aud: Audience = opts.audience;
   let launchT = -1e9, launching = false, comet = 0;
   let launchTimer: ReturnType<typeof setTimeout> | undefined, relT: ReturnType<typeof setTimeout> | undefined;
@@ -548,10 +548,12 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
         if (w.k === "flip" || w.k === "soft" || w.k === "aud" || w.k === "bead") tw.splice(i, 1);
       }
       V.soft = v; V.aud = v; V.bead = BEAD_REST_RAD[a]; bPrev = V.bead - V.kick; aud = a; swOn = false;
+      tk = a === "creators" ? TRACK_DRAWN : TK_OFF;
       return;
     }
     if (a === aud) return;
     aud = a;
+    tk = a === "creators" ? -TRACK.switchS : TK_OFF;
     swc = 0; swLast = clk(); swOn = true; flipFrom = V.flip; beadFrom = V.bead;
     tween("flip", V.flip + SWITCH.flipRad, SWITCH.flipMs, 0, eo4, true);
     tween("soft", v, SWITCH.softMs, SWITCH.softDelayMs, eio, true);
@@ -559,6 +561,8 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
     tween("bead", V.bead + SWITCH.beadDeltaRad, SWITCH.beadMs, 0, eo4, true);
   };
   setAud(aud, true);
+  /* REST is undrawn: on Creators the track draws in TRACK.introS after release. */
+  tk = aud === "creators" ? -TRACK.introS : TK_OFF;
 
   /* Uniforms from the current state, then one draw. Never advances anything. */
   const mat = new Float32Array(9);
@@ -586,8 +590,10 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
     g.uniform1f(U.uWorld!, V.aud);
     g.uniform4f(U.A!, V.soft, V.aud, V.bead - V.kick, f);
     g.uniform4f(U.B!, V.pulse, V.pr, REST.intro, flash + lfl * 0.8);
-    g.uniform4f(U.C!, 0, launching && cm > 0 && cm < 1 ? comet : 0, rimW, f * 0.5 + flash * 0.8 + lfl + introFl + 0.12 * Math.sin(tr * 1.1) * Math.sin(tr * 0.37));
-    g.uniform4f(U.E!, trail, gs < 1 ? REST.glare * (1 - eio(gs)) : ls2 > 0 && ls2 < 1 ? 1.1 - 2.4 * eio(ls2) : 0, kpx, 0);
+    const tks = trackAt(tk), tl = trackLabels(tks);
+    if (tl !== tkShown) { tkShown = tl; canvas.setAttribute(TRACK_ATTR, tl); }
+    g.uniform4f(U.C!, tks[0], launching && cm > 0 && cm < 1 ? comet : 0, rimW, f * 0.5 + flash * 0.8 + lfl + introFl + 0.12 * Math.sin(tr * 1.1) * Math.sin(tr * 0.37));
+    g.uniform4f(U.E!, trail, gs < 1 ? REST.glare * (1 - eio(gs)) : ls2 > 0 && ls2 < 1 ? 1.1 - 2.4 * eio(ls2) : 0, kpx, tks[1]);
     g.uniform4f(U.R!, pres, rad(dIn), rad(dOut), atlasPx ? 0.5 / atlasPx : 0.5);
     if (DBG) dbg();
     g.drawArrays(g.TRIANGLES, 0, 3);
@@ -598,6 +604,7 @@ export function mountEclipse(canvas: HTMLCanvasElement, stage: HTMLElement, opts
     runTw(now);
     tr += dt;
     sc += dt * sstep(0, SWAY_IN_S, tr);
+    if (tk > TK_OFF) tk += dt / SLOW;
     V.focus += (V.fT - V.focus) * (1 - Math.exp(-dt * FOCUS.rate));
     if (atlasPx && atlasP < 1) atlasP = Math.min(1, atlasP + dt / 0.4);
     V.px += (V.tx - V.px) * (1 - Math.exp(-dt * 2)); V.py += (V.ty - V.py) * (1 - Math.exp(-dt * 2));

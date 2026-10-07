@@ -27,7 +27,7 @@ import { els, useSignal } from "../lib/signals";
 import { useTimeline } from "../lib/timeline";
 import { Moon } from "../ui/Moon";
 import {
-  AGENT_ORDER, AGENTS_DOM, CARD2, CARD_MQ, REPLAY, SWITCH, TRACK, replayAt, replayOf,
+  AGENT_ORDER, AGENTS_DOM, CARD2, CARD_MQ, REPLAY, SWITCH, TRACK, TRACK_ATTR, replayAt, replayOf,
   type AgentsProps, type Replay, type ReplayItem,
 } from "../sky/eclipse-api";
 import s from "./agents.module.css";
@@ -150,7 +150,7 @@ export function Agents({ stage, mountKey, card }: AgentsProps) {
       </AnimatePresence>
       {host && createPortal(
         <AnimatePresence initial={!reduced}>
-          {audience === "creators" && shown === "creators" && <TrackLabels key="track" host={host} dim={typingNow} reduced={reduced} />}
+          {audience === "creators" && <TrackLabels key="track" host={host} dim={typingNow} reduced={reduced} />}
         </AnimatePresence>,
         host,
       )}
@@ -166,12 +166,27 @@ const PAID_ITEM: ReplayItem = {
 
 /* The payout track's labels (TRACK), portalled into the stage on Creators: COPY.creators.track on the four diagonals,
    each label's inner corner TRACK.label S in from the stage's nearer edges, so its box sits about 26 px off its arc.
-   Paid is the bright one, with the pink check. Sized from the stage: smaller below TRACK.phoneS px, only Paid below
-   TRACK.labelMinS. Opacity only, dimmed while the visitor types as the track is. Inline styles: the layer exists only
-   after hydration, so none of it is first-paint CSS. */
+   Paid is the bright one, with the pink check. Each label follows the renderer's clock through TRACK_ATTR on its
+   canvas: it fades in as its arc starts to draw, dims while the loop has not drawn it again, and stays hidden with no
+   WebGL (no arcs either). Sized from the stage: smaller below TRACK.phoneS px, only Paid below TRACK.labelMinS.
+   Opacity only, dimmed while the visitor types as the track is. Inline styles: the layer exists only after
+   hydration, so none of it is first-paint CSS. */
 const FAR = `${(1 - TRACK.label) * 100}%`;
 const CORNERS: CSSProperties[] = [{ right: FAR, bottom: FAR }, { left: FAR, bottom: FAR }, { left: FAR, top: FAR }, { right: FAR, top: FAR }];
 const LABEL_FADE = { duration: 0.4, ease: EASE.out };
+const LABEL_LEVEL: Record<string, number> = { "1": 1, d: 0.4, "0": 0 };
+/** The label states the renderer last wrote on its canvas (TRACK_ATTR), "0000" while there is none. */
+function useTrackStates(host: HTMLElement): string {
+  const [states, setStates] = useState("0000");
+  useEffect(() => {
+    const read = () => setStates(host.querySelector(`canvas[${TRACK_ATTR}]`)?.getAttribute(TRACK_ATTR) ?? "0000");
+    read();
+    const mo = new MutationObserver(read);
+    mo.observe(host, { subtree: true, childList: true, attributes: true, attributeFilter: [TRACK_ATTR] });
+    return () => mo.disconnect();
+  }, [host]);
+  return states;
+}
 const CHECK = (
   <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden style={{ flex: "none" }}>
     <path d="M3 8.5l3 3 7-7" stroke="#F25FA6" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -186,6 +201,7 @@ function TrackLabels({ host, dim, reduced }: { host: HTMLElement; dim: boolean; 
     return () => ro.disconnect();
   }, [host]);
   const small = side < TRACK.phoneS;
+  const states = useTrackStates(host);
   return (
     <m.div
       aria-hidden
@@ -206,6 +222,7 @@ function TrackLabels({ host, dim, reduced }: { host: HTMLElement; dim: boolean; 
               position: "absolute", ...CORNERS[i], display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
               font: `500 ${(small ? 11 : 13) + (paid ? 1 : 0)}px/1 var(--font-geist-sans), system-ui, sans-serif`,
               color: paid ? "rgb(255 255 255 / .96)" : "rgb(255 255 255 / .52)",
+              opacity: LABEL_LEVEL[states[i]] ?? 0, transition: reduced ? undefined : "opacity .45s cubic-bezier(.16, 1, .3, 1)",
             }}
           >
             {paid && CHECK}

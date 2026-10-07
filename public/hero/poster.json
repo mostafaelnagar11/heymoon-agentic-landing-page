@@ -1,5 +1,5 @@
 {
-  "rendererHash": "4599c596957d5954e81b4be26a1a3f30796b79e8",
+  "rendererHash": "828bb0a4617038c6ec440e155015a7a5954ce174",
   "box": 2,
   "feather": [
     0.98,
@@ -38,26 +38,26 @@
     {
       "path": "/hero/poster-creators-960.avif",
       "width": 960,
-      "bytes": 15232,
-      "sha1": "3f0275d0d6a7c89a11b174ef2bc4a345dc7b64ea"
+      "bytes": 14989,
+      "sha1": "2b8c454d5bcdcea9391354fcc252c2aadbc9d332"
     },
     {
       "path": "/hero/poster-creators-960.webp",
       "width": 960,
-      "bytes": 38718,
-      "sha1": "7a50a6dc9f349ae4a3e3fafee07995a243bf44e4"
+      "bytes": 41804,
+      "sha1": "3b33a6dd387c4385542452715b01449c94fb3baa"
     },
     {
       "path": "/hero/poster-creators-2240.avif",
       "width": 2240,
-      "bytes": 26492,
-      "sha1": "64770ae7368015b206c20e321c9060fc55d18a4b"
+      "bytes": 25803,
+      "sha1": "217599c2a187fde0b75068e4fa2fe85352beb4ab"
     },
     {
       "path": "/hero/poster-creators-2240.webp",
       "width": 2240,
-      "bytes": 97910,
-      "sha1": "2fc802d2c212664cac85a65920e0e0884b992fbf"
+      "bytes": 92158,
+      "sha1": "b6b49322266e8eb531491f81081ab67f77a660da"
     }
   ]
 }

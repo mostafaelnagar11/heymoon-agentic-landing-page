@@ -116,3 +116,9 @@ pink arc, peaking beside the Creators bead, with a pink check on its label. Draw
 is in the poster; on the switch the Orders and Paid arcs appear behind the travelling bead; a 24 s idle loop (one
 week) dims the steps and lights them again in turn; typing dims it to 45%. The labels are DOM in the agents chunk, and
 the Creators card reads "MoonScore AI · Your share for this week is on its way".
+Same day, "make it live so the lines appear before the text which looks weird; draw the lines when the text of it
+appears": the track is now drawn in, not shown at rest. The poster (REST) is the star alone; after release each arc
+draws clockwise like a pen stroke and its label fades in as its arc starts (Campaign matched, Held for you, Orders
+counted, then Paid), from 0.4 s after release on load and 1 s after a switch lands. The renderer is the one clock: it
+writes the label states on its canvas (data-track) and the labels follow. The idle loop dims the steps and draws them
+again. With no WebGL (reduced motion, Save-Data, a failure) there are no arcs and no labels.

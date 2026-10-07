@@ -339,8 +339,11 @@ export const phoneS = (vw: number, row: number): number =>
    moves: Campaign matched, Held for you, Orders counted, Paid (COPY.creators.track). Each arc is a
    light trail, faint at its tail and brighter at its head; Orders counted is a tally of ticks too dense to count;
    Paid is the one pink arc and blooms beside the Creators bead (225.8°). The shader draws it on Creators only (its
-   presence follows the tint), so the poster carries it; on the switch Orders counted and Paid appear behind the
-   travelling bead. The labels are DOM in the agents chunk. Angles: degrees, counter-clockwise from +x, y up. */
+   presence follows the tint). It is LIVE (Mostafa, 7 Oct: "draw the lines when the text of it appears"): REST is
+   undrawn, so the poster is the star alone; after release each arc draws clockwise like a pen stroke and its label
+   fades in as its arc starts. One clock, the renderer's track clock: it writes the labels' states (trackLabels) on
+   the canvas (TRACK_ATTR) and the agents chunk's labels follow them, so they never drift apart. No WebGL (reduced
+   motion, Save-Data, a failure): no arcs and no labels. Angles: degrees, counter-clockwise from +x, y up. */
 export const TRACK = {
   r: 0.4,
   /** The first step's tail. Each step starts 90° clockwise of the last and spans `span`; the gaps hold the arms. */
@@ -349,10 +352,12 @@ export const TRACK = {
   ticks: 44,
   /** Paid's peak, as a fraction of its arc from the tail: the Creators bead's angle. */
   paidPeak: 0.522,
-  /** The idle loop, one week, on the shader clock T (0 at REST, so 0 to holdS is the resting frame the poster shows):
-      hold, dim every step to `low` over dimS, then light the steps again in turn (`steps`: start and length, s). */
-  loopS: 24, holdS: 14, dimS: 1.6, low: 0.12,
-  steps: [[15.6, 1.2], [17.2, 1.2], [18.8, 3], [22, 1.4]] as const,
+  /** The draw-in on the track clock (s): each step's start and length. The clock starts introS after release on
+      Creators, or switchS after an animated switch to Creators; a jump (or a switch while the loop is stopped) lands
+      it drawn. */
+  draw: [[0, 0.9], [1, 0.9], [2, 1.4], [3.6, 1.1]] as const, introS: 0.4, switchS: 1,
+  /** Then the idle loop, about one week: hold holdS, dim every step to `low` over dimS, draw them again, repeat. */
+  holdS: 14, dimS: 1.6, low: 0.12,
   /** Typing dims the track to this (the star's focus value drives it). */
   focusDim: 0.45,
   /** Each label's inner corner, on its diagonal, this far in from the stage's nearer edges (S): its box sits about
@@ -360,6 +365,26 @@ export const TRACK = {
       smaller. */
   label: 0.1829, labelMinS: 150, phoneS: 300,
 } as const;
+/** The attribute the renderer writes on its canvas: one character per step, "1" lit (its arc has started to draw),
+    "d" dim (not yet drawn again in the loop), "0" hidden (not started in the draw-in). */
+export const TRACK_ATTR = "data-track";
+/** When the draw-in ends, on the track clock (s). */
+export const TRACK_DRAWN = Math.max(...TRACK.draw.map(([s, d]) => s + d));
+const drawnAt = (s: number) => TRACK.draw.reduce((n, [st, du]) => n + clamp01((s - st) / du), 0);
+/** At tk seconds on the track clock: [P, floor]. P is how many steps are drawn (0 to 4, fractional while one draws);
+    floor is the level of what is not drawn (0 in the draw-in, TRACK.low in the loop). tk < 0 is undrawn. */
+export function trackAt(tk: number): [number, number] {
+  if (tk < 0) return [0, 0];
+  if (tk < TRACK_DRAWN) return [drawnAt(tk), 0];
+  let c = (tk - TRACK_DRAWN) % (TRACK.holdS + TRACK.dimS + TRACK_DRAWN);
+  if (c < TRACK.holdS) return [4, 0];
+  c -= TRACK.holdS;
+  if (c < TRACK.dimS) return [0, 1 - (1 - TRACK.low) * eio3(c / TRACK.dimS)];
+  return [drawnAt(c - TRACK.dimS), TRACK.low];
+}
+/** The labels' states for TRACK_ATTR (see there). */
+export const trackLabels = ([p, floor]: [number, number]): string =>
+  [0, 1, 2, 3].map((i) => (p > i + 0.02 ? "1" : floor > 0 ? "d" : "0")).join("");
 
 /* ── The agents (WAVE 2, item 1) ── */
 
