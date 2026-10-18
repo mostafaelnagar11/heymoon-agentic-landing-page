@@ -14,9 +14,9 @@
 
    Two things never appear here, in any state: a price beside a person,
    which the review call said is against the premise of the product, and
-   a name or handle before Phase 1 is paid for. */
+   a name, handle or face before Phase 1 is paid for. */
 
-import { InstagramLogo, LockSimple, TiktokLogo, YoutubeLogo, Warning, X } from "@phosphor-icons/react";
+import { InstagramLogo, LockSimple, TiktokLogo, UsersThree, YoutubeLogo, Warning, X } from "@phosphor-icons/react";
 import type { CreatorMatch } from "../lib/agent/types";
 import { fmtCount, fmtUSD } from "../lib/mock/campaigns";
 import { PHASE1_BUDGET } from "../lib/agent/tools";
@@ -175,11 +175,12 @@ export function CreatorGrid({
 /* how much reach, how much of it is in your markets, what they         */
 /* publish — but no names, no handles, no links.                        */
 /*                                                                     */
-/* The faces are real and unblurred. The review call was explicit that  */
-/* "there is no harm in showing the icons of these profiles" and that   */
-/* the line is names, handles and links — and a blurred face would read */
-/* as a loading state, when this is a commercial decision the card      */
-/* states in words instead.                                             */
+/* No faces either (brand team, 15 Oct): before payment a brand sees    */
+/* the KIND of creator, "fashion and beauty creators on Instagram,      */
+/* 25k to 180k followers", and the numbers that judge the crew. The     */
+/* shortlist itself, faces, names and handles, arrives with Phase 1.    */
+/* An icon stands where the faces were, not a blur: a blurred face      */
+/* reads as a loading state, and this is a decision, not a delay.       */
 /*                                                                     */
 /* The crew is a SUBSET, and the card says so. MoonMatch AI matches a  */
 /* pool to the brand and MoonSearch AI vets it, and then the fixed      */
@@ -187,6 +188,17 @@ export function CreatorGrid({
 /* the crew without the pool would make the plan look smaller than the  */
 /* match actually is, and would hide what Phases 2 and 3 are for.       */
 /* ------------------------------------------------------------------ */
+
+/** "Fashion and beauty creators on Instagram and TikTok · 25k to 180k followers": the profile type, no identity. */
+export function creatorProfile(creators: CreatorMatch[]): string {
+  if (!creators.length) return "";
+  const niches = Array.from(new Set(creators.map((c) => c.niche.toLowerCase())));
+  const kinds = niches.length > 1 ? `${niches.slice(0, -1).join(", ")} and ${niches[niches.length - 1]}` : niches[0];
+  const platforms = Array.from(new Set(creators.map((c) => c.platform)));
+  const lo = Math.min(...creators.map((c) => c.followers)), hi = Math.max(...creators.map((c) => c.followers));
+  const size = lo === hi ? `${fmtCount(lo)} followers` : `${fmtCount(lo)} to ${fmtCount(hi)} followers`;
+  return `${kinds[0].toUpperCase()}${kinds.slice(1)} creators on ${platforms.join(" and ")} · ${size}`;
+}
 
 export function CreatorSummary({ creators, matched }: {
   creators: CreatorMatch[];
@@ -205,8 +217,6 @@ export function CreatorSummary({ creators, matched }: {
   const reach = creators.reduce((n, c) => n + Math.round(c.followers * c.viewThrough), 0);
   const inMarket = Math.round(creators.reduce((n, c) => n + c.gulfShare, 0) / creators.length);
   const watch = Math.round((creators.reduce((n, c) => n + c.viewThrough, 0) / creators.length) * 100);
-  const niches = Array.from(new Set(creators.map((c) => c.niche)));
-  const platforms = Array.from(new Set(creators.map((c) => c.platform)));
   /* The crew that the warm-up briefs, against the pool it was drawn
      from. A caller that does not know the pool passes nothing, and the
      card simply does not claim there is one. */
@@ -217,29 +227,9 @@ export function CreatorSummary({ creators, matched }: {
   return (
     <article className="rounded-card border border-hairline bg-white p-4 shadow-card">
       <div className="flex items-center gap-3">
-        {/* Face plus platform — the "small details" the call allowed —
-            and nothing that identifies. Earlier faces sit on top of later
-            ones, so each badge lands over the next face and stays visible. */}
-        <span className="flex -space-x-2.5 rtl:space-x-reverse" aria-hidden>
-          {creators.slice(0, 6).map((c, i) => {
-            const P = ICON[c.platform];
-            return (
-              <span key={c.id} className="relative h-9 w-9 shrink-0" style={{ zIndex: 10 - i }}>
-                <span className="block h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-brand-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={c.avatar} alt="" loading="lazy" className="h-full w-full object-cover" />
-                </span>
-                <span className="absolute -bottom-0.5 -end-0.5 grid h-4 w-4 place-items-center rounded-full border border-white bg-white text-ink-soft shadow-card">
-                  <P size={9} weight="fill" />
-                </span>
-              </span>
-            );
-          })}
-          {creators.length > 6 && (
-            <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-white bg-brand-100 text-[11px] font-bold text-brand">
-              +{creators.length - 6}
-            </span>
-          )}
+        {/* The profile type, not the people: an icon where faces were. */}
+        <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-100 text-brand">
+          <UsersThree size={18} weight="fill" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-body font-semibold text-ink">
@@ -247,9 +237,7 @@ export function CreatorSummary({ creators, matched }: {
               ? `${crew} of the ${pool} matched creators are in your warm-up crew`
               : `${crew} creators matched and held for you`}
           </p>
-          <p className="mt-0.5 text-meta text-ink-faint">
-            {platforms.join(" and ")} · {niches.join(", ").toLowerCase()}
-          </p>
+          <p className="mt-0.5 text-meta text-ink-faint">{creatorProfile(creators)}</p>
         </div>
       </div>
 
@@ -276,7 +264,7 @@ export function CreatorSummary({ creators, matched }: {
           {subset
             ? `The ${fmtUSD(PHASE1_BUDGET)} warm-up briefs the ${crew} best value of them, and the rest of the pool is what Phases 2 and 3 are for. `
             : ""}
-          Names, handles and recent posts appear the moment Phase 1 starts. The pictures are real; the identities wait.
+          The shortlist, with faces, names, handles and recent posts, appears the moment Phase 1 starts.
         </span>
       </p>
     </article>

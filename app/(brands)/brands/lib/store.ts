@@ -64,7 +64,12 @@ export type ThreadItem =
      then rather than what is true now. */
   | { id: string; kind: "score"; planBudget: number; roas: number; at: number }
   /* The store that came in under the traffic floor. */
-  | { id: string; kind: "rejected"; readId: string; at: number };
+  | { id: string; kind: "rejected"; readId: string; at: number }
+  /* The scope the brand confirms before the plan is built (brand team, 15 Oct): which markets, which products. */
+  | { id: string; kind: "pick-markets"; readId: string; at: number }
+  | { id: string; kind: "pick-products"; readId: string; at: number }
+  /* What the $1,000 includes, shown with the plan before Pay. */
+  | { id: string; kind: "includes"; at: number };
 
 /* ------------------------------------------------------------------ */
 /* Autonomy                                                            */
@@ -287,6 +292,12 @@ export interface State {
      front of the thing that sells the product. Not a campaign field:
      one account can build several. */
   account: Account | null;
+  /* The brand accounts HeyMoon knows, by store host: who owns each, who they invited, who asked to join. In the
+     product this is the server, so it is saved under its own key and Sign out (which clears this browser's work)
+     does not un-own a brand. Delete everything clears it too. */
+  brands: Record<string, BrandAccount>;
+  /* What the person building the campaign does, asked once in the conversation (BuyerRole). Null until asked. */
+  role: BuyerRole | null;
   /* What the brand tells HeyMoon about itself, as opposed to what
      HeyMoon read off the shop. The read is evidence and cannot be
      typed over; this is the paperwork a campaign needs to be invoiced,
@@ -303,26 +314,24 @@ export interface Profile {
   tradeLicence: string;
   street: string;
   city: string;
-  /** One switch, because there is one channel: the number that signed
-      in. Off means HeyMoon only speaks inside the product. */
+  /** One switch, because there is one channel: the work email that
+      signed in. Off means HeyMoon only speaks inside the product. */
   notifications: boolean;
 }
 
-/** A name and a verified number. There is no password: the code sent
-    to the phone is the proof, so there is no secret for HeyMoon to hold
-    or for a brand to lose.
-
-    A phone rather than an email because of where this sells. In the
-    Gulf a shop owner's number is the account on Salla and on Zid, it is
-    the thing they answer within the hour, and it is how an engineer
-    reaches them when a connection needs a person. */
+/** A name and a verified WORK email (brand team, 15 Oct: "any work email will do, as long as it's work email").
+    Any company domain is accepted, not only the store's own (Sephora's team signs in from @chalhoub.com); personal
+    providers are refused (SignInSheet, PERSONAL). There is no password: the code sent to the address is the proof.
+    Whoever pays for Phase 1 owns the brand account and invites the rest of the team. Phone sign-in is parked: the
+    team is still deciding whether it becomes the exemption route for owners who only have Gmail (Salla and Zid). */
 export interface Account {
   firstName: string;
   lastName: string;
-  /** Dialling code, with the plus: "+966". */
-  dialCode: string;
-  /** Digits only, no code and no spaces. */
-  phone: string;
+  /** Lower-cased, as verified. */
+  email: string;
+  /** Kept only for accounts saved before work email (they signed in by phone). */
+  dialCode?: string;
+  phone?: string;
   /** When the code was accepted. Set by the caller, never by the store,
       so nothing here is non-deterministic. */
   verifiedAt: number;
@@ -330,8 +339,46 @@ export interface Account {
 
 /** "Mostafa Elnagar". */
 export const accountName = (a: Account) => `${a.firstName} ${a.lastName}`.trim();
-/** "+966 512345678", the way it is shown back to the brand. */
-export const accountPhone = (a: Account) => `${a.dialCode} ${a.phone}`;
+/** "sara@brand.com", or the phone of an account saved before work email. */
+export const accountContact = (a: Account) => a.email || (a.phone ? `${a.dialCode ?? ""} ${a.phone}`.trim() : "");
+
+/* Who pays (brand team, 15 Oct). The person who pays for a store's first phase owns its brand account, and nobody
+   else can claim it by signing in with the same company's email: the owner invites people, and anyone else can only
+   ask. Close to how a workspace works in Claude or Slack. */
+export interface BrandMember {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  invitedAt: number;
+  /** Set when they first sign in with the invited address. */
+  joinedAt?: number;
+}
+export interface AccessRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  at: number;
+}
+export interface BrandAccount {
+  host: string;
+  brandName: string;
+  owner: { firstName: string; lastName: string; email: string; since: number };
+  members: BrandMember[];
+  requests: AccessRequest[];
+}
+export type BrandAccess = "unclaimed" | "owner" | "member" | "invited" | "outsider";
+
+/* Who HeyMoon is talking to (brand team, 15 Oct). Every one of them hears about the guarantee first, because no one
+   else guarantees an influencer campaign; e-commerce managers and owners buy on sales and decide fastest, so for them
+   the conversation stays on sales, and marketing and social media managers also get the creators and the brief. */
+export type BuyerRole = "ecommerce" | "marketing" | "social" | "owner";
+export const ROLES: { key: BuyerRole; label: string }[] = [
+  { key: "ecommerce", label: "E-commerce manager" },
+  { key: "marketing", label: "Marketing manager" },
+  { key: "social", label: "Social media manager" },
+  { key: "owner", label: "I own the brand" },
+];
+export const salesFirst = (r: BuyerRole | null) => r === "ecommerce" || r === "owner";
 
 /** The thread a conversation starts on before it has a campaign. */
 export const FIRST_THREAD = "t-1";
@@ -362,8 +409,10 @@ const KEPT = [
   "threads", "activeThreadId",
   "funding", "approvals",
   "ads", "declineNotes", "creatorSignals", "dismissedInbox",
-  "activity", "account", "profile",
+  "activity", "account", "profile", "role",
 ] as const;
+/* The brand accounts, apart from the work: see State.brands. */
+const BRANDS_KEY = "mtab_brands_v1";
 type Kept = (typeof KEPT)[number];
 
 function initial(): State {
@@ -394,6 +443,8 @@ function initial(): State {
     readFocus: null,
     drill: { level: "list", phaseId: null },
     account: null,
+    brands: {},
+    role: null,
     profile: { industry: "", country: "", vat: "", tradeLicence: "", street: "", city: "", notifications: true },
   };
 }
@@ -416,6 +467,7 @@ function save() {
       const out: Record<string, unknown> = {};
       for (const k of KEPT) out[k] = state[k];
       localStorage.setItem(STATE_KEY, JSON.stringify(out));
+      localStorage.setItem(BRANDS_KEY, JSON.stringify(state.brands));
     } catch {
       /* A full quota, or a private window that refuses. Losing the
          restore is not worth losing the session over. */
@@ -437,6 +489,10 @@ function hydrate() {
          the restored reads or every plan comes back without evidence. */
       for (const r of Object.values(state.reads)) rememberRead(r);
     }
+  } catch {}
+  try {
+    const b = localStorage.getItem(BRANDS_KEY);
+    if (b) state = { ...state, brands: JSON.parse(b) };
   } catch {}
   try {
     const l = localStorage.getItem(LOCALE_KEY);
@@ -470,11 +526,16 @@ function set(patch: Partial<State> | ((s: State) => Partial<State>)) {
 
 /** Forget the account and everything built under it. Signing out of a
     prototype that then shows you the last brand's campaign is not a
-    sign-out. */
-export const resetAll = () => {
-  try { localStorage.removeItem(STATE_KEY); } catch {}
+    sign-out. Who owns which brand is the server's record, not this
+    browser's, so it survives a sign-out; `everything` (Settings, Delete
+    everything) clears that too. */
+export const resetAll = (opts?: { everything?: boolean }) => {
+  try {
+    localStorage.removeItem(STATE_KEY);
+    if (opts?.everything) localStorage.removeItem(BRANDS_KEY);
+  } catch {}
   const fresh = initial();
-  state = { ...fresh, locale: state.locale, autonomy: state.autonomy };
+  state = { ...fresh, locale: state.locale, autonomy: state.autonomy, brands: opts?.everything ? {} : state.brands };
   emit();
 };
 
@@ -744,6 +805,75 @@ export const markPaid = () =>
     accepted, with the caller's clock: the store stays deterministic. */
 export const signIn = (a: Omit<Account, "verifiedAt">, verifiedAt: number) =>
   set(() => ({ account: { ...a, verifiedAt } }));
+
+/* ---- Brand accounts ---- */
+
+const sameEmail = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Where this address stands on this store's brand account. */
+export function accessFor(host: string, email: string, brands: Record<string, BrandAccount> = state.brands): BrandAccess {
+  const b = brands[host];
+  if (!b) return "unclaimed";
+  if (sameEmail(b.owner.email, email)) return "owner";
+  const m = b.members.find((x) => sameEmail(x.email, email));
+  if (m) return m.joinedAt ? "member" : "invited";
+  return "outsider";
+}
+
+const patchBrand = (host: string, fn: (b: BrandAccount) => BrandAccount) =>
+  set((s) => (s.brands[host] ? { brands: { ...s.brands, [host]: fn(s.brands[host]) } } : {}));
+
+/** The first payment for a store makes the payer its owner. A later payment by a member changes nothing. */
+export const claimBrand = (host: string, brandName: string, a: Account, at: number) =>
+  set((s) =>
+    s.brands[host]
+      ? {}
+      : {
+          brands: {
+            ...s.brands,
+            [host]: {
+              host, brandName,
+              owner: { firstName: a.firstName, lastName: a.lastName, email: a.email, since: at },
+              members: [], requests: [],
+            },
+          },
+        }
+  );
+
+export const inviteMember = (host: string, email: string, at: number) =>
+  patchBrand(host, (b) =>
+    b.members.some((m) => sameEmail(m.email, email))
+      ? b
+      : { ...b, members: [...b.members, { email: email.trim().toLowerCase(), invitedAt: at }], requests: b.requests.filter((r) => !sameEmail(r.email, email)) }
+  );
+
+export const removeMember = (host: string, email: string) =>
+  patchBrand(host, (b) => ({ ...b, members: b.members.filter((m) => !sameEmail(m.email, email)) }));
+
+/** An invited address signed in for the first time. */
+export const joinBrand = (host: string, who: { firstName: string; lastName: string; email: string }, at: number) =>
+  patchBrand(host, (b) => ({
+    ...b,
+    members: b.members.map((m) => (sameEmail(m.email, who.email) ? { ...m, firstName: who.firstName, lastName: who.lastName, joinedAt: m.joinedAt ?? at } : m)),
+  }));
+
+/** One request per address; asking twice refreshes it. */
+export const requestAccess = (host: string, who: { firstName: string; lastName: string; email: string }, at: number) =>
+  patchBrand(host, (b) => ({ ...b, requests: [...b.requests.filter((r) => !sameEmail(r.email, who.email)), { ...who, at }] }));
+
+/** Approving a request lets them straight in: they already proved the address with a code when they asked. */
+export const answerRequest = (host: string, email: string, approve: boolean, at: number) =>
+  patchBrand(host, (b) => {
+    const r = b.requests.find((x) => sameEmail(x.email, email));
+    const requests = b.requests.filter((x) => !sameEmail(x.email, email));
+    if (!approve || !r) return { ...b, requests };
+    return { ...b, requests, members: [...b.members, { email: r.email, firstName: r.firstName, lastName: r.lastName, invitedAt: at, joinedAt: at }] };
+  });
+
+export const useBrandAccount = (host?: string | null) => useStore((s) => (host ? s.brands[host] ?? null : null));
+
+export const setRole = (role: BuyerRole) => set({ role });
+export const useRole = () => useStore((s) => s.role);
 
 export const connectStore = (which: StorePlatform, campaignId?: string) =>
   set((s) => {

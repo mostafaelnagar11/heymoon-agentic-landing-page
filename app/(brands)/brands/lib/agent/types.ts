@@ -251,7 +251,16 @@ export interface Plan {
   price: PriceQuote;
   /** Every change since the plan was proposed, most recent last. */
   changes: PlanChange[];
+  /** What the brand said the campaign should push, asked before the plan is built (brand team, 15 Oct).
+      Absent on plans built before the question existed: they push the bestsellers. */
+  focus?: ProductFocus;
 }
+
+/** The product focus the brand confirms before paying: its bestsellers, a new launch, or products it picks. */
+export type ProductFocus =
+  | { kind: "bestsellers" }
+  | { kind: "launch"; note: string }
+  | { kind: "specific"; products: string[] };
 
 export type PlanField =
   | "strategy" | "markets" | "audience" | "budget"

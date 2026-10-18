@@ -35,7 +35,7 @@ import {
   tools, underwriting,
   type Repair,
 } from "../lib/agent/tools";
-import type { BrandRead, Plan, PlanChange, PlanPatch, Report } from "../lib/agent/types";
+import type { BrandRead, Plan, PlanChange, PlanPatch, ProductFocus, Report } from "../lib/agent/types";
 import {
   PLAN_BUDGET_MAX, PLAN_BUDGET_MIN, ROAS_MAX, ROAS_MIN,
   budgetForHigh, budgetForMedium, getConfidence, roasForHigh, roasForMedium,
@@ -43,6 +43,7 @@ import {
 import { useStream } from "../lib/agent/useStream";
 import {
   activePlanLive, activeThread, claimOnce, correctRead, markPaid, openPanel, useAccount,
+  ROLES, accessFor, claimBrand, requestAccess, salesFirst, setRole, useRole,
   push, putApproval, putCampaign, putFunding, putPlan, putRead, threadIsEmpty,
   useActivePlan, useAds, useCampaigns, useActiveThreadId, useLivePhase, usePaid, usePhaseRequested,
   useStore, type PanelView,
@@ -50,6 +51,7 @@ import {
 import { fmtUSD } from "../lib/mock/campaigns";
 import { getRead, readIdFor } from "../lib/agent/registry";
 import { normaliseUrl } from "../lib/mock/reads";
+import { maskEmail } from "../lib/email";
 import { useT } from "../lib/i18n";
 import { Btn, Card } from "../components/ui";
 import { Thinking, Typed, WorkingLine } from "../components/Stream";
@@ -63,6 +65,8 @@ import {
   RejectedBlock, ReportBlock, TaskRoster, countWord, rosterTitle,
 } from "../components/blocks";
 import { PlanCard } from "../components/PlanCard";
+import { shortfallLine } from "../lib/agent/guarantee";
+import { IncludesBlock, MarketsPick, ProductsPick, focusText } from "../components/ScopeBlocks";
 
 /* What the Phase 1 payment was made against. After the phase is paid an
    edit to any of these is not applied — the agent carries it into Phase 2
@@ -175,6 +179,8 @@ function ChatInner() {
   const approvals = useStore((s) => s.approvals);
   const connected = useStore((s) => (s.activeCampaignId ? s.campaigns[s.activeCampaignId]?.connectedStore ?? null : null));
   const account = useAccount();
+  const role = useRole();
+  const brands = useStore((s) => s.brands);
   const [signInOpen, setSignIn] = useState(false);
   /* The chips the thread offers once Phase 1 is paid for. */
   const postChips = connected ? POST_CHIPS : POST_CHIPS_UNCONNECTED;
@@ -242,6 +248,14 @@ function ChatInner() {
   const [shapeAsked, setShapeAsked] = useState(false);
   const awaitingShape = shapeAsked && !shapeSettled && !plan;
   const [awaitingCorrection, setAwaitingCorrection] = useState(false);
+  /* The scope the brand confirms before the plan is built (brand team, 15 Oct): which markets, which products. A
+     ref beside the state, because the build's completion callback reads it after the closure that started it. */
+  const [scope, setScopeState] = useState<{ markets?: string[]; focus?: ProductFocus }>({});
+  const scopeRef = useRef(scope);
+  /* The build's callback outlives the render that started it, so it reads the role through a ref. */
+  const roleRef = useRef(role);
+  roleRef.current = role;
+  const setScope = (next: { markets?: string[]; focus?: ProductFocus }) => { scopeRef.current = next; setScopeState(next); };
   /* Which agent messages have finished typing. Held here rather than in
      the store: it is a property of this viewing, not of the thread. */
   const [typedDone, setTypedDone] = useState<Record<string, true>>({});
@@ -377,6 +391,13 @@ function ChatInner() {
       /* What did not clear is on the block below, in the words the
          read itself used. Repeating it here would put someone else's
          punctuation in the middle of the agent's sentence. */
+      /* No store at all (a profile, a link page): there is nothing to correct or re-check, only the right link. */
+      if (v.eligibility?.missing?.some((m) => /online store/i.test(m.label))) {
+        say(`There's no online store at ${v.url}, so I stopped there. HeyMoon needs a store with a checkout to guarantee sales.`);
+        push({ kind: "rejected", readId: v.id });
+        ask("Paste your store's link and I'll read that instead.", ["Read a different store"]);
+        return;
+      }
       say(`One thing didn't clear. Everything else stands.`);
       push({ kind: "rejected", readId: v.id });
       ask("Tell me what to correct, or I'll log a manual re-check.", ["Log a re-check", "Read a different store"]);
@@ -446,7 +467,22 @@ function ChatInner() {
        point that asks for one — the sheet opens over the thread and the
        payment card is what it opens onto. */
     if (!account) { setSignIn(true); return; }
+    /* Signed in, but to a store somebody else already owns: only its owner can add people (brand team, 15 Oct). */
+    if (accessFor(getRead(plan.readId).url, account.email, brands) === "outsider") { askForAccess(); return; }
     showFunding();
+  };
+
+  /** This store's brand account belongs to someone else. Say whose, without their whole address, and offer the
+      one thing this person can do about it. */
+  const askForAccess = () => {
+    if (!plan) return;
+    const b = brands[getRead(plan.readId).url];
+    if (!b) return;
+    say(
+      `${b.brandName} already has a HeyMoon account. It belongs to ${maskEmail(b.owner.email)}, who paid for its first ` +
+      `campaign, and only the owner can start a campaign for it or add people. Nothing was charged.`
+    );
+    ask("", ["Request access", "Change something"]);
   };
 
   /** The payment card itself, split out so the sign-in sheet can call it
@@ -485,14 +521,23 @@ function ChatInner() {
         if (!v0) return;
         /* The calculator's two numbers are the brand's, so they win over
            whatever the proposal defaulted to. */
-        const v = withShape
+        /* The markets the brand picked come first, so the crew is matched where the campaign runs; the
+           calculator's two numbers are the brand's, so they win over whatever the proposal defaulted to; and the
+           product focus rides on the plan for the card and the brief. */
+        const sc = scopeRef.current;
+        let v1 = v0;
+        if (sc.markets?.length && sc.markets.join() !== v0.markets.value.join() && !cancelled) {
+          v1 = tools.edit_plan({ plan: v0, patch: { markets: sc.markets }, because: "because those are the markets you picked", by: "brand" }).plan;
+        }
+        const v2 = withShape
           ? tools.edit_plan({
-              plan: v0,
+              plan: v1,
               patch: { planBudget: withShape.planBudget, guaranteedRoas: withShape.roas },
               because: "because that is the campaign you set",
               by: "brand",
             }).plan
-          : v0;
+          : v1;
+        const v: Plan = sc.focus ? { ...v2, focus: sc.focus } : v2;
         /* A half-built plan is not a plan. The build assembles in
            order — markets, audience, crew, price, brief, ladder — so a
            run stopped early has real figures in the fields it reached
@@ -530,16 +575,22 @@ function ChatInner() {
            here at all — useStream only reports the run that is current. */
         if (!claimOnce(`build-done:${read.id}`)) return;
         const crew = v.creators.value.length;
+        const creatorsWord = `${countWord(crew)} creator${crew === 1 ? "" : "s"}`;
         push({
           kind: "say",
           text:
-            `Done. Phase 1 is ${fmtUSD(v.budget.value)} for ${countWord(crew)} creator${crew === 1 ? "" : "s"}, ` +
-            `with ${fmtUSD(v.price.revenueTarget.value)} in sales guaranteed.\n\n` +
-            `And the part most brands do not believe until they read it: sell less than that and HeyMoon pays you ` +
-            `the difference.`,
+            /* E-commerce managers and owners buy on sales (brand team, 15 Oct), so for them the sentence opens on
+               the sales and the creators come after. */
+            (salesFirst(roleRef.current)
+              ? `Done. Phase 1 guarantees ${fmtUSD(v.price.revenueTarget.value)} in sales for ${fmtUSD(v.budget.value)}, from ${creatorsWord}.\n\n`
+              : `Done. Phase 1 is ${fmtUSD(v.budget.value)} for ${creatorsWord}, ` +
+                `with ${fmtUSD(v.price.revenueTarget.value)} in sales guaranteed.\n\n`) +
+            `And the part most brands do not believe until they read it: ${shortfallLine(v.budget.value, v.price.revenueTarget.value).replace(/^Fall/, "fall")}`,
         });
         push({ kind: "plan-card" });
         if (v.ladder.value.length) push({ kind: "ladder" });
+        /* What the $1,000 buys, before the brand is asked to pay it (brand team, 15 Oct). */
+        push({ kind: "includes" });
         /* The plan opens beside the conversation the moment there is one.
            It is the artifact this whole exchange is about — the three
            plans, the crew and the brief all live there — so it should be
@@ -574,6 +625,105 @@ function ChatInner() {
     startBuild(getRead(buildFor));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildFor]);
+
+  /** The calculator's question: the plan size and the multiple, before anything is built. Asked after the brand has
+      confirmed the markets and the product focus. */
+  const askShape = () => {
+    /* Two numbers before anything is built, and the card asks
+       them. Saying "looks right" gets no sentence back at all:
+       the brand has just answered a question, and a paragraph
+       restating the question they answered is a turn that moves
+       nothing. The bar carries the pair, the confidence in it and
+       what it is worth; the chips carry the answers.
+
+       `shapeAsked` is STATE, not a sentence in the thread. The
+       calculator was once detected by grepping the transcript for
+       its own opening line, and rewriting that line switched the
+       whole branch off. */
+    const sug = suggestPlanShape(PITCH_MULTIPLE);
+    setShape(sug);
+    setShapeSettled(false);
+    setShapeAsked(true);
+    /* The question, restored. It had been cut on the grounds that
+       the bar carries the pair and the chips carry the answers,
+       which is true and still leaves a brand looking at a meter
+       and three buttons with nothing asking them anything. Two
+       sentences, which is the length rule, not none. */
+    /* The client's own words, verbatim, and their claim to make.
+       Two things in it are worth knowing when this is read back:
+       the $10k and $40k are a general illustration rather than a
+       quote for this brand, and the calculator directly below
+       opens on a different pair; and the line about the fee
+       following delivered ROAS is the one sentence here that the
+       rest of the product contradicts, because Phase 1 is a flat
+       $1,000 for every brand and the plan card says so three
+       times. Flagged, not edited: it is their pricing to
+       describe. */
+    say(
+      `Wow, okay... this is interesting.\n\n` +
+      `Do you know that $10k in influencer spending could generate $40k+ in sales?\n\n` +
+      `Based on campaigns I've managed before, 4x+ ROAS is very possible.\n\n` +
+      `And the best part?\n` +
+      `Our fee is based on the ROAS we actually deliver. Wanna know more?\n\n` +
+      `${fmtUSD(sug.planBudget)} at ${sug.roas}x is the smallest plan HeyMoon can back at high confidence.`
+    );
+    push({ kind: "score", planBudget: sug.planBudget, roas: sug.roas });
+    ask("", [`${fmtUSD(sug.planBudget)} at ${sug.roas}x`, "Something smaller", "Guarantee 8x instead"]);
+  };
+
+  /** Who the agent is talking to, asked once and remembered (BuyerRole). It decides what the conversation leads with,
+      never what the plan is. */
+  const askRole = (r: BrandRead) => {
+    setPendingRead(r);
+    const name = r.identity?.name.value;
+    say(`Before I size it, a few quick ones. What do you do${name ? ` at ${name}` : ""}?`);
+    setAsking({ q: "", options: ROLES.map((x) => x.label) });
+  };
+
+  const onRole = (r: BrandRead, key: (typeof ROLES)[number]["key"]) => {
+    setRole(key);
+    /* The guarantee first for everyone, because no one else offers one (brand team, 15 Oct). */
+    const lead = salesFirst(key)
+      ? `Then I'll keep this about sales. Every phase comes with sales guaranteed, and if one falls short you get the ` +
+        `same share of what you paid back.`
+      : `Then you'll want to know what kind of creators it uses and what they'll post, and the plan shows both. What ` +
+        `nobody else does is guarantee the sales, so that's where it starts: if a phase falls short, you get the same ` +
+        `share of what you paid back.`;
+    if ((r.markets?.value.length ?? 0) > 0 && !scopeRef.current.markets) { askMarkets(r, `${lead}\n\nFirst, where should it run?`); return; }
+    say(lead);
+    if (!scopeRef.current.focus && (r.bestsellers?.value.length ?? 0) > 0) askProducts(r);
+    else askShape();
+  };
+
+  /** Scope step 1: which markets, from the ones the read found (MarketsPick). */
+  const askMarkets = (r: BrandRead, lead?: string) => {
+    setPendingRead(r);
+    say(lead ?? "Before I size it, two quick ones. First, where should it run?");
+    push({ kind: "pick-markets", readId: r.id });
+    setAsking({ q: "", options: [] });
+  };
+
+  /** Scope step 2: what it pushes (ProductsPick). */
+  const askProducts = (r: BrandRead) => {
+    setPendingRead(r);
+    say("And what should it push?");
+    push({ kind: "pick-products", readId: r.id });
+    setAsking({ q: "", options: [] });
+  };
+
+  const onMarkets = (r: BrandRead, codes: string[]) => {
+    setScope({ ...scopeRef.current, markets: codes });
+    push({ kind: "user", text: `Run it in ${listOf(codes.map(marketName))}` });
+    if (!scopeRef.current.focus && (r.bestsellers?.value.length ?? 0) > 0) askProducts(r);
+    else askShape();
+  };
+
+  const onProducts = (r: BrandRead, focus: ProductFocus) => {
+    setScope({ ...scopeRef.current, focus });
+    const top = (r.bestsellers?.value ?? []).slice(0, 3).map((p) => p.name);
+    push({ kind: "user", text: focus.kind === "bestsellers" ? "Push my bestsellers" : `Push ${focusText(focus, top).replace(/^Your/, "my")}` });
+    askShape();
+  };
 
   /** The agent asks, and waits. */
   const ask = (q: string, options: string[]) => {
@@ -706,6 +856,7 @@ function ChatInner() {
        an edit is still an edit. */
     if (!plan && LOOKS_LIKE_STORE.test(v) && readRun.status !== "running") {
       const url = normaliseUrl(v);
+      setScope({});
       say(`Reading ${url}.`);
       push({ kind: "read", url });
       runRead(url);
@@ -730,6 +881,22 @@ function ChatInner() {
           afterRead(partial);
           return;
         }
+      }
+    }
+
+    /* The answer to "what do you do?", one of the chips it offered. */
+    const roleAnswer = !plan && pendingRead ? ROLES.find((x) => x.label.toLowerCase() === lower) : undefined;
+    if (roleAnswer && pendingRead) { onRole(pendingRead, roleAnswer.key); return; }
+
+    /* Asking the owner of a store this account doesn't belong to (askForAccess). */
+    if (/^request access$/.test(lower) && plan && account) {
+      const host = getRead(plan.readId).url;
+      const b = brands[host];
+      if (b && accessFor(host, account.email, brands) === "outsider") {
+        requestAccess(host, { firstName: account.firstName, lastName: account.lastName, email: account.email }, Date.now());
+        say(`Sent. ${b.owner.firstName} sees it on the ${b.brandName} team page, and HeyMoon emails you when they answer.`);
+        setAsking({ q: "", options: ["Change something"] });
+        return;
       }
     }
 
@@ -789,6 +956,13 @@ function ChatInner() {
         `What you choose is what it's pointed at, and the guarantee moves with it.`,
         ["Guarantee 8x instead", "Kuwait only", "See all three phases", "Start Phase 1"]
       );
+      return;
+    }
+    /* What the $1,000 buys, asked in words (brand team, 15 Oct: the questions every brand asks before paying). */
+    if (plan && /what does (the |your )?(\$?1,?000|1k|it|this|phase 1|the fee|the payment) (include|cover|buy)|what.s included|what do i get|extra fees|hidden fees|other fees|any fees|choose (my )?(own )?creators|pick (my )?(own )?creators/.test(lower)) {
+      say("Here's everything it covers.");
+      push({ kind: "includes" });
+      setAsking({ q: "", options: paid ? postChips : ["Start Phase 1", "See all three phases"] });
       return;
     }
     /* "Change something" is a chip this thread offers, and `interpret`
@@ -986,7 +1160,7 @@ function ChatInner() {
          moves offered are the ones that make the promise keepable. */
       ask(
         (wantsBuild ? `I won't build that one. ` : "") +
-        (same ? still : `Low is below the line I commit at, and I won't sell a guarantee I expect to pay out on. `) +
+        (same ? still : `Low is below the line I commit at, and I won't sell a guarantee I expect to miss. `) +
         (ways || `No plan in range carries a ${next.roas}x promise, so lower the multiple and I can commit. `),
         fixes
       );
@@ -1020,46 +1194,12 @@ function ChatInner() {
             (plan ? getRead(plan.readId) : null);
           if (!r) { say("I need to read your store first. Paste the link on the first screen."); return; }
           if (paid) { say(ALREADY_PAID); return; }
-          /* Two numbers before anything is built, and the card asks
-             them. Saying "looks right" gets no sentence back at all:
-             the brand has just answered a question, and a paragraph
-             restating the question they answered is a turn that moves
-             nothing. The bar carries the pair, the confidence in it and
-             what it is worth; the chips carry the answers.
-
-             `shapeAsked` is STATE, not a sentence in the thread. The
-             calculator was once detected by grepping the transcript for
-             its own opening line, and rewriting that line switched the
-             whole branch off. */
-          const sug = suggestPlanShape(PITCH_MULTIPLE);
-          setShape(sug);
-          setShapeSettled(false);
-          setShapeAsked(true);
-          /* The question, restored. It had been cut on the grounds that
-             the bar carries the pair and the chips carry the answers,
-             which is true and still leaves a brand looking at a meter
-             and three buttons with nothing asking them anything. Two
-             sentences, which is the length rule, not none. */
-          /* The client's own words, verbatim, and their claim to make.
-             Two things in it are worth knowing when this is read back:
-             the $10k and $40k are a general illustration rather than a
-             quote for this brand, and the calculator directly below
-             opens on a different pair; and the line about the fee
-             following delivered ROAS is the one sentence here that the
-             rest of the product contradicts, because Phase 1 is a flat
-             $1,000 for every brand and the plan card says so three
-             times. Flagged, not edited: it is their pricing to
-             describe. */
-          say(
-            `Wow, okay... this is interesting.\n\n` +
-            `Do you know that $10k in influencer spending could generate $40k+ in sales?\n\n` +
-            `Based on campaigns I've managed before, 4x+ ROAS is very possible.\n\n` +
-            `And the best part?\n` +
-            `Our fee is based on the ROAS we actually deliver. Wanna know more?\n\n` +
-            `${fmtUSD(sug.planBudget)} at ${sug.roas}x is the smallest plan HeyMoon can back at high confidence.`
-          );
-          push({ kind: "score", planBudget: sug.planBudget, roas: sug.roas });
-          ask("", [`${fmtUSD(sug.planBudget)} at ${sug.roas}x`, "Something smaller", "Guarantee 8x instead"]);
+          /* Before anything is sized: where it runs and what it pushes (brand team, 15 Oct). Asked once each; a
+             plan that already exists is changed by sentences instead. */
+          if (!plan && !role) { askRole(r); return; }
+          if (!plan && !scopeRef.current.markets && (r.markets?.value.length ?? 0) > 0) { askMarkets(r); return; }
+          if (!plan && !scopeRef.current.focus && (r.bestsellers?.value.length ?? 0) > 0) { askProducts(r); return; }
+          askShape();
           return;
         }
         case "correct": {
@@ -1227,6 +1367,11 @@ function ChatInner() {
                 /* Per campaign, not global. A second campaign is not
                    paid for because the first one was. */
                 markPaid();
+                /* The first payment for a store makes the payer its owner (brand team, 15 Oct). */
+                if (plan && account) {
+                  const r = getRead(plan.readId);
+                  claimBrand(r.url, r.identity?.name.value ?? r.url, account, Date.now());
+                }
                 /* Paid → receipt → the three steps → the last step. No
                    creator cards here: the plan beside the conversation
                    holds the crew, and the full roster belongs on the
@@ -1298,6 +1443,18 @@ function ChatInner() {
         );
       case "rejected":
         return <BlockRow key={item.id}><RejectedBlock read={getRead(item.readId)} /></BlockRow>;
+      case "pick-markets": {
+        const r = getRead(item.readId);
+        const chosen = scope.markets ?? (plan ? plan.markets.value : null);
+        return <BlockRow key={item.id}><MarketsPick read={r} chosen={chosen} onConfirm={(codes) => onMarkets(r, codes)} /></BlockRow>;
+      }
+      case "pick-products": {
+        const r = getRead(item.readId);
+        const chosen = scope.focus ?? (plan ? plan.focus ?? { kind: "bestsellers" as const } : null);
+        return <BlockRow key={item.id}><ProductsPick read={r} chosen={chosen} onConfirm={(f) => onProducts(r, f)} /></BlockRow>;
+      }
+      case "includes":
+        return plan ? <BlockRow key={item.id}><IncludesBlock plan={plan} salesFirst={salesFirst(role)} /></BlockRow> : null;
       case "ad-card":
         return <BlockRow key={item.id}><AdCardBlock adId={item.adId} /></BlockRow>;
       case "working":
@@ -1456,6 +1613,8 @@ function ChatInner() {
           closes onto the card the brand was reaching for. */}
       <SignInSheet
         open={signInOpen}
+        host={plan ? getRead(plan.readId).url : undefined}
+        brandName={plan ? getRead(plan.readId).identity?.name.value : undefined}
         onClose={() => setSignIn(false)}
         onVerified={(name) => {
           setSignIn(false);

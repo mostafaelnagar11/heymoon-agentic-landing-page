@@ -27,9 +27,10 @@ import { CaretDown, Trash, WarningCircle } from "@phosphor-icons/react";
 import { Btn, Sheet } from "../ui";
 import { Section, Surface } from "./kit";
 import { AutonomyView } from "./AutonomyView";
+import { TeamView } from "./TeamView";
 import {
-  resetAll, setAccountDetails, setLocale, setProfile, useAccount, useActiveCampaign, useProfile, useStore,
-} from "../../lib/store";
+  resetAll, setAccountDetails, setLocale, setProfile, useAccount, useActiveCampaign, useProfile, useStore, accountContact,
+  ROLES, setRole, useRole } from "../../lib/store";
 import { useT } from "../../lib/i18n";
 import { getRead } from "../../lib/agent/registry";
 
@@ -94,9 +95,10 @@ function Picker({ label, value, onChange, options, placeholder }: {
    the product you arrive at knowing which thing you came to change, so
    a column that makes you scroll past the other three is a column that
    answers a question nobody asked. The grouping is by who the setting
-   belongs to: the shop, the invoice, the person, and the agents. */
+   belongs to: the shop, its people, the invoice, the person, and the agents. */
 const TABS = [
   { key: "brand", label: "Brand" },
+  { key: "team", label: "Team" },
   { key: "billing", label: "Billing" },
   { key: "account", label: "Account" },
   { key: "autonomy", label: "Autonomy" },
@@ -108,6 +110,7 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
   const { locale } = useT();
   const account = useAccount();
   const profile = useProfile();
+  const role = useRole();
   const campaign = useActiveCampaign();
   const campaigns = useStore((s) => s.campaignOrder.length);
   const [confirming, setConfirming] = useState(false);
@@ -215,6 +218,8 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
       </Section>
       )}
 
+      {tab === "team" && <TeamView host={url} brandName={brandName || url} />}
+
       {tab === "billing" && (
       <Section
         title="Business and billing"
@@ -288,22 +293,33 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
                 />
               </div>
               <div className="mt-4">
-                <span className={LABEL}>Phone</span>
+                <span className={LABEL}>{account.email ? "Work email" : "Phone"}</span>
                 <div className="flex items-center justify-between gap-3 rounded-control border border-hairline bg-wash px-3.5 py-2.5">
                   <span dir="ltr" className="num text-body text-ink-soft">
-                    {account.dialCode} {account.phone}
+                    {accountContact(account)}
                   </span>
                   <span className="shrink-0 text-[11px] font-semibold text-good-deep">Verified</span>
                 </div>
                 <p className="mt-1.5 text-[11px] leading-4 text-ink-faint">
-                  This is the number the code went to, so changing it means verifying the new one. Sign out and
+                  This is the address the code went to, so changing it means verifying the new one. Sign out and
                   back in with it.
                 </p>
+              </div>
+              {/* Asked in the conversation before the plan is sized. It changes what HeyMoon leads with, never
+                  what the plan is. */}
+              <div className="mt-4 sm:max-w-[calc(50%-8px)]">
+                <Picker
+                  label="Your role"
+                  placeholder="Not asked yet"
+                  value={ROLES.find((r) => r.key === role)?.label ?? ""}
+                  onChange={(label) => { const r = ROLES.find((x) => x.label === label); if (r) setRole(r.key); }}
+                  options={ROLES.map((r) => r.label)}
+                />
               </div>
             </>
           ) : (
             <p className="text-body text-ink-soft">
-              Nobody has signed in yet. HeyMoon asks for a name and a number at the payment, and not before.
+              Nobody has signed in yet. HeyMoon asks for a name and a work email at the payment, and not before.
             </p>
           )}
         </Surface>
@@ -315,7 +331,7 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
             <div className="min-w-0">
               <p className="text-body font-semibold text-ink">Message me</p>
               <p className="mt-0.5 text-[11px] leading-4 text-ink-faint">
-                Drafts waiting on you, a phase unlocking, a report. Sent to the number that signed in.
+                Drafts waiting on you, a phase unlocking, a report. Sent to the email that signed in.
               </p>
             </div>
             <button
@@ -405,7 +421,7 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
           <div className="mt-5 flex flex-wrap gap-2">
             <Btn
               variant="danger"
-              onClick={() => { resetAll(); setConfirming(false); }}
+              onClick={() => { resetAll({ everything: true }); setConfirming(false); }}
             >
               Yes, delete everything
             </Btn>

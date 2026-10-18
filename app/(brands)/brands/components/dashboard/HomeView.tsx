@@ -38,6 +38,7 @@ import {
   useLivePhase, useReadyPhase, type Campaign,
 } from "../../lib/store";
 import { useGo } from "../../lib/surface";
+import { shortfallLine } from "../../lib/agent/guarantee";
 import { Surface } from "./kit";
 import { RevenueRuler } from "../Ruler";
 
@@ -459,8 +460,7 @@ export function HomeView() {
             {fmtUSD(live.rev)}
           </p>
           <p className="mt-4 max-w-[60ch] text-body leading-5 text-white/75">
-            of the {fmtUSD(live.revTarget)} HeyMoon guaranteed on this phase. If it closes short, HeyMoon pays you
-            the difference.
+            of the {fmtUSD(live.revTarget)} HeyMoon guaranteed on this phase. {shortfallLine(live.budget, live.revTarget)}
           </p>
           {/* The ruler the product already owns, rather than a fifth
               hand-rolled bar. It carries the 80% notch, which is the

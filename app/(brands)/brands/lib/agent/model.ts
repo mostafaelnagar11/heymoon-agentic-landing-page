@@ -30,7 +30,7 @@ import type { CreatorSeed } from "../mock/creators";
 export const AED_USD = 3.6725;
 
 /** What share of a phase budget reaches creators. The rest is matching,
-    tracking, and the reserve that pays out when a guarantee misses. */
+    tracking, and the share held back to refund the brand when a guarantee misses (lib/agent/guarantee.ts). */
 export const CREATOR_SHARE = 0.65;
 
 /** Orders per view, by category. HeyMoon's own platform benchmark
@@ -151,7 +151,7 @@ export function confidenceFrom(implied: number, multiple: number) {
    What this actually changed, in one line: HeyMoon now commits to
    plans 4.8 times thinner than the current app will. That is an
    underwriting decision and not a display one — every guarantee on
-   every plan is priced off this ratio, and the money HeyMoon pays out
+   every plan is priced off this ratio, and the refund HeyMoon owes
    when a phase misses is set by it.
 
    Two consequences worth knowing. The old rule made a high multiple

@@ -16,7 +16,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { startConversation } from "../../lib/store";
+import { accessFor, accountName, resetAll, startConversation, useAccount, useActiveCampaign, useStore } from "../../lib/store";
 import { ArrowLeft, Bell, List, Plus, Sparkle } from "@phosphor-icons/react";
 
 export function DashboardTopbar({
@@ -38,6 +38,19 @@ export function DashboardTopbar({
 }) {
   const [menu, setMenu] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
+  /* Whoever signed in, and what they are on this brand. It said "Mostafa Elnagar, Admin" to everyone. */
+  const account = useAccount();
+  const campaign = useActiveCampaign();
+  const brands = useStore((s) => s.brands);
+  const host = campaign?.url ?? "";
+  const access = account && host ? accessFor(host, account.email, brands) : null;
+  const who = account ? accountName(account) : "Not signed in";
+  const what =
+    access === "owner" ? "Owner"
+    : access === "member" || access === "invited" ? "Team member"
+    : account ? "Not on this brand's team"
+    : "HeyMoon asks at the payment";
+  const mark = account ? `${account.firstName[0] ?? ""}${account.lastName[0] ?? ""}`.toUpperCase() || "?" : "?";
 
   /* A menu that only closes by pressing the thing that opened it is a
      menu people leave open. */
@@ -121,15 +134,16 @@ export function DashboardTopbar({
             aria-label="Your account"
             className="grid h-9 w-9 place-items-center rounded-full bg-brand text-meta font-medium text-white"
           >
-            ME
+            {mark}
           </button>
           {menu && (
-            <div className="absolute end-0 top-full z-50 mt-2 w-40 overflow-hidden rounded-control border border-hairline bg-white shadow-float">
+            <div className="absolute end-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-control border border-hairline bg-white shadow-float">
               <div className="border-b border-hairline px-3 py-2.5">
-                <p className="truncate text-body font-semibold text-ink">Mostafa Elnagar</p>
-                <p className="truncate text-[11px] text-ink-faint">Admin</p>
+                <p className="truncate text-body font-semibold text-ink">{who}</p>
+                <p className="truncate text-[11px] text-ink-faint">{what}</p>
               </div>
-              <a href="/brands" className="block px-3 py-2.5 text-body font-medium text-danger transition hover:bg-danger/[0.06]">
+              {/* The same sign-out as the rail's: it clears this browser's work. */}
+              <a href="/brands" onClick={() => resetAll()} className="block px-3 py-2.5 text-body font-medium text-danger transition hover:bg-danger/[0.06]">
                 Sign out
               </a>
             </div>

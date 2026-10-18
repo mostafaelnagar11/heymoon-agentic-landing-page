@@ -21,6 +21,7 @@ import { EvidenceRow, Figure } from "./Evidence";
 import { READ_ORDER, ReadValue, readValueTree, srcFor } from "./ReadValue";
 import { TypeOn } from "./TypeOn";
 import { PHASE1_BUDGET, PHASE1_ROAS, READ_TASKS } from "../lib/agent/tools";
+import { shortfallLine } from "../lib/agent/guarantee";
 import {
   CONFIDENCE_HIGH_RATIO, CONFIDENCE_MEDIUM_RATIO, getConfidence, type ConfidenceLevel,
 } from "../lib/agent/model";
@@ -127,8 +128,8 @@ export function FundingBlock({ req, onConfirmed, onCancelled }: {
           <li className="flex gap-2 text-meta leading-5 text-ink-soft">
             <CheckCircle size={13} weight="fill" className="mt-0.5 shrink-0 text-good" aria-hidden />
             <span>
-              <span className="font-semibold text-ink">Guaranteed:</span> {fmtUSD(guaranteed)} in sales, or HeyMoon
-              pays you the difference.
+              <span className="font-semibold text-ink">Guaranteed:</span> {fmtUSD(guaranteed)} in sales.{" "}
+              {shortfallLine(live.amount.value, guaranteed)}
             </span>
           </li>
           <li className="flex gap-2 text-meta leading-5 text-ink-soft">
@@ -865,6 +866,8 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
                       <span className="text-meta text-ink-faint">{paid ? "Started today" : "Starts today"}</span>
                     </div>
                     {!compact && <p className="mt-1 text-[11px] leading-4 text-ink-faint">{r.note}</p>}
+                    {/* The refund rule on this phase's own figures (lib/agent/guarantee.ts). */}
+                    {!compact && <p className="mt-1 text-[11px] leading-4 text-ink-soft">{shortfallLine(r.budget, Math.round(r.budget * r.multiple))}</p>}
                   </div>
                 </div>
               </li>
@@ -898,6 +901,8 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
                     </span>
                   </div>
                   {!compact && <p className="mt-1 text-[11px] leading-4 text-ink-faint">{r.note}</p>}
+                  {/* The same rule at this phase's size: a share of what is paid comes back, not the sales gap. */}
+                  {!compact && <p className="mt-1 text-[11px] leading-4 text-ink-faint">{shortfallLine(r.budget, Math.round(r.budget * r.multiple))}</p>}
                 </div>
               </div>
             </li>
@@ -912,7 +917,8 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
             the one phase that is actually due. What is true today is
             the only thing this footer says. */}
         <p className="text-meta leading-5 text-ink-soft">
-          Only Phase 1 is due today. Each phase after it is offered on results, and you decide then.
+          Only Phase 1 is due today. Each phase after it is offered on results, and you decide then. Every phase carries
+          the same guarantee: fall short and the same share of that phase&apos;s budget comes back to you.
         </p>
       </div>
 

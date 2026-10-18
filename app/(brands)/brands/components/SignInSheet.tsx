@@ -9,73 +9,58 @@
  * earlier — press Start Phase 1 and this opens; verify, and it closes
  * onto the payment card that was always the next thing.
  *
- * The two screens are the ones the current web app already has, kept
- * beat for beat so a brand who has signed in to HeyMoon before is not
- * learning a new flow inside a new product: details, then Continue,
- * then six boxes under a countdown with the demo code printed below
- * them. What changed is the copy, which follows this product's rules,
- * sentence case and no exclamation marks, and the sign-up line, which
- * is a sentence rather than a link, because with a texted code there is
- * no separate sign-up to link to. The code IS the account.
+ * Two screens, beat for beat with the current web app: details, then
+ * Continue, then six boxes under a countdown with the demo code printed
+ * below them. The code IS the account; there is no password.
  *
- * What the first screen asks for is a name and a phone rather than a
- * work email. In the Gulf the owner's number is already the account on
- * Salla and on Zid, it is the thing they answer inside the hour, and it
- * is how an engineer reaches them when a connection needs a person. The
- * name is there because everything after this is addressed to someone:
- * the dashboard greets them by it and the drafts are waiting on them.
+ * What it asks for is a WORK email (brand team, 15 Oct: "any work email
+ * will do, as long as it's work email"). Any company domain is accepted,
+ * not only the store's own, because brands are often run from a parent's
+ * domain (Sephora from @chalhoub.com, our own team from @itcan.ae).
+ * Personal providers are refused with the reason, because whoever pays
+ * becomes the owner of the brand account and invites the rest of the
+ * team, and a personal inbox is the wrong owner for a company. Phone
+ * sign-in is parked: it may come back as the exemption route for Salla
+ * and Zid owners who only have Gmail, once the team decides.
  */
-
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, CaretDown, ChatCircleDots } from "@phosphor-icons/react";
+import { ArrowLeft, CheckCircle, EnvelopeSimple, LockKey } from "@phosphor-icons/react";
 import { Sheet } from "./ui";
 import { Wordmark } from "./Wordmark";
-import { signIn } from "../lib/store";
+import { accessFor, joinBrand, requestAccess, signIn, useBrandAccount } from "../lib/store";
+import { isPersonal, looksLikeEmail, maskEmail } from "../lib/email";
 import { hash } from "../lib/agent/rng";
 
 const LEN = 6;
 const EXPIRES_IN = 60;
 
-/* The markets this product sells into, and Saudi first because that is
-   where HeyMoon is. Not a world list: a select with two hundred rows in
-   it is a worse control than a short one that covers everybody who can
-   actually use the product today. */
-const DIAL_CODES = [
-  { code: "+966", flag: "\u{1F1F8}\u{1F1E6}", name: "Saudi Arabia" },
-  { code: "+971", flag: "\u{1F1E6}\u{1F1EA}", name: "United Arab Emirates" },
-  { code: "+965", flag: "\u{1F1F0}\u{1F1FC}", name: "Kuwait" },
-  { code: "+974", flag: "\u{1F1F6}\u{1F1E6}", name: "Qatar" },
-  { code: "+973", flag: "\u{1F1E7}\u{1F1ED}", name: "Bahrain" },
-  { code: "+968", flag: "\u{1F1F4}\u{1F1F2}", name: "Oman" },
-  { code: "+20", flag: "\u{1F1EA}\u{1F1EC}", name: "Egypt" },
-];
-
-/* Deliberately loose. It is checking that a person typed a number
-   rather than policing which numbers exist, because the code that
-   arrives there is what actually proves the account. */
-const digitsOf = (v: string) => v.replace(/\D/g, "");
-const LOOKS_LIKE_PHONE = (v: string) => digitsOf(v).length >= 7;
-
-/* The demo code, derived from the number rather than drawn at random:
-   the same phone always gets the same six digits, so a screenshot, a
-   walkthrough and a test all agree, and nothing here is one of the
-   non-deterministic calls this codebase keeps out of its logic. */
-const demoCodeFor = (dial: string, phone: string) =>
-  String(Math.abs(hash(`${dial}${digitsOf(phone)}`)) % 1_000_000).padStart(LEN, "0");
+/* The demo code, derived from the address rather than drawn at random:
+   the same email always gets the same six digits, so a screenshot, a
+   walkthrough and a test all agree. */
+const demoCodeFor = (email: string) =>
+  String(Math.abs(hash(email.trim().toLowerCase())) % 1_000_000).padStart(LEN, "0");
 
 const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-export function SignInSheet({ open, onClose, onVerified }: {
+export function SignInSheet({ open, onClose, onVerified, host, brandName }: {
   open: boolean;
   onClose: () => void;
+  /** The store being paid for. Whoever pays for it first owns it; anyone else is invited or asks. */
+  host?: string;
+  brandName?: string;
   /** Runs after the sheet closes, with the name that was verified. */
   onVerified: (name: string) => void;
 }) {
-  const [step, setStep] = useState<"details" | "code">("details");
+  /* "owned": the code was right, but the brand already has an owner and this address isn't on their team. The
+     person is NOT signed in: they can ask the owner for access or use another address. "requested": asked. */
+  const [step, setStep] = useState<"details" | "code" | "owned" | "requested">("details");
+  const brand = useBrandAccount(host);
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
-  const [dial, setDial] = useState(DIAL_CODES[0].code);
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  /* The personal-address line shows once the brand has tried to continue with one, or left the field holding
+     one, not on every keystroke while "sara@gmail" is still being typed. */
+  const [checked, setChecked] = useState(false);
   const [digits, setDigits] = useState<string[]>(Array(LEN).fill(""));
   const [busy, setBusy] = useState(false);
   const [wrong, setWrong] = useState(false);
@@ -83,11 +68,12 @@ export function SignInSheet({ open, onClose, onVerified }: {
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
   const firstBox = useRef<HTMLInputElement>(null);
 
-  const code = demoCodeFor(dial, phone);
+  const code = demoCodeFor(email);
   const typed = digits.join("");
   const expired = left <= 0;
-  const shown = `${dial} ${digitsOf(phone)}`;
-  const ready = !!first.trim() && !!last.trim() && LOOKS_LIKE_PHONE(phone);
+  const shown = email.trim().toLowerCase();
+  const personal = looksLikeEmail(email) && isPersonal(email);
+  const ready = !!first.trim() && !!last.trim() && looksLikeEmail(email) && !personal;
 
   /* Every open is a fresh attempt. A sheet that reopens holding the
      half-typed code from a run the brand abandoned looks broken. */
@@ -112,6 +98,7 @@ export function SignInSheet({ open, onClose, onVerified }: {
   }, [step]);
 
   const sendCode = () => {
+    setChecked(true);
     if (!ready || busy) return;
     setBusy(true);
     setTimeout(() => { setBusy(false); setStep("code"); }, 850);
@@ -135,8 +122,13 @@ export function SignInSheet({ open, onClose, onVerified }: {
         boxes.current[0]?.focus();
         return;
       }
+      /* Ownership is checked after the code, not before: a request has to come from an address that proved it is
+         theirs, or anyone could file one in someone else's name. */
+      const access = host ? accessFor(host, shown) : "unclaimed";
+      if (access === "outsider") { setStep("owned"); return; }
+      if (access === "invited" && host) joinBrand(host, { firstName: first.trim(), lastName: last.trim(), email: shown }, Date.now());
       signIn(
-        { firstName: first.trim(), lastName: last.trim(), dialCode: dial, phone: digitsOf(phone) },
+        { firstName: first.trim(), lastName: last.trim(), email: shown },
         Date.now()
       );
       onVerified(`${first.trim()} ${last.trim()}`);
@@ -145,7 +137,7 @@ export function SignInSheet({ open, onClose, onVerified }: {
 
   /* Whatever arrives at a box is spread from that box onward. One
      character is a keystroke; six are a paste, an autofill from the
-     phone's SMS suggestion, or a fast typist whose keys landed before
+     mail app's code suggestion, or a fast typist whose keys landed before
      React moved the focus. One code path for all of them, because the
      version that kept only the last character dropped five digits out
      of every autofill. */
@@ -185,13 +177,28 @@ export function SignInSheet({ open, onClose, onVerified }: {
   return (
     <Sheet open={open} onClose={onClose} labelledBy="signin-title">
       <div className="px-6 pb-7 pt-6 sm:px-8 sm:pb-8">
-        {step === "details" ? (
+        {step === "owned" || step === "requested" ? (
+          <OwnedStep
+            requested={step === "requested"}
+            brandName={brandName ?? host ?? "This brand"}
+            owner={brand?.owner ? maskEmail(brand.owner.email) : ""}
+            ownerFirst={brand?.owner.firstName ?? ""}
+            you={shown}
+            onRequest={() => {
+              if (!host) return;
+              requestAccess(host, { firstName: first.trim(), lastName: last.trim(), email: shown }, Date.now());
+              setStep("requested");
+            }}
+            onOtherEmail={() => { setEmail(""); setChecked(false); setStep("details"); }}
+            onClose={onClose}
+          />
+        ) : step === "details" ? (
           <>
             <Wordmark size="lg" />
             <h2 id="signin-title" className="mt-6 text-[24px] font-semibold tracking-[-0.03em] text-ink">
               Let&apos;s get started
             </h2>
-            <p className="mt-1.5 text-body text-ink-soft">HeyMoon texts a code to confirm it is you</p>
+            <p className="mt-1.5 text-body text-ink-soft">HeyMoon emails a code to confirm it is you</p>
 
             <form onSubmit={(e) => { e.preventDefault(); sendCode(); }} noValidate className="mt-6">
               <div className="grid grid-cols-2 gap-3">
@@ -221,54 +228,37 @@ export function SignInSheet({ open, onClose, onVerified }: {
                 ))}
               </div>
 
-              <label htmlFor="signin-phone" className="mb-1.5 mt-4 block text-meta font-medium text-ink-60">
-                Phone number
+              <label htmlFor="signin-email" className="mb-1.5 mt-4 block text-meta font-medium text-ink-60">
+                Work email
               </label>
-              {/* The code and the number are one control with a seam in
-                  it, not two fields: they are one answer, and a select
-                  sitting apart from the box it belongs to invites a
-                  brand to fill in only half of it. Always ltr, because a
-                  phone number is dialled left to right in every
-                  language. */}
-              <div
+              {/* Any company address, not only the store's own domain. Always ltr: an address reads left to right in
+                  every language. */}
+              <input
+                id="signin-email"
+                type="email"
                 dir="ltr"
-                className="flex items-stretch overflow-hidden rounded-inner border border-line bg-white transition focus-within:border-main/50"
-              >
-                {/* The caret is drawn rather than left to the browser,
-                    which puts its own arrow hard against the right edge
-                    and therefore hard against the seam. Drawing it
-                    means the select can reserve room for it: `pr-8`
-                    holds the arrow, and the seam sits clear of both. */}
-                <div className="relative shrink-0">
-                  <select
-                    aria-label="Country code"
-                    value={dial}
-                    onChange={(e) => setDial(e.target.value)}
-                    className="h-full appearance-none bg-transparent py-3 pl-3.5 pr-8 text-body font-semibold text-ink outline-none"
-                  >
-                    {DIAL_CODES.map((c) => (
-                      <option key={c.code} value={c.code}>{c.flag}  {c.code}</option>
-                    ))}
-                  </select>
-                  <CaretDown
-                    size={11}
-                    weight="bold"
-                    aria-hidden
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint"
-                  />
-                </div>
-                <span aria-hidden className="my-2 w-px shrink-0 bg-black/[0.08]" />
-                <input
-                  id="signin-phone"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel-national"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="50 123 4567"
-                  className="num w-full min-w-0 bg-transparent px-3 py-3 text-body text-ink outline-none placeholder:font-normal placeholder:text-ink-faint"
-                />
-              </div>
+                inputMode="email"
+                autoComplete="email"
+                spellCheck={false}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => setChecked(true)}
+                placeholder="you@yourcompany.com"
+                aria-invalid={(checked && personal) || undefined}
+                aria-describedby="signin-email-note"
+                className={`w-full rounded-control border bg-white px-4 py-3 text-body text-ink outline-none transition placeholder:text-ink-faint ${
+                  checked && personal ? "border-danger" : "border-black/[0.1] focus:border-ink/25"
+                }`}
+              />
+              <p id="signin-email-note" className="mt-1.5 text-[11px] leading-4" role={checked && personal ? "alert" : undefined}>
+                {checked && personal ? (
+                  <span className="font-semibold text-danger">
+                    Use your work email. Personal addresses like Gmail or Outlook can&apos;t open a brand account.
+                  </span>
+                ) : (
+                  <span className="text-ink-faint">Any company address works, even if it isn&apos;t your store&apos;s domain.</span>
+                )}
+              </p>
 
               <button
                 type="submit"
@@ -279,11 +269,13 @@ export function SignInSheet({ open, onClose, onVerified }: {
               </button>
             </form>
 
-            {/* A sentence, not a link. With a texted code there is no
-                separate sign-up screen to send anyone to: the first
-                code a number accepts is what creates the account. */}
+            {/* A sentence, not a link. With an emailed code there is no
+                separate sign-up screen to send anyone to: the first code
+                an address accepts is what creates the account. And the
+                person who pays owns it (brand team, 15 Oct), so it says so
+                before they pay, not after. */}
             <p className="mt-5 text-center text-meta text-ink-soft">
-              No account yet? The same number makes one.
+              No account yet? The same email makes one. Whoever pays owns the brand account and invites the team.
             </p>
             <p className="mt-2 text-center text-[11px] leading-4 text-ink-faint">
               By continuing you agree to the HeyMoon terms and privacy policy.
@@ -301,10 +293,10 @@ export function SignInSheet({ open, onClose, onVerified }: {
             </button>
 
             <span aria-hidden className="mt-5 grid h-11 w-11 place-items-center rounded-control bg-brand-100 text-brand">
-              <ChatCircleDots size={19} weight="fill" />
+              <EnvelopeSimple size={19} weight="fill" />
             </span>
             <h2 id="signin-title" className="mt-4 text-[24px] font-semibold tracking-[-0.03em] text-ink">
-              Check your phone
+              Check your email
             </h2>
             <p className="mt-1.5 text-body text-ink-soft">
               HeyMoon sent a 6 digit code to <span dir="ltr" className="num font-semibold text-ink">{shown}</span>
@@ -360,5 +352,65 @@ export function SignInSheet({ open, onClose, onVerified }: {
         )}
       </div>
     </Sheet>
+  );
+}
+
+/* The brand already has an owner (brand team, 15 Oct: "if someone pays, they become the owner of the brand. And they
+   only can invite others… I only can be invited or I request access"). Signing in with the same company's email
+   doesn't hand anyone the account; it offers a request to the person who owns it, and says who that is without
+   printing their whole address to someone they haven't let in. */
+function OwnedStep({ requested, brandName, owner, ownerFirst, you, onRequest, onOtherEmail, onClose }: {
+  requested: boolean;
+  brandName: string;
+  owner: string;
+  ownerFirst: string;
+  you: string;
+  onRequest: () => void;
+  onOtherEmail: () => void;
+  onClose: () => void;
+}) {
+  const wide = "flex h-12 w-full items-center justify-center rounded-pill text-body font-semibold transition";
+  if (requested) {
+    return (
+      <>
+        <span aria-hidden className="grid h-11 w-11 place-items-center rounded-control bg-good/[0.1] text-good-deep">
+          <CheckCircle size={20} weight="fill" />
+        </span>
+        <h2 id="signin-title" className="mt-4 text-[24px] font-semibold tracking-[-0.03em] text-ink">
+          Request sent
+        </h2>
+        <p className="mt-1.5 text-body leading-6 text-ink-soft">
+          {ownerFirst || "The owner"} sees it on the {brandName} team page. HeyMoon emails{" "}
+          <span dir="ltr" className="num font-semibold text-ink">{you}</span> when they answer. Nothing was charged.
+        </p>
+        <button type="button" onClick={onClose} className={`${wide} g-button mt-6 border border-white/50 text-[#FBF8FE]`}>
+          Done
+        </button>
+      </>
+    );
+  }
+  return (
+    <>
+      <span aria-hidden className="grid h-11 w-11 place-items-center rounded-control bg-brand-100 text-brand">
+        <LockKey size={19} weight="fill" />
+      </span>
+      <h2 id="signin-title" className="mt-4 text-[24px] font-semibold tracking-[-0.03em] text-ink">
+        {brandName} already has an account
+      </h2>
+      <p className="mt-1.5 text-body leading-6 text-ink-soft">
+        It belongs to <span dir="ltr" className="num font-semibold text-ink">{owner}</span>, who paid for its first
+        campaign. Only the owner can add people, so ask {ownerFirst || "them"} to invite you, or send a request now.
+      </p>
+      <button type="button" onClick={onRequest} className={`${wide} g-button mt-6 border border-white/50 text-[#FBF8FE]`}>
+        Request access
+      </button>
+      <button
+        type="button"
+        onClick={onOtherEmail}
+        className={`${wide} mt-2 border border-hairline bg-white text-ink-soft hover:bg-wash`}
+      >
+        Use a different email
+      </button>
+    </>
   );
 }

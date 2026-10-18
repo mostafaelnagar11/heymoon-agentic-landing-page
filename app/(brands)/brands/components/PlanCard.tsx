@@ -16,22 +16,20 @@ import { getRead } from "../lib/agent/registry";
 import { roundBudget } from "../lib/agent/model";
 import { T } from "../lib/tokens";
 import { Card, Pill } from "./ui";
+import { creatorProfile } from "./CreatorCard";
+import { focusText } from "./ScopeBlocks";
 import { Figure, Claim } from "./Evidence";
 import { RevenueRuler } from "./Ruler";
 import { useT } from "../lib/i18n";
 import { usePaid } from "../lib/store";
+import { guaranteeLine } from "../lib/agent/guarantee";
 
-/* The expected range, as the card is allowed to show it.
-
-   The model works the range out from the crew's real reach, so its low
-   end can land under the guaranteed figure — and a range that starts
-   below the floor tells the brand it might end the phase with less than
-   HeyMoon owes it, which is never true. If sales land under the floor,
-   HeyMoon pays the difference and the brand still banks the guaranteed
-   figure, so the floor IS the low end. Clamped here, at the point of
-   display, and only here: `ConfidenceMeter` reasons about the gap
-   between the raw model and the guarantee, and clamping that gap shut
-   would make every plan look safe. */
+/* The guarantee, as the card states it: a pro-rata refund of what the
+   brand pays for the phase (lib/agent/guarantee.ts), never a payout of
+   the sales gap. The card shows the number HeyMoon stands behind and the
+   refund rule under it; no expected range, which beside a guarantee
+   reads as a second, softer promise. `ConfidenceMeter` still reasons
+   about the gap between the raw model and the guarantee. */
 
 function Row({ label, children, onEdit, editLabel }: { label: string; children: React.ReactNode; onEdit?: () => void; editLabel?: string }) {
   return (
@@ -122,7 +120,7 @@ export function PlanCard({
           </div>
         </div>
         <p className="border-t border-hairline bg-wash px-3.5 py-2 text-[11px] leading-4 text-ink-soft">
-          Sell more than the guarantee and it is all yours. Sell less and HeyMoon pays you the difference.
+          {guaranteeLine(budget, target)}
         </p>
       </div>
 
@@ -146,18 +144,16 @@ export function PlanCard({
         </Row>
         <Row label={t("plan.creators")} onEdit={onEdit && (() => onEdit("creators"))}>
           <div className="flex w-full items-center gap-2 text-start">
-            {/* Real faces, no names — before payment and after. The review
-                call cleared the pictures ("there is no harm in showing the
-                icons of these profiles") and drew the line at names,
-                handles and links. Nothing here carries an identity, so the
-                same stack serves both states. No blur: a blurred face reads
-                as a loading state, and this is a decision, not a delay. */}
-            <span className="flex -space-x-2 rtl:space-x-reverse" aria-hidden>
-              {plan.creators.value.slice(0, 5).map((c) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={c.id} src={c.avatar} alt="" loading="lazy" className="h-6 w-6 rounded-full bg-brand-100 object-cover ring-2 ring-white" />
-              ))}
-            </span>
+            {/* Faces only once Phase 1 is paid (brand team, 15 Oct). Before
+                that the row names the KIND of creator, never the people. */}
+            {paid && (
+              <span className="flex -space-x-2 rtl:space-x-reverse" aria-hidden>
+                {plan.creators.value.slice(0, 5).map((c) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={c.id} src={c.avatar} alt="" loading="lazy" className="h-6 w-6 rounded-full bg-brand-100 object-cover ring-2 ring-white" />
+                ))}
+              </span>
+            )}
             {/* "Matched" is the pool MoonMatch AI found, not the crew the warm-up pays
                 for. The row used to say "matched" and show the crew,
                 which read as though the whole match were three people.
@@ -166,6 +162,7 @@ export function PlanCard({
             <span className="text-body text-ink-soft">
               <Figure src={plan.pool} render={`${pool} ${t("plan.matched")}`} size="sm" />
               {pool > crew ? <span className="text-ink-faint"> · {crew} in the warm-up</span> : null}
+              {!paid && crew > 0 && <span className="mt-0.5 block text-meta text-ink-faint">{creatorProfile(plan.creators.value)}</span>}
             </span>
             {/* The way to the crew is its own control. This row used to be one
                 big button with the matched-count Figure inside it, which put a
@@ -191,8 +188,12 @@ export function PlanCard({
             )}
           </div>
         </Row>
+        {/* What the brand said to push (ProductsPick, asked before the plan). A plan built before that question
+            pushes the bestsellers the brief was written around. */}
         <Row label="Products">
-          {bestsellers && products.length > 0 ? (
+          {plan.focus && plan.focus.kind !== "bestsellers" ? (
+            <p className="text-body text-ink">{focusText(plan.focus, [])}</p>
+          ) : bestsellers && products.length > 0 ? (
             <Claim src={bestsellers}>{products.map((p) => p.name).join(", ")}</Claim>
           ) : (
             <p className="text-body text-ink-soft">Your whole catalogue.</p>
@@ -385,7 +386,7 @@ export function BudgetDial({
         At {fmtUSD(local)}, Phase 1 guarantees{" "}
         <span className="font-semibold tabular-nums text-ink">{fmtUSD(local * guarantee)}</span> in sales, which is the{" "}
         {guarantee}x HeyMoon stands behind. Creator fees for the whole crew come to {fmtUSD(crewCost)}, which is{" "}
-        {crewShare}% of it. The rest is matching, tracking and the reserve that pays out if the guarantee misses.
+        {crewShare}% of it. The rest is matching, tracking and the share held back to refund you if the guarantee misses.
       </p>
       {ladder.length > 1 && (
         <p className="mt-1.5 text-meta leading-5 text-ink-soft">

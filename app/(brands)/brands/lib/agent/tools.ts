@@ -21,6 +21,8 @@ import {
 } from "./types";
 import { chunk, costOf, settle } from "./stream";
 import { hash } from "./rng";
+import { guaranteeExplained } from "./guarantee";
+import { isStoreLink, judge, notAStore } from "./eligibility";
 import { CREATORS, creatorById, viewThrough, type CreatorSeed } from "../mock/creators";
 import { fixtureFor } from "../mock/reads";
 import { getRead, readIdFor, rememberRead } from "./registry";
@@ -205,9 +207,32 @@ const LAYER_WORK = READ_TASKS;
 
 async function* read_site(i: { url: string }, ctx: RunContext): ToolStream<BrandRead> {
   const id = readIdFor(i.url);
-  const full = fixtureFor(i.url)(id);
+  const fixture = fixtureFor(i.url)(id);
+  /* The verdict follows lib/agent/eligibility.ts, not the fixture's own state, so changing a criterion there changes
+     every read. */
+  const full: BrandRead = { ...fixture, eligibility: judge(fixture) };
   rememberRead(full);
   const acc: BrandRead = { id: full.id, url: full.url, done: [], corrections: [] };
+
+  /* No store at the link (a social profile, a link page): stop after the first look and say so, instead of reading a
+     catalogue that is not there and walking the brand towards a plan HeyMoon cannot run (brand team, 15 Oct). */
+  if (!isStoreLink(full.url)) {
+    yield chunk({ ...acc }, `${LAYER_WORK[0].agent} · Opening ${full.url}`, 0, 2);
+    await settle(costOf(`${id}:identity`, 2), ctx.signal);
+    const short: BrandRead = {
+      ...acc,
+      identity: {
+        name: S(full.url, `${full.url} is a profile or a link page rather than a store.`, []),
+        tagline: S("A profile, not a store", "There is no catalogue or checkout at this link.", []),
+      },
+      done: ["identity"],
+    };
+    short.eligibility = notAStore(short);
+    short.done = ["identity", "eligibility"];
+    rememberRead(short);
+    yield chunk({ ...short }, `${LAYER_WORK[0].agent} · No store at ${full.url}`, 2, 2);
+    return short;
+  }
 
   /* `total` starts at what we know we must do and grows as the read
       finds more — the progress line is a count of work, not a clock. */
@@ -1287,12 +1312,20 @@ function interpret(i: { text: string; plan?: Plan; paid?: boolean }): Interpreta
       say: "Good. I'll leave that as it is." };
   }
 
+  /* The guarantee, asked about in words: answered with the refund rule (lib/agent/guarantee.ts), on this plan's own
+     Phase 1 figures where there is a plan. Before any edit is tried, so "what if we miss 8x" is a question here. */
+  if (/what if (it|we|sales|this|the (phase|campaign)) (miss|misses|fall|falls|don.?t|doesn.?t)|how does (the|your) guarantee|what does (the )?guarantee mean|what is the guarantee|money back|refund|fall short|falls short/.test(lower))
+    return {
+      kind: "question", answerRef: "confirm",
+      say: guaranteeExplained(plan?.budget.value ?? PHASE1_BUDGET, plan?.price.revenueTarget.value ?? PHASE1_BUDGET * PHASE1_ROAS),
+    };
+
   /* "Why this budget?" — answered before any budget edit is attempted,
      and without promising a per-creator fee list the plan does not show. */
   if (/why this budget|why that budget|where does the budget|how (did|do) you (get|reach|arrive at|come to) (this|that|the) budget/.test(lower))
     return {
       kind: "question", answerRef: "budget",
-      say: `Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand, and it is the same price whichever of the three plans you pick. It is deliberately not sized from your store: the warm-up exists to find out whether this works on your real orders, and a number you had to negotiate first would just be another thing standing between you and finding out.\n\nWhat the ${fmtUSD(PHASE1_BUDGET)} buys is the creator fees for your warm-up crew, the tracking codes that attribute every order, and the reserve that pays you if the guarantee misses. Press the budget on the plan and it shows all three.`,
+      say: `Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand, and it is the same price whichever of the three plans you pick. It is deliberately not sized from your store: the warm-up exists to find out whether this works on your real orders, and a number you had to negotiate first would just be another thing standing between you and finding out.\n\nWhat the ${fmtUSD(PHASE1_BUDGET)} buys is the creator fees for your warm-up crew, the tracking codes that attribute every order, and the share held back to refund you if the guarantee misses. Press the budget on the plan and it shows all three.`,
     };
 
   /* Budget, as a figure. */

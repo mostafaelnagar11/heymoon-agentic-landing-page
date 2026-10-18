@@ -294,7 +294,7 @@ const fresh = (id: string): BrandRead => ({
     state: "short",
     line: s(
       "Not eligible yet. 3,200 monthly visitors against the 5,000 a guarantee needs",
-      "Guaranteed sales are attributed through one tracking link per creator. Below roughly 5,000 monthly visitors there are too few conversions per link to tell a creator's effect from noise, and HeyMoon pays you the difference when a guarantee misses, so a guarantee on thin traffic is a coin flip for both of us.",
+      "Guaranteed sales are attributed through one tracking link per creator. Below roughly 5,000 monthly visitors there are too few conversions per link to tell a creator's effect from noise, and a guarantee that misses refunds part of what you paid, so a guarantee on thin traffic is a coin flip for both of us.",
       [
         ev("fg-traffic", "platform", "traffic estimate", "3,200 monthly unique visitors, from HeyMoon's panel and public rank data.", "estimated this month"),
         ev("fg-floor", "policy", "the 5,000 floor", "The minimum at which per-creator attribution is stable enough to carry a guarantee. It is fixed and cannot be waived."),

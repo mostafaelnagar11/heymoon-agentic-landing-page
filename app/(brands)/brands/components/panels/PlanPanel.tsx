@@ -97,7 +97,7 @@ export function PlanPanel() {
       <ConfidenceMeter plan={plan} />
 
       {/* ── The crew ─────────────────────────────────────────────
-          Counts and faces before Phase 1 is paid for, names after it —
+          Counts and the creator profile type before Phase 1 is paid for, faces and names after it —
           and what anyone is paid appears in neither, in any state.
 
           The number that matters here is a fraction, not a total: the

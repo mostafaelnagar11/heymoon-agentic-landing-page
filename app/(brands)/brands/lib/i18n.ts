@@ -89,10 +89,10 @@ export const STR: Dict = {
     ar: "حملتك الأولى بـ 1,000 دولار، وهي نفسها لكل علامة تجارية. ولا تُعرض التالية إلا عندما تبلغ هذه 80% من هدفها.",
   },
 
-  "landing.v2t": { en: "Miss the number? HeyMoon pays the difference.", ar: "لم يتحقق الرقم؟ تدفع هاي مون الفرق." },
+  "landing.v2t": { en: "Miss the number? You get your money back, in proportion.", ar: "لم يتحقق الرقم؟ نعيد لك مالك بالنسبة نفسها." },
   "landing.v2d": {
-    en: "Every campaign comes with a sales figure, in writing, before you pay. If your sales come in under it, the shortfall is HeyMoon's to cover, not yours.",
-    ar: "كل حملة تأتي برقم مبيعات مكتوب قبل أن تدفع. وإذا جاءت مبيعاتك أقل منه، فالفرق على هاي مون لا عليك.",
+    en: "Every campaign comes with a sales figure, in writing, before you pay. If your sales come in under it, you get back the same share of what you paid: reach 80% of it and 20% comes back.",
+    ar: "كل حملة تأتي برقم مبيعات مكتوب قبل أن تدفع. وإذا جاءت مبيعاتك أقل منه، نعيد لك الحصة نفسها مما دفعت: إذا بلغت 80% منه يعود إليك 20%.",
   },
   "landing.threePhasesAt": { en: "across three phases, at", ar: "عبر ثلاث مراحل، بمعدل" },
   "landing.signature": { en: "HeyMoon.AI, a Saudi company", ar: "HeyMoon.AI، شركة سعودية" },
