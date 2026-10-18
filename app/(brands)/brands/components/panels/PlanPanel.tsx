@@ -33,7 +33,7 @@ const spell = (n: number) =>
 export function PlanPanel() {
   const plan = useActivePlan();
   const paid = usePaid();
-  const [, phase2, phase3] = phasesFor(plan?.planBudget?.value ?? 10_000);
+  const [, phase2, phase3] = phasesFor();
 
   /* Nothing to show is not an error state and does not need a card, a
      heading or a button — the one thing to do is in the message box. */
@@ -75,8 +75,8 @@ export function PlanPanel() {
           </p>
           <Claim src={plan.ladder} className="mt-2 border-t border-hairline pt-2">
             <span className="text-meta leading-5">
-              Phase 2 is {fmtUSD(phase2)} and Phase 3 is {fmtUSD(phase3)}. Neither is charged
-              or committed today, and each is quoted for real only when it unlocks.
+              Phase 2 is {fmtUSD(phase2)} and Phase 3 is {fmtUSD(phase3)}, the same for every brand. Neither
+              is charged or committed today, and each is offered only when the phase before it reaches 80%.
             </span>
           </Claim>
         </Card>

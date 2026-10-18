@@ -31,12 +31,11 @@ import { Suspense, useCallback, useEffect, useRef, useState, type ReactNode } fr
 import { SignInSheet } from "../components/SignInSheet";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  BUILD_TASKS, PHASE1_BUDGET, PHASE_MULTIPLES, blendedFor, ladderTotals, marketName, planBudgetFor, planConfidence,
+  BUILD_TASKS, PHASE1_BUDGET, ladderTotals, marketName, phasesSentence,
   repair, suggestPlanShape, tools, underwriting,
   type Repair,
 } from "../lib/agent/tools";
 import type { BrandRead, Plan, PlanChange, PlanPatch, ProductFocus, Report } from "../lib/agent/types";
-import { PLAN_BUDGET_MAX, PLAN_BUDGET_MIN } from "../lib/agent/model";
 import { useStream } from "../lib/agent/useStream";
 import {
   activePlanLive, activeThread, claimOnce, correctRead, markPaid, openPanel, useAccount,
@@ -493,7 +492,7 @@ function ChatInner() {
   /** The calculator's Build my plan. Settles the two numbers, then runs
       the same build the conversation would have run. */
   const confirmShape = (chosen: { planBudget: number; roas: number }) => {
-    /* One number now: the plan size. The multiples are set per phase (PHASE_MULTIPLES). */
+    /* Nothing to settle: the three phases are the same for every brand (PHASE_BUDGETS, PHASE_MULTIPLES). */
     const r =
       pendingRead ??
       (readUrl ? getRead(readIdFor(readUrl)) : null) ??
@@ -501,11 +500,7 @@ function ChatInner() {
       (plan ? getRead(plan.readId) : null);
     if (!r) return;
     setShapeSettled(true);
-    const conf = planConfidence(chosen.planBudget);
-    say(
-      `${fmtUSD(chosen.planBudget)} across the three phases, ${fmtUSD(ladderTotals(chosen.planBudget).revenue)} in ` +
-      `guaranteed sales, ${conf.label.toLowerCase()}. Building it now.`
-    );
+    say("Building it now.");
     setPendingRead(null);
     startBuild(r, chosen);
   };
@@ -641,23 +636,20 @@ function ChatInner() {
     setShapeSettled(false);
     setShapeAsked(true);
     /* The client's pitch, in its own shape (the surprise, the number, "and the best part?"), with the figures made
-       true. It said $10k could make $40k+, that 4x+ was very possible and that the fee followed the ROAS delivered;
-       the multiples are now set per phase (1x, 2x, 3x) and a miss is a refund (brand team, 15 Oct), so the numbers
-       come from the plan it is about to propose and the best part is the refund. */
-    const total = ladderTotals(sug.planBudget).revenue;
-    const conf = planConfidence(sug.planBudget);
+       true. It said $10k could make $40k+, that 4x+ was very possible and that the fee followed the ROAS delivered.
+       The plan is now the same for every brand (Mostafa, 18 Oct: $1,000 at 1x, $2,000 at 2x, $3,000 at 3x) and a
+       miss is a refund (brand team, 15 Oct), so the numbers are the plan's own and the best part is the refund.
+       There is nothing left to size, so the old calculator's question is gone: the brand builds it or asks. */
+    const t = ladderTotals();
     const k = (n: number) => `$${Math.round(n / 1000)}k`;
     say(
       `Wow, okay... this is interesting.\n\n` +
-      `Do you know that ${k(sug.planBudget)} in influencer spending could bring back ${k(total)} in guaranteed sales?\n\n` +
-      `Every phase comes with its own guarantee: ${PHASE_MULTIPLES[0]}x on the warm-up, ${PHASE_MULTIPLES[1]}x on Phase 2 ` +
-      `and ${PHASE_MULTIPLES[2]}x on Phase 3.\n\n` +
+      `Do you know that ${k(t.budget)} in influencer spending could bring back ${k(t.revenue)} in guaranteed sales?\n\n` +
+      `That's three phases, each with its own guarantee: ${phasesSentence()}. You only start the first.\n\n` +
       `And the best part?\n` +
-      `If a phase falls short, you get back the same share of what you paid for it. Wanna know more?\n\n` +
-      `${fmtUSD(sug.planBudget)} across the three phases is the plan I'd start you on, ${conf.label.toLowerCase()}.`
+      `If a phase falls short, you get back the same share of what you paid for it. Wanna know more?`
     );
-    push({ kind: "score", planBudget: sug.planBudget, roas: sug.roas });
-    ask("", [`${fmtUSD(sug.planBudget)} plan`, "Something smaller", "Something bigger"]);
+    ask("", ["Build the plan", "How does the guarantee work?"]);
   };
 
   /** Who the agent is talking to, asked once and remembered (BuyerRole). It decides what the conversation leads with,
@@ -971,117 +963,14 @@ function ChatInner() {
       return;
     }
 
-    /* While the plan size is open, a figure is an answer to that question and nothing else. The agent restates the
-       size, what it guarantees and the confidence, and when it is not high names the size that would make it so.
-       A multiple is answered too, but never applied: they are set per phase (PHASE_MULTIPLES). */
+    /* The pitch is open and nothing is built yet. A yes builds the plan; anything else (a size, a multiple, a
+       question about the guarantee) goes to `interpret`, which answers it, and the build chip stays on offer. */
     if (awaitingShape) {
-      const wantsBuild = /^(build|go|do it|yes|confirm)\b|build (it|my plan)( anyway)?|that.s? (it|right|fine)|looks good/.test(lower);
-      const flat = v.replace(/,/g, "").replace(/×/g, "x");
-      const mult = flat.match(/(\d+(?:\.\d)?)\s*x\b/i);
-      const money = flat.match(/\$\s*(\d[\d.]*)\s*(k\b)?|\b(\d{3,})\s*(k\b)?/i);
-      const next = { ...shape };
-
-      /* What the parser had to change or refuse about what the brand typed, said out loud before the confidence is.
-         A number quietly thrown away reads as agreement with the standing plan. */
-      const adjusted: string[] = [];
-
-      const asksMultiple = !!mult || /guarantee more|more return|higher (guarantee|return|multiple)/.test(lower);
-      if (asksMultiple) {
-        adjusted.push(
-          `The guarantee is set by phase, the same for every brand: ${PHASE_MULTIPLES.map((m) => `${m}x`).join(", ")}. ` +
-          `What moves the total is the plan size.`
-        );
-      }
-      if (money) {
-        const raw = Number(money[1] ?? money[3]) * ((money[2] ?? money[4]) ? 1000 : 1);
-        if (raw < 500) {
-          adjusted.push(
-            `${fmtUSD(raw)} is the whole campaign, not one phase, and plans start at ${fmtUSD(PLAN_BUDGET_MIN)}. ` +
-            `I have left the number where it was.`
-          );
-        } else {
-          const b = Math.max(PLAN_BUDGET_MIN, Math.min(PLAN_BUDGET_MAX, Math.round(raw / 500) * 500));
-          if (raw > PLAN_BUDGET_MAX) adjusted.push(`${fmtUSD(PLAN_BUDGET_MAX)} is the largest plan I can commit to, so I have taken it there.`);
-          else if (raw < PLAN_BUDGET_MIN) adjusted.push(`Plans start at ${fmtUSD(PLAN_BUDGET_MIN)}, so I have taken it there.`);
-          next.planBudget = b;
-        }
-      }
-      /* A nudge that hits a bound and moves nothing has to say so. */
-      if (/smaller|less|cheaper|lower the plan|lower the budget/.test(lower) && !money) {
-        const b = Math.max(PLAN_BUDGET_MIN, Math.round((next.planBudget * 0.6) / 500) * 500);
-        if (b === next.planBudget) adjusted.push(`${fmtUSD(PLAN_BUDGET_MIN)} is the smallest plan I can build, so this is as far down as it goes.`);
-        next.planBudget = b;
-      }
-      if (/bigger|larger|more budget|raise the plan|raise the budget/.test(lower) && !money) {
-        const b = Math.min(PLAN_BUDGET_MAX, Math.round((next.planBudget * 1.5) / 500) * 500);
-        if (b === next.planBudget) adjusted.push(`${fmtUSD(PLAN_BUDGET_MAX)} is the largest plan I can commit to, so this is as far up as it goes.`);
-        next.planBudget = b;
-      }
-      next.roas = blendedFor(next.planBudget);
-
-      const changed = next.planBudget !== shape.planBudget;
-      /* Restating the size the agent just suggested is agreement, not a non-answer. */
-      const answered =
-        !!money || asksMultiple ||
-        /smaller|less|cheaper|bigger|larger|more budget|lower the (plan|budget)|raise the (plan|budget)/.test(lower);
-      if (!answered && !wantsBuild) {
-        ask(
-          "Give me a plan size for all three phases, like “$20,000”, or say smaller or bigger. " +
-          "I'll tell you how confident I am before anything is built.",
-          [`${fmtUSD(shape.planBudget)} plan`, "Something smaller", "Something bigger"]
-        );
-        return;
-      }
-      if (changed) setShape(next);
-
-      const conf = planConfidence(next.planBudget);
-      const total = ladderTotals(next.planBudget).revenue;
-
-      /* Medium is the floor: high and medium build, low never does. `!changed` because a build request takes the
-         size that is STANDING; a message that also moves it is an answer first. */
-      if (wantsBuild && !changed && conf.level !== "low") { confirmShape(next); return; }
-
-      /* Answering with the size already on screen IS the confirmation, unless a figure was refused or the reading is
-         one we will not build at. */
-      const shown = [...thread].reverse().find((i) => i.kind === "score");
-      const same = shown?.kind === "score" && shown.planBudget === next.planBudget;
-      const note = adjusted.length ? `${adjusted.join(" ")} ` : "";
-      if (same && !adjusted.length && conf.level !== "low") { confirmShape(next); return; }
-      const still = note
-        ? `${note}That leaves the plan at ${fmtUSD(next.planBudget)}, ${conf.label.toLowerCase()}. `
-        : `Still ${conf.label.toLowerCase()} at ${fmtUSD(next.planBudget)}. `;
-
-      if (!same) {
-        say(`${note}${conf.label}. ${fmtUSD(next.planBudget)} across the three phases guarantees you ${fmtUSD(total)} in sales.`);
-        push({ kind: "score", planBudget: next.planBudget, roas: next.roas });
-      }
-
-      if (conf.level === "high") {
-        ask(`${same ? still : ""}Shall I build it?`, ["Build the plan", "Something smaller", "Something bigger"]);
-        return;
-      }
-
-      /* The way out is a bigger plan: the multiples don't move. Only ever a BIGGER one. */
-      const needB = planBudgetFor("high");
-      const raise = needB !== null && needB > next.planBudget;
-      const fixes = raise ? [`Raise it to ${fmtUSD(needB!)}`] : [];
-      const ways = raise ? `A ${fmtUSD(needB!)} plan reaches high confidence. ` : "";
-
-      if (conf.level === "medium") {
-        ask(
-          `${same ? still : ""}I can build this one${ways ? ", though there is room to reach high first. " : "."}` + ways,
-          [...fixes, "Build it anyway"]
-        );
-        return;
-      }
-
-      /* Low. No build chip, and no build on request either. */
-      ask(
-        (wantsBuild ? `I won't build that one. ` : "") +
-        (same ? still : `Low is below the line I commit at, and I won't sell a guarantee I expect to miss. `) +
-        ways,
-        fixes.length ? fixes : ["Something bigger"]
-      );
+      const wantsBuild = /^(build|go|do it|yes|confirm|let.?s go|sounds good)\b|build (it|my plan|the plan)( anyway)?|that.s? (it|right|fine)|looks good/.test(lower);
+      if (wantsBuild) { confirmShape(shape); return; }
+      const ans = tools.interpret({ text: v.replace(/×/g, "x"), plan: undefined, paid });
+      say(ans.kind === "question" && ans.say ? ans.say : `Every brand gets the same three phases: ${phasesSentence()}. Shall I build it?`);
+      setAsking({ q: "", options: ["Build the plan", "How does the guarantee work?"] });
       return;
     }
 

@@ -402,9 +402,10 @@ const AUTONOMY_KEY = "mtab_autonomy";
  *
  * The version suffix is a kill switch: change the shape of anything
  * below and old saved state is dropped rather than half-read. */
-/* v3, 18 Oct: the phase multiples became a fixed 1x, 2x, 3x. A plan saved under v2 carries the old solved ladder
-   (3.7x, 6.3x and the like) and would keep showing it, so it is dropped rather than read. */
-const STATE_KEY = "mtab_state_v3";
+/* v3, 18 Oct: the phase multiples became a fixed 1x, 2x, 3x. v4, the same day: the budgets became a fixed $1,000,
+   $2,000, $3,000. A plan saved under either carries a ladder that no longer exists ($3,000 / $6,000, 3.7x, 6.3x)
+   and would keep showing it, so it is dropped rather than read. */
+const STATE_KEY = "mtab_state_v4";
 const KEPT = [
   "campaigns", "campaignOrder", "activeCampaignId",
   "reads", "plans", "activePlanId",

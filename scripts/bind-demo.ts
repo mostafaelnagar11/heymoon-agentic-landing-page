@@ -210,7 +210,7 @@ async function bindBrands(): Promise<BrandsDemo> {
   });
   assert(PHASE1_ROAS === 1, "PHASE1_ROAS is 1 (D4: the warm-up is guaranteed at 1x)");
   assert(plan.budget.value === PHASE1_BUDGET, "plan.budget.value is PHASE1_BUDGET (the same for every brand)");
-  const totals = ladderTotals(plan.planBudget.value);
+  const totals = ladderTotals();
   const roas = plan.guaranteedRoas.value;
 
   /* request_funding: Sourced money fields. */

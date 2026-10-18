@@ -55,7 +55,7 @@ export interface BrandsDemo {
     creatorWord: string;           // "three"
   };
   ladder: Rung[];
-  guarantee: { revenue: Money; budget: Money; roas: number; roasText: string }; // $25,000 / $10,000 / 2.5 / "2.5x" (the blend of 1x, 2x, 3x)
+  guarantee: { revenue: Money; budget: Money; roas: number; roasText: string }; // $14,000 / $6,000 / 2.3 / "2.3x" (the blend of 1x, 2x, 3x)
   checkout: { total: Money; vat: Money; budget: Money; last4: string };         // $1,050 / $50 / $1,000 / "4629"
   roasScale: { min: number; max: number };                                      // 1 / 3
   unlockPct: number;                                                            // 80

@@ -95,7 +95,7 @@ export const COPY = {
       // No ladderLine (C14): Phases 2 and 3 are indicative (D4) and never stated beside "Guaranteed sales".
       // Mostafa, 18 Oct: "the new roas is phase 1 x1 phase 2 x2 phase 3x". The multiples are set, not picked.
       roasH2: "1x, 2x, 3x. HeyMoon signs every phase.",                                                     // [CHANGE] Mostafa 18 Oct
-      roasBody: "Every phase carries its own guarantee, the same for every brand: 1x on the first, 2x on the second and 3x on the third. You choose how big the plan is. The multiples don't move.", // [CHANGE] Mostafa 18 Oct
+      roasBody: "Every phase carries its own guarantee, the same for every brand: $1,000 at 1x, $2,000 at 2x and $3,000 at 3x. Nothing to size, and nothing to negotiate.", // [CHANGE] Mostafa 18 Oct: "1x 1000 = 1000$, 2x $2000 = 4000$"
       climb: "It climbs as the campaign earns it",                                                          // [A4]
       chip: (r: Rung) => `P${r.phaseNo} ${r.multipleText}`,                                                 // [A4]
       dialLabel: "Guaranteed ROAS", dialNote: "1x, 2x and 3x, blended",                                    // [CHANGE] Mostafa 18 Oct

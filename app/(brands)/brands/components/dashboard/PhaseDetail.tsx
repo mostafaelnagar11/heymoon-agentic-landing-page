@@ -41,11 +41,11 @@ export function PhaseDetail({ campaign, phase }: { campaign: Campaign; phase: Ph
           </p>
           <p className="mt-1.5 text-meta leading-5 text-ink-soft">
             It opens when the phase before it reaches {Math.round(UNLOCK_AT * 100)}% of its target. Nothing here is
-            charged, promised or scheduled until you start it, and the figures below are indicative until it opens.
+            charged, promised or scheduled until you start it.
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Tile label="Budget" value={fmtUSD(phase.budget)} sub="indicative" />
-            <Tile label="Guarantee" value={`${phase.guaranteedRoas}x`} sub="priced for real when it opens" />
+            <Tile label="Budget" value={fmtUSD(phase.budget)} sub="the same for every brand" />
+            <Tile label="Guarantee" value={`${phase.guaranteedRoas}x`} sub={`${fmtUSD(phase.budget)} at ${phase.guaranteedRoas}x`} />
             <Tile label="Would guarantee" value={fmtUSD(Math.round(phase.budget * phase.guaranteedRoas))} />
           </div>
         </Surface>

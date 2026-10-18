@@ -280,15 +280,21 @@ function OneCampaign() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-body font-medium text-ink">{phaseTitle(ph.phaseNo)}</span>
-                      {/* The multiple, not the budget. A row's job is
-                          which rung and how it is going; what the rung
-                          costs is on the page the row opens. */}
+                      {/* The arithmetic, whole (Mostafa, 18 Oct: "1x 1000 = 1000$, 2x $2000 = 4000$"): the budget, the
+                          multiple and what they guarantee. A bare multiple beside a bare sales figure read as
+                          though the two did not belong to each other. */}
                       <span className="block truncate text-[11px] text-ink-faint">
-                        {ph.guaranteedRoas}x guaranteed
+                        {fmtUSD(ph.budget)} at {ph.guaranteedRoas}x · {fmtUSD(Math.round(ph.budget * ph.guaranteedRoas))} guaranteed
                       </span>
                     </span>
-                    <span className="shrink-0 text-body font-semibold tabular-nums text-ink">
-                      {ph.rev ? fmtUSD(ph.rev) : "—"}
+                    {/* What it has sold, against what it guarantees. Nothing for a phase not started. */}
+                    <span className="shrink-0 text-end">
+                      <span className="block text-body font-semibold tabular-nums text-ink">
+                        {ph.status === "live" || ph.status === "ended" ? fmtUSD(ph.rev) : "—"}
+                      </span>
+                      {(ph.status === "live" || ph.status === "ended") && (
+                        <span className="block text-[11px] tabular-nums text-ink-faint">sold</span>
+                      )}
                     </span>
                     <CaretRight size={11} weight="bold" aria-hidden className="shrink-0 text-ink-faint rtl:rotate-180" />
                   </button>

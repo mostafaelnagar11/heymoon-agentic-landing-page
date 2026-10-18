@@ -75,39 +75,39 @@ export interface Phase {
    waiting. This is the running demo.
 
    The budgets are not sized for this brand and were never negotiated.
-   Phase 1 is the fixed $1,000 warm-up every brand starts on, and
-   $3,000 and $6,000 are the two rungs quoted behind it — the same
-   PHASE1_BUDGET, PHASE_2_BUDGET and PHASE_3_BUDGET the agent builds a
-   proposal from, so this history and a fresh plan agree to the dollar.
+   They are the three phases every brand is offered (tools.ts,
+   PHASE_BUDGETS and PHASE_MULTIPLES): $1,000 at 1x, $2,000 at 2x and
+   $3,000 at 3x, so $1,000, $4,000 and $9,000 guaranteed. This history
+   and a fresh plan agree to the dollar.
    Phase 4 is past what a brand is sold; it is here only because the
    sequence does not stop at three.
 
    The crew sizes follow the budget rather than the other way round:
    $1,000 leaves $650 for creator fees, which briefed three creators in
-   the warm-up, and $3,000 opened Phase 2 to the eight the matched pool
+   the warm-up, and $2,000 opened Phase 2 to the eight the matched pool
    could supply. */
 export const PHASES: Phase[] = [
   {
     id: "phase-1", phaseNo: 1, status: "ended",
     start: "8 Jan 2026", end: "6 Feb 2026",
-    /* Guaranteed at 1× — the warm-up owes the brand their money back
-       and nothing more. It returned 5.2× of it, which is the whole
+    /* Guaranteed at 1x, $1,000 of sales on $1,000. It closed at $1,240, past its guarantee, which is the
        argument for funding Phase 2. */
-    budget: 1_000, guaranteedRoas: 1, rev: 5_200, revTarget: 1_000,
+    budget: 1_000, guaranteedRoas: 1, rev: 1_240, revTarget: 1_000,
     dayOfPhase: 29, plannedDays: 30, creators: 3,
   },
   {
     id: "phase-2", phaseNo: 2, status: "live",
     start: "10 Feb 2026", end: null,
-    /* 2x, the multiple every Phase 2 carries (tools.ts, PHASE_MULTIPLES). At 84% of its $6,000 target it has just
-       passed the 80% line, which is why Phase 3 is ready. */
-    budget: 3_000, guaranteedRoas: 2, rev: 5_040, revTarget: 6_000,
+    /* $2,000 at 2x, $4,000 guaranteed. At 84% of it, $3,360, it has just passed the 80% line, which is why Phase 3
+       is ready. */
+    budget: 2_000, guaranteedRoas: 2, rev: 3_360, revTarget: 4_000,
     dayOfPhase: 19, plannedDays: 30, creators: 8,
   },
   {
     id: "phase-3", phaseNo: 3, status: "ready",
     start: null, end: null,
-    budget: 6_000, guaranteedRoas: 3, rev: 0, revTarget: null,
+    /* $3,000 at 3x, $9,000 guaranteed once it is started. */
+    budget: 3_000, guaranteedRoas: 3, rev: 0, revTarget: null,
     dayOfPhase: null, plannedDays: 30, creators: null,
   },
 ];
@@ -225,35 +225,35 @@ const SEEDS: AdSeed[] = [
     product: "Pearl Mesh Clutch", caption: "The pearl mesh clutch on camera rather than on a plinth, with the code and piece number on screen.",
     format: "Reel", platform: "Instagram", img: "/ads/palm-ounass-clutch.jpg", video: "/ads/palm-ounass-clutch.mp4",
     submitted: "6d ago", track: "MT-P2-V01", state: "live", verdict: "approve",
-    reasoning: "Approved by you on 24 Feb; MoonLive AI published it the same day.", views: 61_400, revenue: 1_270,
+    reasoning: "Approved by you on 24 Feb; MoonLive AI published it the same day.", views: 61_400, revenue: 850,
   },
   {
     id: "ad-live-2", campaignId: "phase-2", creatorId: 2,
     product: "Ounass Beauty Edit", caption: "Full face using nothing outside the Ounass beauty edit. Shade names as she goes.",
     format: "Story", platform: "Instagram", img: "/ads/memz-ounass-story.jpg", video: "/ads/memz-ounass-story.mp4",
     submitted: "5d ago", track: "MT-P2-V02", state: "live", verdict: "approve",
-    reasoning: "Approved by you on 25 Feb; MoonLive AI published it the same day.", views: 38_900, revenue: 900,
+    reasoning: "Approved by you on 25 Feb; MoonLive AI published it the same day.", views: 38_900, revenue: 600,
   },
   {
     id: "ad-live-3", campaignId: "phase-2", creatorId: 10,
     product: "Ounass Luxury Haul", caption: "What actually arrived from the haul, unpacked in one take and rated out loud.",
     format: "Video", platform: "TikTok", img: "/ads/noon-ounass-tiktok.jpg", video: "/ads/noon-ounass-tiktok.mp4",
     submitted: "4d ago", track: "MT-P2-V03", state: "live", verdict: "approve",
-    reasoning: "Approved by you on 26 Feb; MoonLive AI published it the same day.", views: 104_200, revenue: 1_600,
+    reasoning: "Approved by you on 26 Feb; MoonLive AI published it the same day.", views: 104_200, revenue: 1_060,
   },
   {
     id: "ad-live-4", campaignId: "phase-2", creatorId: 7,
     product: "Ounass Exclusive, The Resort Ritual", caption: "Walking the Resort Ritual edit on site, gift sets first, with the code on screen.",
     format: "Story", platform: "Instagram", img: "/ads/cosmo-ounass-story.jpg", video: "/ads/cosmo-ounass-story.mp4",
     submitted: "3d ago", track: "MT-P2-V04", state: "live", verdict: "approve",
-    reasoning: "Approved by you on 27 Feb; MoonLive AI published it the same day.", views: 44_700, revenue: 760,
+    reasoning: "Approved by you on 27 Feb; MoonLive AI published it the same day.", views: 44_700, revenue: 510,
   },
   {
     id: "ad-live-5", campaignId: "phase-2", creatorId: 9,
     product: "Linen Blazer, Chalk", caption: "The linen blazer after a full day in 38 degrees. Creases and all.",
     format: "Post", platform: "Instagram", img: "/creators/paola.elsitt/p3.jpg",
     submitted: "6d ago", track: "MT-P2-1119", state: "live", verdict: "approve",
-    reasoning: "Approved by you on 24 Feb; MoonLive AI published it the same day.", views: 52_300, revenue: 510,
+    reasoning: "Approved by you on 24 Feb; MoonLive AI published it the same day.", views: 52_300, revenue: 340,
   },
   /* ── Declined ── */
   {

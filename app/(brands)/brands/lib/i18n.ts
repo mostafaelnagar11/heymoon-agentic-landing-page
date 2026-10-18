@@ -148,8 +148,8 @@ export const STR: Dict = {
   /* Set per phase since 18 Oct (Mostafa: "phase 1 x1 phase 2 x2 phase 3 x3"), no longer picked by the brand. */
   "landing.roasT": { en: "1x, 2x, 3x. HeyMoon signs every phase.", ar: "1x و2x و3x. وهاي مون توقّع على كل مرحلة." },
   "landing.roasD": {
-    en: "Every phase carries its own guarantee, the same for every brand: 1x on the first, 2x on the second and 3x on the third. You choose how big the plan is. The multiples don't move.",
-    ar: "لكل مرحلة ضمانها، وهو نفسه لكل علامة تجارية: 1x في الأولى، و2x في الثانية، و3x في الثالثة. أنت تختار حجم الخطة، والمضاعفات ثابتة.",
+    en: "Every phase carries its own guarantee, the same for every brand: $1,000 at 1x, $2,000 at 2x and $3,000 at 3x. Nothing to size, and nothing to negotiate.",
+    ar: "لكل مرحلة ضمانها، وهو نفسه لكل علامة تجارية: 1,000$ بمضاعف 1x، و2,000$ بمضاعف 2x، و3,000$ بمضاعف 3x. لا شيء يُحدَّد حجمه، ولا شيء يُفاوَض عليه.",
   },
   "landing.roasLabel": { en: "Guaranteed ROAS", ar: "العائد المضمون" },
   "landing.roasNote": { en: "1x, 2x and 3x, blended", ar: "1x و2x و3x مجتمعة" },

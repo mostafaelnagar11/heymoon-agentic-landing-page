@@ -9,7 +9,7 @@
    18 Oct, the brand team's rule (15 Oct): the guarantee REFUNDS the share of the budget the campaign missed, it
    does not pay the sales gap. The gradient is still the missed share of the sales, so it is labelled as a share,
    and the sentence turns it into the refund. Worked on the second phase since the multiples became 1x, 2x, 3x
-   (Mostafa, 18 Oct): $3,000 at 2x is $6,000 guaranteed; close at $4,800 and 20% of the $3,000 comes back, $600. Built from utilities the site already ships plus inline
+   (Mostafa, 18 Oct): $2,000 at 2x is $4,000 guaranteed; close at $3,200 and 20% of the $2,000 comes back, $400. Built from utilities the site already ships plus inline
    styles: the CSS budget (measure.cjs, css) has no room for new rules. */
 import { useRef, type CSSProperties } from "react";
 import { COPY } from "../copy";

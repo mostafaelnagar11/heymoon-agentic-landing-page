@@ -1,6 +1,6 @@
 "use client";
 /* Brands row 1, the guarantee (§5.4, S5). Left: the H2, the body, the gradient rule and the
-   signature. Right: "Guaranteed sales", $25,000 counting up critically damped (never above the
+   signature. Right: "Guaranteed sales", $14,000 counting up critically damped (never above the
    figure), the budget and the multiple, and the curve at v1's GuaranteePanel proportion (the
    column's width × 96px; figure chrome, ruling 36), drawn as the count starts. There is no ladder
    line here (C14): Phases 2 and 3 are indicative and never stated beside "Guaranteed sales". */

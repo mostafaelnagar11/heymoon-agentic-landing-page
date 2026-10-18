@@ -874,10 +874,9 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
             );
           }
 
-          /* Phases 2 and 3: faded, and on one line each. The numbers are
-             rough by design, priced for real only when the phase is
-             offered, so the budget is prefixed "about" and the condition
-             that opens it is on the same line as the money. */
+          /* Phases 2 and 3: faded, and on one line each, with the condition
+             that opens each on the same line as the money. The budgets are
+             fixed (PHASE_BUDGETS), so they are no longer prefixed "about". */
           return (
             <li key={r.phaseNo} className="opacity-60">
               <div className={`flex items-start gap-3 ${rowPad}`}>
@@ -889,7 +888,7 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
                     <p className="text-body font-semibold text-ink-soft">{phaseTitle(r.phaseNo)}</p>
                     <span className="text-meta text-ink-faint">·</span>
                     <span className="text-meta text-ink-faint">
-                      about <Figure src={plan.ladder} render={fmtUSD(r.budget)} size="sm" />
+                      <Figure src={plan.ladder} render={fmtUSD(r.budget)} size="sm" />
                     </span>
                     <span className="text-meta text-ink-faint">·</span>
                     <span className="text-meta text-ink-faint">
