@@ -38,6 +38,8 @@ import {
   useLivePhase, useReadyPhase, type Campaign,
 } from "../../lib/store";
 import { useGo } from "../../lib/surface";
+import { AgentMoves, AskChip } from "./HeyMoon";
+import { paceSentence } from "../../lib/agent/dashboard";
 import { shortfallLine } from "../../lib/agent/guarantee";
 import { Surface } from "./kit";
 import { RevenueRuler } from "../Ruler";
@@ -377,6 +379,7 @@ export function HomeView() {
   const phases = useCampaignPhases();
   const live = useLivePhase();
   const ready = useReadyPhase();
+  const ads = useAds();
 
   const label = campaign ? campaignLabel(campaign) : "No campaign yet";
 
@@ -439,6 +442,9 @@ export function HomeView() {
         {account ? `Welcome back, ${account.firstName}` : "Welcome back"}
       </h2>
 
+      {/* What the agents would do next, on the page rather than in a chat beside it (HeyMoon.tsx). */}
+      <AgentMoves />
+
       {/* One row, three cards. The two totals used to sit below the
           staircase, which put the money the brand has made two screens
           away from the money it is promised. They are the same
@@ -462,6 +468,13 @@ export function HomeView() {
           <p className="mt-4 max-w-[60ch] text-body leading-5 text-white/75">
             of the {fmtUSD(live.revTarget)} HeyMoon guaranteed on this phase. {shortfallLine(live.budget, live.revTarget)}
           </p>
+          {/* The question this band raises, answered about this phase in the panel. */}
+          <AskChip
+            q="Will it land on the number?"
+            say={paceSentence(live, ads)}
+            tone="onDark"
+            className="mt-4 self-start"
+          />
           {/* The ruler the product already owns, rather than a fifth
               hand-rolled bar. It carries the 80% notch, which is the
               whole mechanic and was drawn as a purple hairline on a

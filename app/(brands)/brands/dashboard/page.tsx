@@ -17,16 +17,15 @@
  * have to learn a new shell to look at the same numbers. What has
  * changed is the third column.
  *
- * Where the current app has no assistant and this prototype had a
- * "back to the agent" link, there is now a rail you can talk to. It is
- * a different agent from the builder — that one knows a store, this
- * one knows a phase in flight — and it can move the page, answer from
- * the figures already on it, and prepare an approval. It cannot
- * publish, move money or sign, which is what makes it safe to put a
- * text box this close to a live campaign.
+ * The third column was a chat rail, open by default. It is closed now
+ * and the agents work in the page instead (components/dashboard/
+ * HeyMoon.tsx): their next moves on the page, a request bar in the top
+ * bar, a question on a card, and the column opening only to show an
+ * answer or a request to confirm (brand team, 15 Oct: "not just a side
+ * chat"). It still cannot publish, move money or sign.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Sparkle } from "@phosphor-icons/react";
 import { CampaignView, CAMPAIGN_TABS, type CampaignTab } from "../components/dashboard/CampaignView";
@@ -34,7 +33,7 @@ import { HomeView } from "../components/dashboard/HomeView";
 import { SettingsView } from "../components/dashboard/SettingsView";
 import { DashboardSidebar, NAV } from "../components/dashboard/Sidebar";
 import { DashboardTopbar } from "../components/dashboard/Topbar";
-import { DashboardAssistant } from "../components/dashboard/Assistant";
+import { HeyMoonPanel, HeyMoonProvider, useHeyMoon } from "../components/dashboard/HeyMoon";
 import { ConnectAlert } from "../components/dashboard/ConnectAlert";
 import {
   campaignLabel, setDashboardView, showCampaignList, useActiveCampaign, useAds, useDashboardView,
@@ -95,16 +94,6 @@ export default function DashboardPage() {
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
-  const [assistant, setAssistant] = useState(true);
-
-  /* A column of its own needs room for two. On a phone there is only
-     ever room for one, so it starts closed there and takes the whole
-     width when opened — the same rule the conversation's panel uses at
-     /c. It is never an overlay: nothing here floats above the thing it
-     is answering about. */
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 768) setAssistant(false);
-  }, []);
 
   /* No early return for an empty account.
 
@@ -148,6 +137,9 @@ export default function DashboardPage() {
     /* Everything inside moves THIS surface. A panel's cross-link asks
        for `useGo()` and never learns which page it is on. */
     <SurfaceProvider go={setDashboardView}>
+    <HeyMoonProvider>
+    <Frame>
+    {(assistant) => (
     <div className="flex h-[100dvh] overflow-hidden bg-canvas">
       {/* The rail is the work, and settings is not the work. It steps
           aside here and the top bar carries a way back instead, so the
@@ -169,12 +161,10 @@ export default function DashboardPage() {
         <DashboardTopbar
           title={TITLE[view]}
           waiting={waiting}
-          assistantOpen={assistant}
           /* Where the hamburger goes back to: the view that was open
              before settings, or the dashboard if settings is where the
              session started. */
           onBack={settingsOpen ? () => setDashboardView(cameFrom.current) : undefined}
-          onToggleAssistant={() => setAssistant((o) => !o)}
           /* One control, two jobs, the way the current app does it: it
              collapses the rail where there is room for one and opens
              the drawer where there is not. */
@@ -220,21 +210,29 @@ export default function DashboardPage() {
             )}
           </main>
 
-          {/* A column, not an overlay. It sits in the row beside the
-              dashboard and the dashboard reflows around it, so nothing
-              is ever dimmed or covered. Collapsing it is one press,
-              from the top bar or from its own header. */}
+          {/* A column, not an overlay, and closed until it has something
+              to show: an answer, or a request to confirm. The dashboard
+              reflows beside it, so nothing is dimmed or covered. */}
           {assistant && (
             <aside
               className="animate-slide-in-end flex w-full shrink-0 flex-col border-s border-hairline md:w-[clamp(320px,30vw,400px)]"
-              aria-label="Assistant"
+              aria-label="HeyMoon"
             >
-              <DashboardAssistant onClose={() => setAssistant(false)} />
+              <HeyMoonPanel />
             </aside>
           )}
         </div>
       </div>
     </div>
+    )}
+    </Frame>
+    </HeyMoonProvider>
     </SurfaceProvider>
   );
+}
+
+/** Hands the panel's open state to the layout, from inside the provider that owns it. */
+function Frame({ children }: { children: (open: boolean) => ReactNode }) {
+  const { open } = useHeyMoon();
+  return <>{children(open)}</>;
 }

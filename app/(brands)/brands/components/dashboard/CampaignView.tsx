@@ -23,7 +23,6 @@ import {
   campaignLabel, openCampaign, openPhase, showCampaignList, useActiveCampaign, useAds,
   useCampaignPhases, useDrill, useLivePhase, type Campaign,
 } from "../../lib/store";
-import { useGo } from "../../lib/surface";
 import { CampaignsList } from "./CampaignsList";
 import { CreatorsView } from "./CreatorsView";
 import { InboxView } from "./InboxView";
@@ -31,7 +30,9 @@ import { AdsView } from "./AdsView";
 import { ActivityView } from "./ActivityView";
 import { PhaseDetail } from "./PhaseDetail";
 import { RevenueChart } from "./RevenueChart";
-import { ActionBar, Section, Surface, Tile } from "./kit";
+import { Section, Surface, Tile } from "./kit";
+import { AgentMoves, AskChip } from "./HeyMoon";
+import { phasesSentence } from "../../lib/agent/tools";
 
 
 /** The five faces of one campaign. They were five rows in the rail,
@@ -158,12 +159,8 @@ function Crumbs({ campaign, phase }: { campaign: Campaign; phase: Phase | null }
 }
 
 function OneCampaign() {
-  const go = useGo();
   const phase = useLivePhase();
   const phases = useCampaignPhases();
-  const ads = useAds().filter((a) => !phase || a.campaignId === phase.id);
-  const waiting = ads.filter((a) => a.state === "waiting");
-  const held = waiting.filter((a) => a.compliance.verdict === "hold").length;
 
   if (!phase) {
     return (
@@ -186,12 +183,9 @@ function OneCampaign() {
     <div className="space-y-6">
       {/* The one thing to do, above everything. If there is nothing,
           this row is not rendered rather than rendered empty. */}
-      <ActionBar
-        count={waiting.length}
-        text={held ? `drafts need a decision. I would hold ${held}.` : "drafts need a decision. I would approve them all."}
-        cta="Review"
-        onCta={() => go("ads")}
-      />
+      {/* The agents' next moves for this campaign, each a press away. It replaces the red "drafts need a decision"
+          bar, which said the same thing and could only send you elsewhere (HeyMoon.tsx). */}
+      <AgentMoves />
 
       {/* Two figures, which are the two questions: how is the phase
           that is running doing, and how is the campaign doing.
@@ -254,7 +248,19 @@ function OneCampaign() {
           </Surface>
         </Section>
 
-        <Section title="The phases">
+        <Section
+          title="The phases"
+          aside={
+            <AskChip
+              q="How do the phases work?"
+              say={
+                `Every brand gets the same three phases: ${phasesSentence()}. You start one at a time. Each phase after ` +
+                `the first is offered when the one before it reaches ${Math.round(UNLOCK_AT * 100)}% of its target, and ` +
+                `you decide then. If a phase falls short, you get back the same share of what you paid for it.`
+              }
+            />
+          }
+        >
           {/* Three rungs in a card sized for the chart beside it left a
               third of the card empty. The rows share the height evenly
               instead, so the list reads as a ladder with rungs at equal

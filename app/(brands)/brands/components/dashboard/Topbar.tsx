@@ -17,20 +17,17 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { accessFor, accountName, resetAll, startConversation, useAccount, useActiveCampaign, useStore } from "../../lib/store";
-import { ArrowLeft, Bell, List, Plus, Sparkle } from "@phosphor-icons/react";
+import { ArrowLeft, Bell, List, Plus } from "@phosphor-icons/react";
+import { AskBar } from "./HeyMoon";
 
 export function DashboardTopbar({
   title,
   waiting,
-  assistantOpen,
-  onToggleAssistant,
   onToggleNav,
   onBack,
 }: {
   title: string;
   waiting: number;
-  assistantOpen: boolean;
-  onToggleAssistant: () => void;
   onToggleNav: () => void;
   /** Set on a page that hides the rail. The hamburger has nothing to
       collapse then, so it becomes the way back to where you were. */
@@ -83,24 +80,9 @@ export function DashboardTopbar({
       <h1 className="shrink-0 text-head font-semibold text-ink">{title}</h1>
 
       <div className="ms-auto flex shrink-0 items-center gap-2">
-        {/* Building the next campaign is the one thing up here that
-            makes money, so it is the one thing that looks like a
-            button. The assistant is a panel you show and hide, which is
-            a view control and not an action: filled and outlined, it
-            was competing with the primary for the same attention, and
-            an always-lit filled button beside a real one reads as two
-            primaries. Plain text, and the panel it toggles is the
-            feedback. */}
-        <button
-          onClick={onToggleAssistant}
-          aria-pressed={assistantOpen}
-          className={`inline-flex h-10 items-center gap-2 rounded-pill px-3 text-meta font-semibold transition ${
-            assistantOpen ? "bg-lilac text-main" : "text-ink-60 hover:bg-lilac/50 hover:text-ink"
-          }`}
-        >
-          <Sparkle size={13} weight="fill" aria-hidden />
-          <span className="hidden sm:inline">Ask HeyMoon</span>
-        </button>
+        {/* HeyMoon, asked in words. It used to be a toggle for a chat rail; the agents work in the page now and
+            this is where a request in words goes (HeyMoon.tsx). */}
+        <AskBar />
 
         <Link
           href="/brands/c"
