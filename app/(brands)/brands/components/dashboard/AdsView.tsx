@@ -43,20 +43,20 @@ const ICON = { Instagram: InstagramLogo, TikTok: TiktokLogo, YouTube: YoutubeLog
    the chip says it and the sentence is behind the disclosure. */
 const VERDICT = {
   approve: {
-    chip: "I'd approve",
-    why: "Why I'd approve",
+    chip: "Approve",
+    why: "Why",
     skin: "bg-good/10 text-good-deep",
     Icon: CheckCircle,
   },
   "approve-with-note": {
-    chip: "I'd approve, with a note",
-    why: "Why, and the one thing to know",
+    chip: "Approve, with a note",
+    why: "Why",
     skin: "bg-brand/10 text-brand",
     Icon: Warning,
   },
   hold: {
-    chip: "I'd hold this",
-    why: "Why I'd hold",
+    chip: "Hold",
+    why: "Why",
     skin: "bg-danger/10 text-danger",
     Icon: Clock,
   },
@@ -105,8 +105,7 @@ export function AdsView() {
       {shelf === "waiting" && counts.waiting > 0 && (
         <p className="flex items-center gap-2 text-meta text-ink-faint">
           <Clock size={13} weight="fill" aria-hidden className="shrink-0 text-ink-faint" />
-          A draft you do not decide within {REVIEW_WINDOW_DAYS} days publishes as the creator drafted it. Decline
-          it and nothing goes out.
+          Undecided drafts publish after {REVIEW_WINDOW_DAYS} days.
         </p>
       )}
 
@@ -119,10 +118,10 @@ export function AdsView() {
             {counts.waiting}
           </span>
           <span className="min-w-0 flex-1 text-body text-ink">
-            {held ? `${wouldApprove.length} I'd approve, ${held} I'd hold` : "I'd approve every one of them"}
+            {held ? `${wouldApprove.length} to approve, ${held} to hold` : "All ready to approve"}
           </span>
           <Btn variant="quiet" size="sm" onClick={() => setSel(wouldApprove)}>
-            Select the {wouldApprove.length} I&apos;d approve
+            Select {wouldApprove.length}
           </Btn>
           <Btn size="sm" disabled={!sel.length} onClick={approveSelected}>
             {sel.length ? `Approve ${sel.length} and publish` : "Approve and publish"}
@@ -252,15 +251,13 @@ function AdCard({
             <span className={`rounded-pill px-2 py-0.5 text-[11px] font-medium ${
               flags ? "bg-danger/10 text-danger" : "bg-good/10 text-good-deep"
             }`}>
-              {flags
-                ? `${flags} check${flags > 1 ? "s" : ""} flagged`
-                : `${ad.compliance.checks.length} checks clean`}
+              {flags ? `${flags} flagged` : "All checks clean"}
             </span>
             {days !== null && ad.state === "waiting" && (
               <span className={`rounded-pill px-2 py-0.5 text-[11px] font-medium ${
                 days <= 2 ? "bg-danger/10 text-danger" : "bg-canvas text-ink-faint"
               }`}>
-                {days} days to decide
+                {days}d left
               </span>
             )}
           </div>

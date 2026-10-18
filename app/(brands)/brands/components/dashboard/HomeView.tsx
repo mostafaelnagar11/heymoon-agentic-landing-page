@@ -29,18 +29,17 @@
  * dollar committed or a dollar earned, and neither belongs in a total.
  */
 
-import { ArrowRight, Check, CheckCircle, Clock, Lightning, LockSimple } from "@phosphor-icons/react";
+import { ArrowRight, Check, Clock, LockSimple } from "@phosphor-icons/react";
 import {
-  fmtUSD, pace, phasePct, phaseTitle, UNLOCK_AT, type Phase, type PhaseStatus,
+  fmtUSD, phasePct, phaseTitle, type Phase, type PhaseStatus,
 } from "../../lib/mock/campaigns";
 import {
-  campaignLabel, openPhase, useAccount, useActiveCampaign, useAds, useCampaignPhases, useCampaigns,
+  openPhase, useAccount, useAds, useCampaignPhases, useCampaigns,
   useLivePhase, useReadyPhase, type Campaign,
 } from "../../lib/store";
 import { useGo } from "../../lib/surface";
 import { AgentMoves, AskChip } from "./HeyMoon";
 import { paceSentence } from "../../lib/agent/dashboard";
-import { shortfallLine } from "../../lib/agent/guarantee";
 import { Surface } from "./kit";
 import { RevenueRuler } from "../Ruler";
 
@@ -65,7 +64,6 @@ const phaseWindow = (p: Phase) => {
   return p.end ? `${p.start} to ${p.end}` : `Started ${p.start}`;
 };
 
-const UNLOCK_PCT = Math.round(UNLOCK_AT * 100);
 
 /* ------------------------------------------------------------------ */
 /* Status badge                                                        */
@@ -122,149 +120,7 @@ function ViewButton({ onClick, label }: { onClick: () => void; label: string }) 
 /* one card, never a grid of concurrent programmes.                    */
 /* ------------------------------------------------------------------ */
 
-function CurrentPhaseCard({ phase, phases, onOpen }: { phase: Phase; phases: Phase[]; onOpen: () => void }) {
-  /* A phase funded a moment ago has a target but nothing measured yet,
-     so the meter only draws once there is a percentage to draw. */
-  const pct = phasePct(phase);
-  const target = phase.revTarget;
-  const p = pace(phase);
 
-  /* Ads carry the phase id as their campaign id, so this is the
-     creative on THIS rung and nothing else. */
-  const ads = useAds().filter((a) => a.campaignId === phase.id);
-  const adsLive = ads.filter((a) => a.state === "live").length;
-
-  /* The current app stores this sentence on the phase. Here it is read
-     off the pace forecast, so the words and the meter can never
-     disagree about the same phase. */
-  const next = phases.find((x) => x.phaseNo === phase.phaseNo + 1);
-  const crossed = pct !== null && pct >= UNLOCK_PCT;
-  const threshold = crossed
-    ? {
-        green: true,
-        text: next
-          ? next.status === "ready"
-            ? `${UNLOCK_PCT}% unlock line crossed. ${phaseTitle(next.phaseNo)} is ready to fund`
-            : `${UNLOCK_PCT}% unlock line crossed. ${phaseTitle(next.phaseNo)} is offered next`
-          : `${UNLOCK_PCT}% unlock line crossed`,
-      }
-    : p
-      ? {
-          green: false,
-          text: `${p.onPace ? "On pace" : "Behind pace"}. The ${UNLOCK_PCT}% unlock line is about ${p.daysToUnlock} days away`,
-        }
-      : { green: false, text: "Deploying to matched creators. First results in a few days" };
-
-  const metrics = [
-    {
-      label: "Ads live",
-      value: String(adsLive),
-      suffix: ads.length ? `/${ads.length}` : "",
-      note: ads.length ? `${Math.round((adsLive / ads.length) * 100)}% of drafts in` : "deploying",
-    },
-    { label: "Creators", value: String(phase.creators ?? 0), suffix: "", note: "on this phase" },
-    { label: "Multiple", value: roasOf(phase), suffix: "", note: `${phase.guaranteedRoas}x guaranteed` },
-  ];
-
-  return (
-    <Surface className="flex flex-col p-5 transition-colors hover:border-black/[0.12]">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-row font-semibold text-ink">{phaseTitle(phase.phaseNo)}</h3>
-            <StatusBadge status={phase.status} />
-          </div>
-          <p className="mt-1 text-meta text-ink-faint">{phaseWindow(phase)}</p>
-        </div>
-        <ViewButton onClick={onOpen} label={`Open ${phaseTitle(phase.phaseNo)}`} />
-      </div>
-
-      {/* Revenue against THIS phase's own target — budget × the multiple
-          guaranteed on this phase, never a portfolio figure. */}
-      <div className="mt-6">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="text-[26px] font-semibold leading-none tracking-tight tabular-nums text-ink">
-            {fmtUSD(phase.rev)}{" "}
-            <span className="text-sm font-normal tracking-normal text-ink-faint">
-              {target !== null ? `of ${fmtUSD(target)} target` : "banked so far"}
-            </span>
-          </p>
-          {pct !== null && <p className="text-sm font-semibold tabular-nums text-brand">{pct}%</p>}
-        </div>
-
-        {pct !== null && (
-          <>
-            <div className="relative mt-3.5 h-2 w-full rounded-pill bg-track">
-              <div className="h-full rounded-pill bg-brand transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
-              {/* The 80% line is the whole mechanic: cross it and the next
-                  rung becomes fundable. Mark it rather than imply it.
-                  `start-[80%]` rather than `left-`: in Arabic the meter
-                  fills from the right and the tick has to follow it. */}
-              <span aria-hidden className="absolute -inset-y-1 start-[80%] w-px bg-brand/40" />
-            </div>
-            <span className="sr-only">
-              {pct >= UNLOCK_PCT
-                ? `Past the ${UNLOCK_PCT}% unlock line.`
-                : `${UNLOCK_PCT - pct} percentage points below the ${UNLOCK_PCT}% unlock line.`}
-            </span>
-          </>
-        )}
-
-        <div className="mt-2.5 flex items-baseline justify-between gap-2">
-          <p className={`flex items-start gap-1.5 text-meta font-medium ${threshold.green ? "text-good" : "text-danger"}`}>
-            {threshold.green
-              ? <CheckCircle size={13} weight="fill" aria-hidden className="mt-px shrink-0" />
-              : <Clock size={13} weight="fill" aria-hidden className="mt-px shrink-0" />}
-            {threshold.text}
-          </p>
-          {target !== null && (
-            <p className="shrink-0 text-meta text-ink-faint">
-              {fmtUSD(Math.max(target - phase.rev, 0))} to target
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Metric row — all three belong to this phase alone. */}
-      <div className="mt-6 grid grid-cols-3 gap-4 border-t border-hairline pt-4">
-        {metrics.map((m) => (
-          <div key={m.label}>
-            <p className="text-[11px] font-medium text-ink-faint">{m.label}</p>
-            <p className="mt-1 text-head font-semibold tracking-tight tabular-nums text-ink">
-              {m.value}<span className="text-body font-normal text-ink-faint">{m.suffix}</span>
-            </p>
-            <p className="mt-0.5 truncate text-[11px] text-ink-faint">{m.note}</p>
-          </div>
-        ))}
-      </div>
-    </Surface>
-  );
-}
-
-/* Nothing running. Either the next rung is bought and this is a blink
-   between phases, or the campaign is waiting on a payment. */
-function NoPhaseRunningCard({ ready, onFund }: { ready: Phase | null; onFund: () => void }) {
-  return (
-    <Surface className="flex flex-col justify-center p-5">
-      <h3 className="text-row font-semibold text-ink">No phase running</h3>
-      <p className="mt-1.5 max-w-sm text-meta leading-relaxed text-ink-faint">
-        {ready
-          ? `${phaseTitle(ready.phaseNo)} is unlocked and waiting on payment. Fund it and it is live within the hour.`
-          : `Nothing is live and nothing is waiting on you. Your next phase unlocks when the current one crosses its ${UNLOCK_PCT}% line.`}
-      </p>
-      {ready && (
-        <button
-          onClick={onFund}
-          aria-label={`Fund Phase ${ready.phaseNo}, ${fmtUSD(ready.budget)} plus VAT`}
-          className="mt-5 inline-flex w-fit items-center gap-2 rounded-pill bg-brand/[0.08] px-4 py-2 text-meta font-semibold text-brand transition-colors hover:bg-brand/[0.14]"
-        >
-          <Lightning size={13} weight="fill" aria-hidden />
-          Fund Phase {ready.phaseNo}, {fmtUSD(ready.budget)}
-        </button>
-      )}
-    </Surface>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* Phase ladder                                                        */
@@ -278,14 +134,11 @@ function NoPhaseRunningCard({ ready, onFund }: { ready: Phase | null; onFund: ()
 /* button: its predecessor has not crossed the 80% line.               */
 /* ------------------------------------------------------------------ */
 
-function PhaseLadder({ phases, label, onOpen }: { phases: Phase[]; label: string; onOpen: (id: string) => void }) {
+function PhaseLadder({ phases, onOpen }: { phases: Phase[]; onOpen: (id: string) => void }) {
   return (
     <Surface>
       <div className="p-6 pb-0">
-        <h3 className="text-title font-semibold text-ink">The phases of {label}</h3>
-        <p className="mt-1 text-meta text-ink-faint">
-          Every phase this campaign has run or has queued, in order. One runs at a time
-        </p>
+        <h3 className="text-title font-semibold text-ink">Phases</h3>
       </div>
 
       {phases.length === 0 ? (
@@ -375,13 +228,11 @@ export function HomeView() {
   const go = useGo();
   const account = useAccount();
   const campaigns = useCampaigns();
-  const campaign = useActiveCampaign();
   const phases = useCampaignPhases();
   const live = useLivePhase();
   const ready = useReadyPhase();
   const ads = useAds();
 
-  const label = campaign ? campaignLabel(campaign) : "No campaign yet";
 
   /* Home is the ACCOUNT's page, so these total every ladder in it. The
      sections below are the active campaign's and say so. */
@@ -413,11 +264,11 @@ export function HomeView() {
   const stats: { label: string; value: string; sub: string }[] = [
     {
       label: "Sales to date", value: fmtUSD(revenue),
-      sub: `Every funded phase, across ${campaigns.length} campaign${campaigns.length === 1 ? "" : "s"}`,
+      sub: campaigns.length === 1 ? "All phases" : `Across ${campaigns.length} campaigns`,
     },
     {
       label: "Paid so far", value: fmtUSD(spend),
-      sub: `Across ${funded.length} funded phase${funded.length === 1 ? "" : "s"}`,
+      sub: `${funded.length} phase${funded.length === 1 ? "" : "s"}`,
     },
   ];
 
@@ -459,22 +310,25 @@ export function HomeView() {
           {/* Both ranks, in order. A campaign holds phases, and this
               line is the only place on the page where the one you are
               looking at is named inside the one it belongs to. */}
-          <p className="text-eyebrow font-semibold uppercase tracking-[0.12em] text-white/70">
-            {label} · {phaseTitle(live.phaseNo)} · {live.guaranteedRoas}x guaranteed
-          </p>
+          {/* The phase, the number and what it is against. The refund rule and the pace are one press away, not
+              printed here (Mostafa, 19 Oct: "less words, more clear"). */}
+          <div className="flex items-center gap-3">
+            <p className="text-eyebrow font-semibold uppercase tracking-[0.12em] text-white/70">
+              {phaseTitle(live.phaseNo)} · {live.guaranteedRoas}x guaranteed
+            </p>
+            <button
+              type="button"
+              onClick={() => open(live.id)}
+              className="ms-auto inline-flex items-center gap-1 text-meta font-semibold text-white/80 transition hover:text-white"
+            >
+              View <ArrowRight size={12} weight="bold" aria-hidden className="rtl:rotate-180" />
+            </button>
+          </div>
           <p className="num mt-3 text-display font-semibold text-white sm:text-hero">
             {fmtUSD(live.rev)}
           </p>
-          <p className="mt-4 max-w-[60ch] text-body leading-5 text-white/75">
-            of the {fmtUSD(live.revTarget)} HeyMoon guaranteed on this phase. {shortfallLine(live.budget, live.revTarget)}
-          </p>
-          {/* The question this band raises, answered about this phase in the panel. */}
-          <AskChip
-            q="Will it land on the number?"
-            say={paceSentence(live, ads)}
-            tone="onDark"
-            className="mt-4 self-start"
-          />
+          <p className="mt-2 text-body text-white/75">of {fmtUSD(live.revTarget)} guaranteed</p>
+          <AskChip q="Will it land?" say={paceSentence(live, ads)} tone="onDark" className="mt-4 self-start" />
           {/* The ruler the product already owns, rather than a fifth
               hand-rolled bar. It carries the 80% notch, which is the
               whole mechanic and was drawn as a purple hairline on a
@@ -488,13 +342,9 @@ export function HomeView() {
         </section>
       ) : (
         <section className="rounded-tile border border-hairline bg-white p-6 shadow-card lg:col-span-2">
-          <p className="text-eyebrow font-semibold uppercase tracking-[0.12em] text-ink-faint">
-            {label} · no phase running
-          </p>
-          <p className="mt-2 max-w-[60ch] text-body leading-5 text-ink-soft">
-            {ready
-              ? `${phaseTitle(ready.phaseNo)} is unlocked and waiting on you. Nothing moves until you start it.`
-              : "Start a phase and the number HeyMoon guarantees on it stands here."}
+          <p className="text-eyebrow font-semibold uppercase tracking-[0.12em] text-ink-faint">No phase running</p>
+          <p className="mt-2 text-body text-ink-soft">
+            {ready ? `${phaseTitle(ready.phaseNo).split(" · ")[0]} is ready to start.` : "Start a phase and its guarantee shows here."}
           </p>
         </section>
       )}
@@ -510,22 +360,8 @@ export function HomeView() {
         </div>
       </div>
 
-      {/* The phase running now — singular, because only one can be */}
-      <div className="pt-2">
-        <h2 className="text-section font-semibold text-ink">Running now</h2>
-        <p className="mt-0.5 text-body text-ink-faint">
-          {label} runs one phase at a time · updated in real time
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {live
-          ? <CurrentPhaseCard phase={live} phases={phases} onOpen={() => open(live.id)} />
-          : <NoPhaseRunningCard ready={ready} onFund={() => ready && open(ready.id)} />}
-      </div>
-
       {/* The ladder itself — the active campaign's, in phase order */}
-      <PhaseLadder phases={phases} label={label} onOpen={open} />
+      <PhaseLadder phases={phases} onOpen={open} />
 
       {/* Three things stood here and all three were invented.
 

@@ -129,8 +129,7 @@ export function HeyMoonProvider({ children }: { children: ReactNode }) {
       case "approve-cleared":
         approve(
           a.adIds, undefined,
-          `These ${a.adIds.length} are on brief. I have prepared the approval with what I make of each; pressing it is ` +
-          `yours, and I cannot publish anything myself.`
+          `These ${a.adIds.length} are on brief. Press to approve.`
         );
         return;
       case "open":
@@ -320,21 +319,20 @@ export function AgentMoves({ className = "" }: { className?: string }) {
         <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-brand text-white">
           <Sparkle size={11} weight="fill" />
         </span>
-        <h2 className="text-body font-semibold text-ink">HeyMoon&apos;s next moves</h2>
-        <span className="ms-auto hidden text-[11px] text-ink-faint sm:inline">Nothing moves money or publishes without you</span>
+        <h2 className="text-body font-semibold text-ink">Next moves</h2>
       </div>
       <ul className="divide-y divide-hairline">
         {moves.map((m) => {
           const t = TONE[m.tone];
           return (
-            <li key={m.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
-              <div className="flex min-w-0 flex-1 items-start gap-3">
-                <span aria-hidden className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full ${t.ring}`}>
+            <li key={m.id} className="flex flex-col gap-2.5 px-5 py-3.5 sm:flex-row sm:items-center">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <span aria-hidden className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${t.ring}`}>
                   <t.icon size={13} weight="fill" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint">{m.agent}</p>
-                  <p className="mt-0.5 text-body leading-5 text-ink">{m.text}</p>
+                  <p className="truncate text-body font-semibold text-ink">{m.title}</p>
+                  <p className="truncate text-[11px] text-ink-faint">{m.meta} · {m.agent}</p>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1 ps-10 sm:ps-0">

@@ -209,10 +209,7 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
                 options={COUNTRIES}
               />
             </div>
-            <p className="mt-4 text-[11px] leading-4 text-ink-faint">
-              The name and the website come from the read and are corrected there, so what settings says and what the
-              campaign was built on cannot disagree.
-            </p>
+            <p className="mt-4 text-[11px] leading-4 text-ink-faint">Name and website come from the read.</p>
           </Surface>
         </div>
       </Section>
@@ -265,10 +262,7 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
           </div>
           <div className="mt-4 flex items-start gap-2 rounded-control bg-wash p-3">
             <WarningCircle size={14} weight="fill" aria-hidden className="mt-0.5 shrink-0 text-ink-faint" />
-            <p className="text-[11px] leading-4 text-ink-soft">
-              An invoice cannot be raised without these three. Nothing here is filled in for you, because a
-              plausible number in a tax field is worse than a blank one.
-            </p>
+            <p className="text-[11px] leading-4 text-ink-soft">Needed for your invoices.</p>
           </div>
         </Surface>
       </Section>
@@ -300,10 +294,7 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
                   </span>
                   <span className="shrink-0 text-[11px] font-semibold text-good-deep">Verified</span>
                 </div>
-                <p className="mt-1.5 text-[11px] leading-4 text-ink-faint">
-                  This is the address the code went to, so changing it means verifying the new one. Sign out and
-                  back in with it.
-                </p>
+                <p className="mt-1.5 text-[11px] leading-4 text-ink-faint">To change it, sign in with the new one.</p>
               </div>
               {/* Asked in the conversation before the plan is sized. It changes what HeyMoon leads with, never
                   what the plan is. */}
@@ -331,7 +322,7 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
             <div className="min-w-0">
               <p className="text-body font-semibold text-ink">Message me</p>
               <p className="mt-0.5 text-[11px] leading-4 text-ink-faint">
-                Drafts waiting on you, a phase unlocking, a report. Sent to the email that signed in.
+                Drafts, unlocks and reports, by email.
               </p>
             </div>
             <button
@@ -355,8 +346,7 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
             <div className="min-w-0">
               <p className="text-body font-semibold text-ink">Language</p>
               <p className="mt-0.5 max-w-[46ch] text-[11px] leading-4 text-ink-faint">
-                Arabic, right to left, on the landing page, the read and the conversation. The dashboard follows when
-                it is translated.
+                The dashboard follows once translated.
               </p>
             </div>
             <div className="flex shrink-0 gap-1 rounded-control border border-hairline bg-canvas p-1">
@@ -387,8 +377,7 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
             <div className="min-w-0">
               <p className="text-body font-semibold text-ink">Delete everything</p>
               <p className="mt-0.5 max-w-[60ch] text-[11px] leading-4 text-ink-faint">
-                Signs you out and clears {campaigns === 1 ? "the campaign" : `all ${campaigns} campaigns`}, every
-                read, every plan and every conversation from this browser. It cannot be undone.
+                Clears {campaigns === 1 ? "the campaign" : `all ${campaigns} campaigns`} from this browser. No undo.
               </p>
             </div>
             <Btn variant="danger" size="sm" onClick={() => setConfirming(true)}>

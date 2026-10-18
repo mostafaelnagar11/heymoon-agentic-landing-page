@@ -97,14 +97,13 @@ export function InboxView() {
       id: "fund",
       group: "money",
       icon: Lightning,
-      title: `${phaseTitle(ready.phaseNo)} is unlocked and not started`,
-      note: "you press Start. No agent moves money",
+      title: `${phaseTitle(ready.phaseNo).split(" · ")[0]} is ready to start`,
       value: fmtUSD(withVat(ready.budget)),
       hero: true,
       /* The Start button lives in the campaign view, beside the numbers
          that justify it. Opening that view is as far as this goes. */
       go: "campaign",
-      cta: "Show me where",
+      cta: "Open",
       why: live
         ? `${phaseTitle(live.phaseNo)} crossed ${unlockPct}% of its own target, which is what unlocks this. Every day it is not started is a day the ladder is not climbing.`
         : "Every day it is not started is a day the ladder is not climbing.",
@@ -116,8 +115,8 @@ export function InboxView() {
       id: "held",
       group: "blocking",
       icon: Clock,
-      title: "Drafts I would hold rather than approve",
-      note: soonest !== null ? `${soonest} days left to decide the oldest` : undefined,
+      title: "Drafts to hold",
+      note: soonest !== null ? `${soonest} days left` : undefined,
       value: String(held.length),
       /* Decided here rather than one view away: a held draft is the one
          thing in this list where the decision is the whole task. */
@@ -136,8 +135,8 @@ export function InboxView() {
       id: "approve",
       group: "blocking",
       icon: Images,
-      title: "Drafts I would approve",
-      note: "all on brief",
+      title: "Drafts to approve",
+      note: "on brief",
       value: String(easy.length),
       go: "ads",
       cta: "Review",
@@ -166,8 +165,7 @@ export function InboxView() {
     icon: Sliders,
     /* The count comes off the activity log rather than a number typed
        into a sentence, so it cannot drift from what the log shows. */
-    title: "Things I did on my own",
-    note: "all inside what you allow",
+    title: "Done on its own",
     value: String(activity.filter((a) => !a.undone).length),
     go: "activity",
     cta: "See them",

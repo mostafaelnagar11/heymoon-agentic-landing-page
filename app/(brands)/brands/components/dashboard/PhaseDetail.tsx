@@ -83,7 +83,7 @@ export function PhaseDetail({ campaign, phase }: { campaign: Campaign; phase: Ph
               sub={
                 phase.status === "ended"
                   ? `${Math.round((phase.rev / (target || 1)) * 100)}% of the guarantee`
-                  : p ? `${p.daysLeft} days left in the phase` : undefined
+                  : p ? `${p.daysLeft} days left` : undefined
               }
             />
           </div>
@@ -119,7 +119,7 @@ export function PhaseDetail({ campaign, phase }: { campaign: Campaign; phase: Ph
       {ran && waiting > 0 && (
         <Surface className="flex flex-wrap items-center gap-3 p-4">
           <span className="min-w-0 flex-1 text-body text-ink">
-            {waiting} drafts from this phase are waiting on you. Nothing publishes until you decide.
+            {waiting} drafts wait on you.
           </span>
           <button
             onClick={() => go("ads")}

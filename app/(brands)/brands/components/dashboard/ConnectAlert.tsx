@@ -34,22 +34,18 @@ export function ConnectAlert() {
   return (
     <section
       aria-labelledby="connect-alert"
-      className="rounded-tile border border-amber-line bg-amber-soft p-4 sm:p-5"
+      className="rounded-tile border border-amber-line bg-amber-soft px-4 py-3"
     >
-      <div className="flex flex-wrap items-start gap-3">
-        <span aria-hidden className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-inner bg-white text-amber">
-          <PlugsConnected size={17} weight="fill" />
+      {/* One line. It sits on every page until it is done, so it says the step and why in as few words as that
+          takes; the platforms are behind the button. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-inner bg-white text-amber">
+          <PlugsConnected size={16} weight="fill" />
         </span>
-        <div className="min-w-0 flex-1 basis-[15rem]">
-          <p id="connect-alert" className="text-body font-semibold text-amber">
-            One step left: connect your store
-          </p>
-          <p className="mt-1 max-w-[62ch] text-meta leading-5 text-amber/80">
-            Your phase is paid and your creators are briefed. Connecting is how HeyMoon counts the sales each creator
-            earns you, which is what the guarantee is measured against. Nothing here runs against a number until it is
-            in place.
-          </p>
-        </div>
+        <p id="connect-alert" className="min-w-0 flex-1 basis-[14rem] text-body text-amber">
+          <span className="font-semibold">Connect your store</span>
+          <span className="text-amber/80"> so your sales count toward the guarantee.</span>
+        </p>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}

@@ -86,21 +86,13 @@ export function paceSentence(phase: Phase | null, ads: AdRecord[]): string {
   if (!phase) return "Nothing is running yet, so there is nothing to report on.";
   const p = pace(phase);
   const waiting = ads.filter((a) => a.state === "waiting").length;
-  const liveNow = ads.filter((a) => a.state === "live").length;
   if (!p) return `${phaseTitle(phase.phaseNo)} has not started.`;
-  const head =
-    `${fmtUSD(phase.rev)} attributed so far against a ${fmtUSD(phase.revTarget ?? 0)} target, ` +
-    `on day ${phase.dayOfPhase} of ${phase.plannedDays}.`;
-  const rate =
-    `At ${fmtUSD(Math.round(p.perDay))} a day that lands near ${fmtUSD(Math.round(p.atEnd))}, ` +
-    `${Math.round(p.pctForecast)}% of target.`;
-  const gate = p.daysToUnlock === 0
-    ? `The 80% line is already crossed, so the next phase is unlocked.`
-    : `The 80% line is ${p.daysToUnlock} days out, with ${p.daysLeft} left in the window.`;
-  const you = waiting
-    ? `${liveNow} ads are live and ${waiting} are waiting on you. Approving them is the single biggest thing that moves this.`
-    : `${liveNow} ads are live and nothing is waiting on you.`;
-  return `${head} ${rate} ${gate}\n\n${you}`;
+  /* Short: the figure, where the pace takes it, and the one thing that moves it (Mostafa, 19 Oct: less words). */
+  const head = `${fmtUSD(phase.rev)} of ${fmtUSD(phase.revTarget ?? 0)}, day ${phase.dayOfPhase} of ${phase.plannedDays}.`;
+  const rate = `On pace for ${fmtUSD(Math.round(p.atEnd))} (${Math.round(p.pctForecast)}%).`;
+  const gate = p.daysToUnlock === 0 ? "Next phase unlocked." : `${p.daysToUnlock} days to the 80% line.`;
+  const you = waiting ? `\n\n${waiting} drafts wait on you. Approving them moves this most.` : "";
+  return `${head} ${rate} ${gate}${you}`;
 }
 
 /** What the assistant understood. Regexes, deliberately — the same
@@ -118,21 +110,19 @@ export function interpretDashboard(i: {
      so it is checked first and it never completes on its own. */
   if (/\b(approve|publish|push|send)\b.*\b(all|everything|them|the drafts?|the queue)\b|\bapprove all\b|\bbatch approve\b/.test(lower)) {
     if (!waiting.length) {
-      return { kind: "answer", say: "Nothing is waiting on you. Every draft in this phase is already decided." };
+      return { kind: "answer", say: "Nothing is waiting on you." };
     }
     const held = waiting.filter((a) => a.compliance.verdict === "hold").length;
     return {
       kind: "approve-all",
-      say:
-        `${waiting.length} drafts are waiting, and ${held ? `I would hold ${held} of them` : "I would approve all of them"}. ` +
-        `Here is the list, with what I make of each. I have prepared it; pressing it is yours, and I cannot publish anything myself.`,
+      say: `${waiting.length} drafts${held ? `, ${held} I'd hold` : ""}. Ready for you to approve.`,
     };
   }
 
   if (/\bundo\b|\bput (that|it) back\b|\brevert\b|\broll ?back\b/.test(lower)) {
     return i.undoable
-      ? { kind: "undo", say: "Undone, and put back the way it was. It is still in the log with the undo recorded against it." }
-      : { kind: "answer", say: "There is nothing of mine left to undo. Everything I did on my own is either still standing or already reverted." };
+      ? { kind: "undo", say: "Undone." }
+      : { kind: "answer", say: "Nothing left to undo." };
   }
 
   /* A question about the numbers is answered rather than navigated to.
@@ -152,10 +142,7 @@ export function interpretDashboard(i: {
 
   return {
     kind: "unknown",
-    say:
-      "I did not follow that one. While a phase is running I can tell you how it is doing against the guarantee, " +
-      "show you the drafts waiting on you, prepare an approval for all of them, walk you through anything I did on " +
-      "my own and undo it, or show you what I am allowed to do without asking.",
+    say: "I can tell you how the phase is doing, show or approve the drafts, or undo what I did on my own.",
   };
 }
 

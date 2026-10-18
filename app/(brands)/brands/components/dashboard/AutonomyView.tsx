@@ -103,19 +103,19 @@ export function AutonomyView() {
           tone="hero"
           label="On its own"
           value={at("alone")}
-          sub={`of ${open.length} rules you set`}
+          sub={`of ${open.length} rules`}
         />
-        <Tile label="Asks you first" value={at("ask")} sub="waits in your inbox" />
+        <Tile label="Asks you first" value={at("ask")} sub="in Needs you" />
         <Tile
           tone="good"
-          label="Locked at Never"
+          label="Never"
           value={locked.length}
-          sub="money · publishing · signing"
+          sub="money · publish · sign"
         />
         <Tile
           label="Acted on its own"
           value={actedThisWeek}
-          sub="this week, each undoable"
+          sub="this week"
         />
       </div>
 
@@ -138,7 +138,7 @@ export function AutonomyView() {
             aria-expanded={pipeline}
             className="inline-flex items-center gap-1.5 text-body font-semibold text-ink transition hover:text-brand"
           >
-            The agents, in the order they run
+            The agents
             <CaretDown
               size={11}
               weight="bold"
@@ -150,7 +150,7 @@ export function AutonomyView() {
         aside={
           <span className="inline-flex items-center gap-1 rounded-pill border border-danger/25 bg-danger/[0.07] px-2.5 py-1 text-[11px] font-semibold text-danger">
             <LockSimple size={11} weight="fill" aria-hidden />
-            {LOCKED_AGENTS} can never finish alone
+            {LOCKED_AGENTS} always ask
           </span>
         }
       >
@@ -207,10 +207,7 @@ export function AutonomyView() {
           A brand who scrolls past this should still be unable to read
           the segment as something they left switched off. */}
       <Section
-        title="Fixed at Never. These are not preferences."
-        aside={
-          <span className="text-[11px] text-ink-faint">No level of trust changes them</span>
-        }
+        title="Always Never"
       >
         <Surface>
           <ul className="divide-y divide-hairline">
@@ -225,13 +222,13 @@ export function AutonomyView() {
 
       {/* ── The adjustable ones ─────────────────────────────────────── */}
       <Section
-        title="Your call"
+        title="Yours to set"
         aside={
           <button
             onClick={() => go("activity")}
             className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand hover:underline"
           >
-            Everything I did on my own
+            Log
             <ArrowRight size={11} weight="bold" aria-hidden className="rtl:rotate-180" />
           </button>
         }
@@ -248,9 +245,7 @@ export function AutonomyView() {
               </li>
             ))}
           </ul>
-          <p className="border-t border-hairline px-4 py-2.5 text-[11px] text-ink-faint">
-            A change takes effect immediately, on the phase running now.
-          </p>
+
         </Surface>
       </Section>
     </div>

@@ -96,14 +96,14 @@ export function ActivityView() {
       <div className="grid gap-3 sm:grid-cols-2">
         <Tile
           tone="hero"
-          label="Done without asking"
+          label="Done on its own"
           value={rows.length}
-          sub={agents ? `${agents} agents, every one signed` : "all of it logged here"}
+          sub={agents ? `by ${agents} agents` : "logged here"}
         />
         <Tile
           label="Undone by you"
           value={undoneCount}
-          sub={`${reversible} more can still be undone`}
+          sub={`${reversible} can be undone`}
         />
       </div>
 
@@ -113,34 +113,21 @@ export function ActivityView() {
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.09em] text-ink-faint">
           <LockSimple size={12} weight="fill" className="text-brand" aria-hidden />
-          Fixed limits
+          Never
         </span>
-        {locked.map((r) => (
-          <span key={r.key} className="inline-flex items-center gap-1.5 text-[11px]">
-            <span className="text-ink-soft">{r.label}</span>
-            <span className="font-semibold text-good-deep">{LEVEL_WORD[r.level]}</span>
-          </span>
-        ))}
-        </div>
-        <div className="mt-2">
-          <Detail summary="Why these cannot be turned on">
-            <p className="max-w-[86ch]">
-              They are not preferences. Nothing in this log moved money or published anything, and there is no
-              level of trust that would let it: an agent may move budget you have already paid, inside the phase
-              you paid it for, and a draft goes live only after you approve it.
-            </p>
-          </Detail>
+        {/* One line: the three things no agent may do. The explanation went; "Never" is the explanation. */}
+        <span className="text-[11px] text-ink-soft">{locked.map((r) => r.label.toLowerCase()).join(" · ")}</span>
         </div>
       </Surface>
 
       <Section
-        title="Everything I did on my own"
+        title="Log"
         aside={
           <button
             onClick={() => go("autonomy")}
             className="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-white px-3 py-1.5 text-[11px] font-semibold text-ink-soft transition hover:bg-wash"
           >
-            <Sliders size={12} weight="bold" aria-hidden /> Change what I may do
+            <Sliders size={12} weight="bold" aria-hidden /> Permissions
           </button>
         }
       >

@@ -28,7 +28,10 @@ export interface Move {
   id: string;
   /** Which agent is proposing it. A move nobody owns is a move a brand cannot question. */
   agent: string;
-  text: string;
+  /** What to do, in a few words. The reasoning is behind "Why", not on the row. */
+  title: string;
+  /** One fact under the title: the figure or the reason, never a sentence. */
+  meta: string;
   tone: "money" | "work" | "done";
   primary: MoveAction;
   secondary?: MoveAction;
@@ -61,15 +64,22 @@ export function nextMoves(i: {
   /* Money first: a phase that is unlocked and not started is the ladder not climbing. */
   if (i.ready) {
     const r = i.ready;
+    const short = phaseTitle(r.phaseNo).split(" · ")[0];
     out.push({
       id: "fund",
       agent: "MoonScore AI",
       tone: "money",
-      text:
-        `${i.live ? `${phaseTitle(i.live.phaseNo)} crossed ${unlock}% of its target. ` : ""}` +
-        `${phaseTitle(r.phaseNo)} is ready: ${fmtUSD(r.budget)} at ${r.guaranteedRoas}x, ` +
-        `${fmtUSD(Math.round(r.budget * r.guaranteedRoas))} guaranteed. Starting it is yours.`,
-      primary: { label: `See ${phaseTitle(r.phaseNo).split(" · ")[0]}`, do: "open-phase", phaseId: r.id },
+      title: `${short} is ready to start`,
+      meta: `${fmtUSD(r.budget)} at ${r.guaranteedRoas}x · ${fmtUSD(Math.round(r.budget * r.guaranteedRoas))} guaranteed`,
+      primary: { label: `Open ${short}`, do: "open-phase", phaseId: r.id },
+      secondary: {
+        label: "Why",
+        do: "why",
+        q: `Why start ${short} now?`,
+        say:
+          `${i.live ? `${phaseTitle(i.live.phaseNo).split(" · ")[0]} passed ${unlock}% of its target. ` : ""}` +
+          `Each day it waits, the next guarantee waits too.`,
+      },
     });
   }
 
@@ -79,11 +89,10 @@ export function nextMoves(i: {
       id: "approve",
       agent: "MoonWriter AI",
       tone: "work",
-      text:
-        `${cleared.length} ${plural(cleared.length, "draft is", "drafts are")} on brief. I checked ` +
-        `${plural(cleared.length, "it", "each one")} against the brief I wrote, and approving is the fastest sales left in this phase.`,
-      primary: { label: `Approve the ${cleared.length}`, do: "approve-cleared", adIds: cleared.map((a) => a.id) },
-      secondary: { label: "Review them", do: "open", view: "ads" },
+      title: `${cleared.length} ${plural(cleared.length, "draft", "drafts")} ready to approve`,
+      meta: "On brief",
+      primary: { label: `Approve ${cleared.length}`, do: "approve-cleared", adIds: cleared.map((a) => a.id) },
+      secondary: { label: "Review", do: "open", view: "ads" },
     });
   }
 
@@ -93,16 +102,10 @@ export function nextMoves(i: {
       id: "held",
       agent: "MoonWriter AI",
       tone: "work",
-      text:
-        `${held.length} ${plural(held.length, "draft misses", "drafts miss")} the brief, so I would hold ` +
-        `${plural(held.length, "it", "them")} rather than approve. Deciding now gets a re-cut back inside the review window.`,
+      title: `${held.length} ${plural(held.length, "draft", "drafts")} to decide`,
+      meta: `${plural(held.length, "Misses", "Miss")} the brief`,
       primary: { label: "Decide", do: "open", view: "inbox" },
-      secondary: {
-        label: "Why",
-        do: "why",
-        q: `Why hold ${first.creatorName}'s draft?`,
-        say: first.compliance.reasoning.value,
-      },
+      secondary: { label: "Why", do: "why", q: `Why hold ${first.creatorName}'s draft?`, say: first.compliance.reasoning.value },
     });
   }
 
@@ -113,9 +116,10 @@ export function nextMoves(i: {
       id: `act-${last.id}`,
       agent: last.agent,
       tone: "done",
-      text: `${last.title}. ${last.because}`,
+      title: last.title,
+      meta: "Done on its own",
       primary: { label: "Undo", do: "undo", activityId: last.id, title: last.title },
-      secondary: { label: "All I did", do: "open", view: "activity" },
+      secondary: { label: "Why", do: "why", q: `Why: ${last.title.toLowerCase()}?`, say: last.because },
     });
   }
 

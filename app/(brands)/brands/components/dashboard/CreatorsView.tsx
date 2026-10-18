@@ -381,9 +381,9 @@ function Profile({
                 <span className="w-[74px] shrink-0 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
                   {k.label}
                 </span>
-                <span className="min-w-0 flex-1 text-meta leading-relaxed">
+                {/* The figure only; the tick says whether it clears. The reason is on hover. */}
+                <span className="min-w-0 flex-1 text-meta leading-relaxed" title={k.why}>
                   <span className={k.ok ? "font-semibold text-ink-soft" : "font-semibold text-ink-faint"}>{k.value}</span>
-                  <span className="text-ink-faint"> · {k.why}</span>
                 </span>
               </div>
             ))}

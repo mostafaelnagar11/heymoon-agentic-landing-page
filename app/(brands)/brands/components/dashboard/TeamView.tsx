@@ -80,10 +80,7 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
             </span>
             <div className="min-w-0">
               <p className="text-body font-semibold text-ink">Nobody owns {brandName} on HeyMoon yet</p>
-              <p className="mt-1 max-w-[62ch] text-meta leading-5 text-ink-soft">
-                Whoever pays for Phase 1 owns the brand account. From then on they invite the rest of the team, and
-                anyone else who signs in with a {brandName} email can only ask them for access.
-              </p>
+              <p className="mt-1 text-meta leading-5 text-ink-soft">Whoever pays for Phase 1 owns it and invites the team.</p>
             </div>
           </div>
         </Surface>
@@ -118,12 +115,9 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
           <Person first={brand.owner.firstName} last={brand.owner.lastName} email={brand.owner.email}>
             {pill("brand", isOwner ? "Owner · you" : "Owner")}
           </Person>
-          <div className="mt-4 border-t border-hairline pt-3">
-            <p className="max-w-[70ch] text-[11px] leading-4 text-ink-faint">
-              Paid for Phase 1 on {day(brand.owner.since)}, which made them the owner. Ownership can&apos;t be claimed
-              by signing in with the same company&apos;s email: the owner invites people, and anyone else can only ask.
-            </p>
-          </div>
+          <p className="mt-3 border-t border-hairline pt-3 text-[11px] leading-4 text-ink-faint">
+            Owner since paying for Phase 1, {day(brand.owner.since)}. Only the owner adds people.
+          </p>
         </Surface>
       </Section>
 
@@ -161,10 +155,7 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
                 {tried && problem ? (
                   <span className="font-semibold text-danger">{problem}</span>
                 ) : (
-                  <span className="text-ink-faint">
-                    They get an email, and sign in with that address to join. Any company address works, including
-                    your agency&apos;s.
-                  </span>
+                  <span className="text-ink-faint">Any company address, including your agency&apos;s.</span>
                 )}
               </p>
             </form>
@@ -210,10 +201,7 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
             {brand.requests.length === 0 ? (
               <div className="flex items-start gap-3 p-5">
                 <EnvelopeSimple size={16} weight="fill" aria-hidden className="mt-0.5 shrink-0 text-ink-faint" />
-                <p className="max-w-[66ch] text-meta leading-5 text-ink-soft">
-                  Nobody is waiting. When someone signs in to {brandName} with an address you haven&apos;t invited,
-                  HeyMoon offers them a request to you, never the account, and it shows up here.
-                </p>
+                <p className="text-meta leading-5 text-ink-soft">No requests.</p>
               </div>
             ) : (
               <ul className="divide-y divide-hairline">

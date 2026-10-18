@@ -1300,23 +1300,12 @@ export function IntegrationBlock({ onConnect, compact = false }: {
           a brand actually has: what does this thing do, and what can it
           reach. Both are on the card where the decision is made, not
           behind a link. */}
-      <div className="mt-3 space-y-1">
-        <p className="flex items-start gap-1.5 text-[11px] leading-4 text-ink-faint">
-          <LockSimple size={11} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
-          <span>
-            <span className="font-semibold text-ink-soft">What HeyMoon does:</span> Creates one code per creator, and
-            reads the orders that use it.
-          </span>
-        </p>
-        <p className="flex items-start gap-1.5 text-[11px] leading-4 text-ink-faint">
-          <LockSimple size={11} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
-          <span>
-            <span className="font-semibold text-ink-soft">What HeyMoon never touches:</span> Your customers, your
-            prices, your products, your settings.
-          </span>
-        </p>
-      </div>
-      <p className="mt-2 text-[11px] leading-4 text-ink-faint">HeyMoon.AI is a Saudi company.</p>
+      <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-4 text-ink-faint">
+        <LockSimple size={11} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
+        <span>
+          Read-only: one code per creator. Never your customers, prices or products. HeyMoon.AI is a Saudi company.
+        </span>
+      </p>
     </Shell>
   );
 }

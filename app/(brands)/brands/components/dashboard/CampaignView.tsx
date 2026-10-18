@@ -207,7 +207,7 @@ function OneCampaign() {
       <div className="grid gap-3 sm:grid-cols-2">
         <Tile
           tone="hero"
-          label={`${phaseTitle(phase.phaseNo)} attributed`}
+          label={`${phaseTitle(phase.phaseNo).split(" · ")[0]} sales`}
           value={fmtUSD(phase.rev)}
           sub={`${pct}% of ${fmtUSD(target)}`}
           foot={
