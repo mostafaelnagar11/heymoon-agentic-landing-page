@@ -100,10 +100,13 @@ export const COPY = {
       dialLabel: "Guaranteed ROAS", dialNote: "blended across all three phases",                            // [A4]
       // The shortfall row (Mostafa, 6 Oct: "add a new section here for we pay the difference of the guaranteed ROAS if
       // not achieved"). His call reverses the 5 Oct removal for this row; row 1 above keeps its sales-only line.
-      shortH2: "Miss the ROAS? HeyMoon pays the difference.",                                               // [CHANGE] Mostafa 6 Oct
-      shortBody: "If the campaign closes under the multiple you signed, HeyMoon pays you the gap in sales. You bank the figure it guaranteed either way.", // [CHANGE] Mostafa 6 Oct; the product's PlanCard rule
-      shortNote: (guaranteed: string, made: string, signed: string) => `HeyMoon pays the rest of the ${guaranteed} it guaranteed, if the campaign closes at ${made} instead of ${signed}.`, // [CHANGE] Mostafa 6 Oct
-      shortMade: "Sales the campaign made", shortPays: "HeyMoon's part",                                     // [CHANGE] Mostafa 6 Oct
+      // Restated 18 Oct to the brand team's rule (15 Oct): the guarantee is a pro-rata REFUND of the budget, not a
+      // payout of the sales gap. The same rule as the product's lib/agent/guarantee.ts.
+      shortH2: "Miss the ROAS? Get back the share you missed.",                                             // [CHANGE] brand team 15 Oct
+      shortBody: "If the campaign closes under the sales it guaranteed, HeyMoon refunds the same share of your budget. Creators are only paid out of the sales they bring in, so the share that didn't sell is the share that comes back.", // [CHANGE] brand team 15 Oct
+      shortNote: (made: string, signed: string, reached: string, guaranteed: string, missed: string, budget: string, refund: string) =>
+        `Close at ${made} instead of ${signed}, ${reached} of the ${guaranteed} guaranteed, and ${missed} of your ${budget} comes back: ${refund}.`, // [CHANGE] brand team 15 Oct
+      shortMade: "Sales the campaign made", shortPays: "The share it missed",                               // [CHANGE] brand team 15 Oct
       shortExample: "An example, not a forecast.",                                                          // [CHANGE] Mostafa 6 Oct
     },
     agents: { h2: "Seven agents run the campaign.", body: "Each one owns a stage, and each one signs the work it did." }, // [A4]

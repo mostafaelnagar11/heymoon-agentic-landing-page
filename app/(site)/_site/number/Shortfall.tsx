@@ -5,7 +5,10 @@
    "remove this and bring this bar above"): one bar as wide as the guaranteed sales, the campaign's own sales in
    ink, then HeyMoon's part in the brand gradient filling the gap after it, its legend, and the sentence it
    illustrates. The figures are an example close under the signed multiple (SHORT_ROAS), worked from DEMO's
-   guarantee and labelled an example, never a forecast. Built from utilities the site already ships plus inline
+   guarantee and labelled an example, never a forecast.
+   18 Oct, the brand team's rule (15 Oct): the guarantee REFUNDS the share of the budget the campaign missed, it
+   does not pay the sales gap. The gradient is still the missed share of the sales, so it is labelled as a share,
+   and the sentence turns it into the refund: 4.3x of a 5x guarantee is 85% reached, so 15% of $12,500 comes back. Built from utilities the site already ships plus inline
    styles: the CSS budget (measure.cjs, css) has no room for new rules. */
 import { useRef, type CSSProperties } from "react";
 import { COPY } from "../copy";
@@ -33,6 +36,12 @@ export function Shortfall({ className = "" }: { className?: string }) {
   const made = Math.round(budget.value * SHORT_ROAS);
   const pays = revenue.value - made;
   const roasText = `${SHORT_ROAS}x`;
+  /* refund = budget × (1 − sales ÷ guaranteed sales), the product's refundFor. */
+  const missedPct = Math.round((pays / revenue.value) * 100);
+  const missedText = `${missedPct}%`;
+  const reachedText = `${100 - missedPct}%`;
+  const refundText = formatUSD(Math.round(budget.value * (pays / revenue.value)));
+  const noteNums = [revenue.text, budget.text, roasText, signedText, reachedText, missedText, refundText];
   const bar = useRef<HTMLDivElement>(null);
   const entry = useEntry(bar, { threshold: 0.5 });
 
@@ -55,10 +64,10 @@ export function Shortfall({ className = "" }: { className?: string }) {
           </li>
           <li className="flex items-center gap-2">
             <i aria-hidden className="grad-rule block shrink-0 rounded-full" style={DOT} />
-            {n.shortPays} <span className="num font-medium text-ink">{formatUSD(pays)}</span>
+            {n.shortPays} <span className="num font-medium text-ink">{missedText}</span>
           </li>
         </ul>
-        <p className="mt-6 text-lead text-ink/72">{withNums(n.shortNote(revenue.text, roasText, signedText), [revenue.text, roasText, signedText])}</p>
+        <p className="mt-6 text-lead text-ink/72">{withNums(n.shortNote(roasText, signedText, reachedText, revenue.text, missedText, budget.text, refundText), noteNums)}</p>
         <p className="mt-4 text-micro text-ink/60">{n.shortExample}</p>
       </div>
     </div>
