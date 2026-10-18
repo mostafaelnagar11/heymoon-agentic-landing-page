@@ -99,13 +99,15 @@ export const PHASES: Phase[] = [
   {
     id: "phase-2", phaseNo: 2, status: "live",
     start: "10 Feb 2026", end: null,
-    budget: 3_000, guaranteedRoas: 5, rev: 12_600, revTarget: 15_000,
+    /* 2x, the multiple every Phase 2 carries (tools.ts, PHASE_MULTIPLES). At 84% of its $6,000 target it has just
+       passed the 80% line, which is why Phase 3 is ready. */
+    budget: 3_000, guaranteedRoas: 2, rev: 5_040, revTarget: 6_000,
     dayOfPhase: 19, plannedDays: 30, creators: 8,
   },
   {
     id: "phase-3", phaseNo: 3, status: "ready",
     start: null, end: null,
-    budget: 6_000, guaranteedRoas: 5, rev: 0, revTarget: null,
+    budget: 6_000, guaranteedRoas: 3, rev: 0, revTarget: null,
     dayOfPhase: null, plannedDays: 30, creators: null,
   },
 ];
@@ -223,35 +225,35 @@ const SEEDS: AdSeed[] = [
     product: "Pearl Mesh Clutch", caption: "The pearl mesh clutch on camera rather than on a plinth, with the code and piece number on screen.",
     format: "Reel", platform: "Instagram", img: "/ads/palm-ounass-clutch.jpg", video: "/ads/palm-ounass-clutch.mp4",
     submitted: "6d ago", track: "MT-P2-V01", state: "live", verdict: "approve",
-    reasoning: "Approved by you on 24 Feb; MoonLive AI published it the same day.", views: 61_400, revenue: 3_180,
+    reasoning: "Approved by you on 24 Feb; MoonLive AI published it the same day.", views: 61_400, revenue: 1_270,
   },
   {
     id: "ad-live-2", campaignId: "phase-2", creatorId: 2,
     product: "Ounass Beauty Edit", caption: "Full face using nothing outside the Ounass beauty edit. Shade names as she goes.",
     format: "Story", platform: "Instagram", img: "/ads/memz-ounass-story.jpg", video: "/ads/memz-ounass-story.mp4",
     submitted: "5d ago", track: "MT-P2-V02", state: "live", verdict: "approve",
-    reasoning: "Approved by you on 25 Feb; MoonLive AI published it the same day.", views: 38_900, revenue: 2_240,
+    reasoning: "Approved by you on 25 Feb; MoonLive AI published it the same day.", views: 38_900, revenue: 900,
   },
   {
     id: "ad-live-3", campaignId: "phase-2", creatorId: 10,
     product: "Ounass Luxury Haul", caption: "What actually arrived from the haul, unpacked in one take and rated out loud.",
     format: "Video", platform: "TikTok", img: "/ads/noon-ounass-tiktok.jpg", video: "/ads/noon-ounass-tiktok.mp4",
     submitted: "4d ago", track: "MT-P2-V03", state: "live", verdict: "approve",
-    reasoning: "Approved by you on 26 Feb; MoonLive AI published it the same day.", views: 104_200, revenue: 4_010,
+    reasoning: "Approved by you on 26 Feb; MoonLive AI published it the same day.", views: 104_200, revenue: 1_600,
   },
   {
     id: "ad-live-4", campaignId: "phase-2", creatorId: 7,
     product: "Ounass Exclusive, The Resort Ritual", caption: "Walking the Resort Ritual edit on site, gift sets first, with the code on screen.",
     format: "Story", platform: "Instagram", img: "/ads/cosmo-ounass-story.jpg", video: "/ads/cosmo-ounass-story.mp4",
     submitted: "3d ago", track: "MT-P2-V04", state: "live", verdict: "approve",
-    reasoning: "Approved by you on 27 Feb; MoonLive AI published it the same day.", views: 44_700, revenue: 1_910,
+    reasoning: "Approved by you on 27 Feb; MoonLive AI published it the same day.", views: 44_700, revenue: 760,
   },
   {
     id: "ad-live-5", campaignId: "phase-2", creatorId: 9,
     product: "Linen Blazer, Chalk", caption: "The linen blazer after a full day in 38 degrees. Creases and all.",
     format: "Post", platform: "Instagram", img: "/creators/paola.elsitt/p3.jpg",
     submitted: "6d ago", track: "MT-P2-1119", state: "live", verdict: "approve",
-    reasoning: "Approved by you on 24 Feb; MoonLive AI published it the same day.", views: 52_300, revenue: 1_270,
+    reasoning: "Approved by you on 24 Feb; MoonLive AI published it the same day.", views: 52_300, revenue: 510,
   },
   /* ── Declined ── */
   {

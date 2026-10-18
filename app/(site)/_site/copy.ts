@@ -84,29 +84,31 @@ export const COPY = {
         { title: "Paste your store link", body: "HeyMoon reads the catalogue, the prices, the voice and the markets it already ships to.", credit: (_: DemoData) => "MoonShot AI" },
         { title: "The plan arrives, priced", body: "Markets, creators, products and the brief, with the sales figure it guarantees. Change anything.", credit: (_: DemoData) => "MoonMatch AI" },
         { title: "You start Phase 1", body: "One payment, the same for every brand. Nothing after it is charged or committed.", credit: (_: DemoData) => "You" }, // [CHANGE C2] gate G9
-        { title: "The sales land on the number", body: "Three phases run to the sales HeyMoon guaranteed on your budget, at the multiple you signed.", credit: (_: DemoData) => "MoonScore AI" },
+        { title: "The sales land on the number", body: "Three phases run to the sales HeyMoon guaranteed on your budget: 1x, then 2x, then 3x.", credit: (_: DemoData) => "MoonScore AI" }, // [CHANGE] Mostafa 18 Oct: fixed phase multiples
       ],
     },
     number: {
       h2: "Every campaign is built to generate sales.",                                                     // [CHANGE] Mostafa 5 Oct: no "HeyMoon pays the difference"
       body: "Before you pay, you see the sales figure the plan is built around. Then the agents run every phase toward it.", // [CHANGE] Mostafa 5 Oct: talk about generating sales, no shortfall promise
       eyebrow: "Guaranteed sales",                                                                          // [A4]
-      figureNote: (budget: string, roas: string) => `${budget} across three phases, at ${roas}`,            // [A4]
+      figureNote: (budget: string, multiples: string) => `${budget} across three phases, at ${multiples}`,  // [CHANGE] Mostafa 18 Oct: "at 1x, 2x and 3x", not one blended figure
       // No ladderLine (C14): Phases 2 and 3 are indicative (D4) and never stated beside "Guaranteed sales".
-      roasH2: "You set the ROAS. HeyMoon signs it.",                                                        // [A4]
-      roasBody: "Pick the multiple you want on the whole campaign. HeyMoon prices the phases to reach it, or tells you it cannot and offers the number it can stand behind.", // [A4]
+      // Mostafa, 18 Oct: "the new roas is phase 1 x1 phase 2 x2 phase 3x". The multiples are set, not picked.
+      roasH2: "1x, 2x, 3x. HeyMoon signs every phase.",                                                     // [CHANGE] Mostafa 18 Oct
+      roasBody: "Every phase carries its own guarantee, the same for every brand: 1x on the first, 2x on the second and 3x on the third. You choose how big the plan is. The multiples don't move.", // [CHANGE] Mostafa 18 Oct
       climb: "It climbs as the campaign earns it",                                                          // [A4]
       chip: (r: Rung) => `P${r.phaseNo} ${r.multipleText}`,                                                 // [A4]
-      dialLabel: "Guaranteed ROAS", dialNote: "blended across all three phases",                            // [A4]
+      dialLabel: "Guaranteed ROAS", dialNote: "1x, 2x and 3x, blended",                                    // [CHANGE] Mostafa 18 Oct
       // The shortfall row (Mostafa, 6 Oct: "add a new section here for we pay the difference of the guaranteed ROAS if
       // not achieved"). His call reverses the 5 Oct removal for this row; row 1 above keeps its sales-only line.
       // Restated 18 Oct to the brand team's rule (15 Oct): the guarantee is a pro-rata REFUND of the budget, not a
       // payout of the sales gap. The same rule as the product's lib/agent/guarantee.ts.
       shortH2: "Miss the ROAS? Get back the share you missed.",                                             // [CHANGE] brand team 15 Oct
-      shortBody: "If the campaign closes under the sales it guaranteed, HeyMoon refunds the same share of your budget. Creators are only paid out of the sales they bring in, so the share that didn't sell is the share that comes back.", // [CHANGE] brand team 15 Oct
-      shortNote: (made: string, signed: string, reached: string, guaranteed: string, missed: string, budget: string, refund: string) =>
-        `Close at ${made} instead of ${signed}, ${reached} of the ${guaranteed} guaranteed, and ${missed} of your ${budget} comes back: ${refund}.`, // [CHANGE] brand team 15 Oct
-      shortMade: "Sales the campaign made", shortPays: "The share it missed",                               // [CHANGE] brand team 15 Oct
+      shortBody: "If a phase closes under the sales it guaranteed, HeyMoon refunds the same share of what you paid for it. Creators are only paid out of the sales they bring in, so the share that didn't sell is the share that comes back.", // [CHANGE] brand team 15 Oct
+      // Worked on one phase, the second, because the guarantee is per phase (Mostafa, 18 Oct: 1x, 2x, 3x).
+      shortNote: (phaseBudget: string, multiple: string, guaranteed: string, made: string, reached: string, missed: string, refund: string) =>
+        `The second phase is ${phaseBudget} at ${multiple}: ${guaranteed} in sales, guaranteed. Close at ${made}, ${reached} of it, and ${missed} of the ${phaseBudget} comes back: ${refund}.`, // [CHANGE] Mostafa 18 Oct
+      shortMade: "Sales the phase made", shortPays: "The share it missed",                                  // [CHANGE] Mostafa 18 Oct
       shortExample: "An example, not a forecast.",                                                          // [CHANGE] Mostafa 6 Oct
     },
     agents: { h2: "Seven agents run the campaign.", body: "Each one owns a stage, and each one signs the work it did." }, // [A4]

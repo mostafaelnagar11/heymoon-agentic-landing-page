@@ -138,7 +138,7 @@ export function confidenceFrom(implied: number, multiple: number) {
 
        ratio ≥ 2,500   high      we can commit to this
        ratio ≥ 1,000   medium    achievable on strong creator work
-       below           low       lower the multiple or raise the budget
+       below           low       raise the plan (the multiples are fixed since 18 Oct)
 
    The two thresholds are NOT the current app's. It underwrites at
    12,000 and 4,000, which put the smallest committable plan at $60,000
@@ -172,15 +172,17 @@ export const CONFIDENCE_HIGH_RATIO = 2_500;
 export const CONFIDENCE_MEDIUM_RATIO = 1_000;
 export const PLAN_BUDGET_MIN = 1_000;
 export const PLAN_BUDGET_MAX = 80_000;
+/* The scale a multiple is drawn on: the phase multiples run 1x to 3x (tools.ts, PHASE_MULTIPLES). It ran to 12x
+   while the brand picked its own. */
 export const ROAS_MIN = 1;
-export const ROAS_MAX = 12;
+export const ROAS_MAX = 3;
 
 /** The rule in one sentence, built from the thresholds rather than
     typed beside them: the agent quotes this in its evidence, and a
     policy that says 12,000 while the code says 2,500 is a policy the
     brand is entitled to call a lie. */
 export const CONFIDENCE_RULE =
-  `Plan budget ÷ guaranteed multiple. ${CONFIDENCE_HIGH_RATIO.toLocaleString("en-US")} and above is high, ` +
+  `Plan budget ÷ the multiple the three phases blend to. ${CONFIDENCE_HIGH_RATIO.toLocaleString("en-US")} and above is high, ` +
   `${CONFIDENCE_MEDIUM_RATIO.toLocaleString("en-US")} and above is medium, below that HeyMoon will not commit.`;
 
 export type ConfidenceLevel = "high" | "medium" | "low";
@@ -202,7 +204,7 @@ export function getConfidence(budget: number, roas: number): Confidence {
       level: "high", label: "High confidence", pct: 85, ratio,
       desc: roas <= 2
         ? "HeyMoon can commit to this plan without reservation."
-        : "A good combination of budget and target multiple. HeyMoon can commit to it.",
+        : "The plan is big enough to carry its guarantee. HeyMoon can commit to it.",
     };
   }
   if (ratio >= CONFIDENCE_MEDIUM_RATIO) {
@@ -213,47 +215,10 @@ export function getConfidence(budget: number, roas: number): Confidence {
   }
   return {
     level: "low", label: "Low confidence", pct: 20, ratio,
-    desc: "Too big a multiple asked of too little budget. Lower it, or raise the plan.",
+    desc: "Too little plan for the guarantee it carries. Raise the plan.",
   };
 }
 
-/** The smallest plan budget that reaches high confidence at this
-    multiple — or null when the cap makes it impossible. */
-export function budgetForHigh(roas: number): number | null {
-  const needed = Math.ceil((roas * CONFIDENCE_HIGH_RATIO) / 500) * 500;
-  return needed <= PLAN_BUDGET_MAX ? Math.max(needed, PLAN_BUDGET_MIN) : null;
-}
-
-/* Below this we do not propose a multiple, however confident the ratio
-   says we could be. A 1× guarantee is the brand spending a thousand
-   dollars to make a thousand dollars back — arithmetically safe and
-   commercially pointless, and the review call said so out loud. A
-   brand can still ask for one; we just never suggest it. */
-export const ROAS_WORTH_PROPOSING = 2;
-
-/* Medium is the floor we will build at, so a low-confidence answer
-   needs somewhere to go even when high is out of reach. These two are
-   the same arithmetic against the lower threshold, and between them a
-   brand is never left in a dead end: the most expensive multiple we
-   allow, 12×, reaches medium at $48,000, well inside the range. */
-
-/** The smallest plan budget that reaches medium confidence at this
-    multiple. */
-export function budgetForMedium(roas: number): number | null {
-  const needed = Math.ceil((roas * CONFIDENCE_MEDIUM_RATIO) / 500) * 500;
-  return needed <= PLAN_BUDGET_MAX ? Math.max(needed, PLAN_BUDGET_MIN) : null;
-}
-
-/** The highest multiple that still reaches high confidence at this
-    budget. Whole numbers only — nobody guarantees 3.7× — and never a
-    multiple that would not be worth running. */
-export function roasForHigh(budget: number): number | null {
-  const best = Math.floor(budget / CONFIDENCE_HIGH_RATIO);
-  return best >= ROAS_WORTH_PROPOSING ? Math.min(best, ROAS_MAX) : null;
-}
-
-/** The highest multiple this budget still carries at medium. */
-export function roasForMedium(budget: number): number | null {
-  const best = Math.floor(budget / CONFIDENCE_MEDIUM_RATIO);
-  return best >= ROAS_WORTH_PROPOSING ? Math.min(best, ROAS_MAX) : null;
-}
+/* The multiple is no longer the brand's to pick (tools.ts, PHASE_MULTIPLES), so the helpers that searched for a
+   plan size at a chosen multiple, or a multiple at a chosen size, went with it. tools.ts, planBudgetFor, finds the
+   smallest plan that reaches a confidence level against its own blended multiple. */

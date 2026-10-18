@@ -8,7 +8,8 @@
    guarantee and labelled an example, never a forecast.
    18 Oct, the brand team's rule (15 Oct): the guarantee REFUNDS the share of the budget the campaign missed, it
    does not pay the sales gap. The gradient is still the missed share of the sales, so it is labelled as a share,
-   and the sentence turns it into the refund: 4.3x of a 5x guarantee is 85% reached, so 15% of $12,500 comes back. Built from utilities the site already ships plus inline
+   and the sentence turns it into the refund. Worked on the second phase since the multiples became 1x, 2x, 3x
+   (Mostafa, 18 Oct): $3,000 at 2x is $6,000 guaranteed; close at $4,800 and 20% of the $3,000 comes back, $600. Built from utilities the site already ships plus inline
    styles: the CSS budget (measure.cjs, css) has no room for new rules. */
 import { useRef, type CSSProperties } from "react";
 import { COPY } from "../copy";
@@ -17,8 +18,8 @@ import { formatUSD } from "../lib/format";
 import { WordReveal } from "../ui/WordReveal";
 import { COPY_COL, FIGURE_COL, ROW, useEntry, withNums, type Entry } from "./parts";
 
-/** The example close: under the signed 5x, where a campaign could plausibly land. */
-const SHORT_ROAS = 4.3;
+/** The example close: 80% of the phase's guarantee, the line the next phase unlocks at. */
+const SHORT_REACH = 0.8;
 /** ease-out-expo, as --ease-out-expo. */
 const EXPO = "cubic-bezier(.16, 1, .3, 1)";
 
@@ -32,16 +33,17 @@ const DOT: CSSProperties = { width: 8, height: 8 };
 
 export function Shortfall({ className = "" }: { className?: string }) {
   const n = COPY.brands.number;
-  const { revenue, budget, roasText: signedText } = DEMO.brands.guarantee;
-  const made = Math.round(budget.value * SHORT_ROAS);
+  /* The second phase (Mostafa, 18 Oct: phase 2 is 2x). refund = budget × (1 − sales ÷ guaranteed), refundFor. */
+  const phase = DEMO.brands.ladder[1];
+  const revenue = { value: Math.round(phase.budget.value * phase.multiple), text: formatUSD(Math.round(phase.budget.value * phase.multiple)) };
+  const made = Math.round(revenue.value * SHORT_REACH);
   const pays = revenue.value - made;
-  const roasText = `${SHORT_ROAS}x`;
-  /* refund = budget × (1 − sales ÷ guaranteed sales), the product's refundFor. */
   const missedPct = Math.round((pays / revenue.value) * 100);
   const missedText = `${missedPct}%`;
   const reachedText = `${100 - missedPct}%`;
-  const refundText = formatUSD(Math.round(budget.value * (pays / revenue.value)));
-  const noteNums = [revenue.text, budget.text, roasText, signedText, reachedText, missedText, refundText];
+  const madeText = formatUSD(made);
+  const refundText = formatUSD(Math.round(phase.budget.value * (pays / revenue.value)));
+  const noteNums = [phase.budget.text, phase.multipleText, revenue.text, madeText, reachedText, missedText, refundText];
   const bar = useRef<HTMLDivElement>(null);
   const entry = useEntry(bar, { threshold: 0.5 });
 
@@ -67,7 +69,7 @@ export function Shortfall({ className = "" }: { className?: string }) {
             {n.shortPays} <span className="num font-medium text-ink">{missedText}</span>
           </li>
         </ul>
-        <p className="mt-6 text-lead text-ink/72">{withNums(n.shortNote(roasText, signedText, reachedText, revenue.text, missedText, budget.text, refundText), noteNums)}</p>
+        <p className="mt-6 text-lead text-ink/72">{withNums(n.shortNote(phase.budget.text, phase.multipleText, revenue.text, madeText, reachedText, missedText, refundText), noteNums)}</p>
         <p className="mt-4 text-micro text-ink/60">{n.shortExample}</p>
       </div>
     </div>

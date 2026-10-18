@@ -140,15 +140,15 @@
     },
     "guarantee": {
       "budget": {
-        "text": "$12,500",
-        "value": 12500
+        "text": "$10,000",
+        "value": 10000
       },
       "revenue": {
-        "text": "$63,050",
-        "value": 63050
+        "text": "$25,000",
+        "value": 25000
       },
-      "roas": 5,
-      "roasText": "5x"
+      "roas": 2.5,
+      "roasText": "2.5x"
     },
     "ladder": [
       {
@@ -160,27 +160,27 @@
         "multiple": 1,
         "multipleText": "1x",
         "phaseNo": 1,
-        "width": 0.16
+        "width": 0.16666666666666666
       },
       {
         "budget": {
-          "text": "$4,000",
-          "value": 4000
+          "text": "$3,000",
+          "value": 3000
         },
         "label": "Phase 2 · Scale",
-        "multiple": 3.7,
-        "multipleText": "3.7x",
+        "multiple": 2,
+        "multipleText": "2x",
         "phaseNo": 2,
-        "width": 0.5333333333333333
+        "width": 0.5
       },
       {
         "budget": {
-          "text": "$7,500",
-          "value": 7500
+          "text": "$6,000",
+          "value": 6000
         },
         "label": "Phase 3 · Peak",
-        "multiple": 6.3,
-        "multipleText": "6.3x",
+        "multiple": 3,
+        "multipleText": "3x",
         "phaseNo": 3,
         "width": 1
       }
@@ -317,7 +317,7 @@
       ]
     },
     "roasScale": {
-      "max": 12,
+      "max": 3,
       "min": 1
     },
     "shownUrl": "yourstore.com",
@@ -670,6 +670,6 @@
       "sharePct": 12
     }
   },
-  "hash": "7db478b9980ecffc4d1133350874f4cac949bee0",
+  "hash": "e31b4b16f95462d4a6a589c71f253665c91d2ecd",
   "version": 1
 }

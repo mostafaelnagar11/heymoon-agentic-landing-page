@@ -122,8 +122,8 @@ export const STR: Dict = {
   },
   "landing.r4t": { en: "The sales land on the number", ar: "تصل المبيعات إلى الرقم" },
   "landing.r4d": {
-    en: "Three phases run to the sales HeyMoon guaranteed on your budget, at the multiple you signed.",
-    ar: "ثلاث مراحل تسير نحو المبيعات التي ضمنتها هاي مون على ميزانيتك، بالمضاعف الذي وقّعت عليه.",
+    en: "Three phases run to the sales HeyMoon guaranteed on your budget: 1x, then 2x, then 3x.",
+    ar: "ثلاث مراحل تسير نحو المبيعات التي ضمنتها هاي مون على ميزانيتك: 1x ثم 2x ثم 3x.",
   },
   "landing.mock.salesLabel": { en: "Sales, guaranteed", ar: "المبيعات المضمونة" },
 
@@ -145,14 +145,15 @@ export const STR: Dict = {
      "sales", and it is retired everywhere else in the product; it is
      kept here because this is the number the market asks for by name
      and the section exists to answer that question. */
-  "landing.roasT": { en: "You set the ROAS. HeyMoon signs it.", ar: "أنت تحدد العائد. وهاي مون توقّع عليه." },
+  /* Set per phase since 18 Oct (Mostafa: "phase 1 x1 phase 2 x2 phase 3 x3"), no longer picked by the brand. */
+  "landing.roasT": { en: "1x, 2x, 3x. HeyMoon signs every phase.", ar: "1x و2x و3x. وهاي مون توقّع على كل مرحلة." },
   "landing.roasD": {
-    en: "Pick the multiple you want on the whole campaign. HeyMoon prices the phases to reach it, or tells you it cannot and offers the number it can stand behind.",
-    ar: "اختر المضاعف الذي تريده على الحملة كاملة. تُسعّر هاي مون المراحل للوصول إليه، أو تخبرك أنها لا تستطيع وتعرض الرقم الذي يمكنها ضمانه.",
+    en: "Every phase carries its own guarantee, the same for every brand: 1x on the first, 2x on the second and 3x on the third. You choose how big the plan is. The multiples don't move.",
+    ar: "لكل مرحلة ضمانها، وهو نفسه لكل علامة تجارية: 1x في الأولى، و2x في الثانية، و3x في الثالثة. أنت تختار حجم الخطة، والمضاعفات ثابتة.",
   },
   "landing.roasLabel": { en: "Guaranteed ROAS", ar: "العائد المضمون" },
-  "landing.roasNote": { en: "blended across all three phases", ar: "موزّع على المراحل الثلاث" },
-  "landing.roasClimb": { en: "It climbs as the campaign earns it", ar: "ويرتفع كلما استحقت الحملة ذلك" },
+  "landing.roasNote": { en: "1x, 2x and 3x, blended", ar: "1x و2x و3x مجتمعة" },
+  "landing.roasClimb": { en: "It climbs phase by phase", ar: "ويرتفع مرحلة بعد مرحلة" },
 
   /* The stores it connects to, after payment and read-only. */
   "landing.storesT": { en: "Connects to the store you already have.", ar: "يرتبط بالمتجر الذي لديك بالفعل." },

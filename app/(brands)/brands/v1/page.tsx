@@ -294,7 +294,7 @@ export default function Landing() {
 
   const markets = plan.markets.value.map((c) => SHORT_MARKET[c] ?? c);
   const rungs = plan.ladder.value;
-  const total = ladderTotals(plan.planBudget.value, plan.guaranteedRoas.value);
+  const total = ladderTotals(plan.planBudget.value);
 
   const rise = (ms: number) => ({
     className: "motion-safe:animate-rise",

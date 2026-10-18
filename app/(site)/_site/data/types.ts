@@ -37,8 +37,8 @@ export interface Rung {
   phaseNo: 1 | 2 | 3;
   label: string;        // phaseTitle(phaseNo): "Phase 1 · Warm-up"
   budget: Money;        // $1,000 / $4,000 / $7,500
-  multiple: number;     // 1 / 3.7 / 6.3
-  multipleText: string; // "1x" / "3.7x" / "6.3x"
+  multiple: number;     // 1 / 2 / 3
+  multipleText: string; // "1x" / "2x" / "3x" (set per phase since 18 Oct)
   width: number;        // max(.16, budget / max budget): MockPhases bar width (ruling C11)
 }
 
@@ -55,9 +55,9 @@ export interface BrandsDemo {
     creatorWord: string;           // "three"
   };
   ladder: Rung[];
-  guarantee: { revenue: Money; budget: Money; roas: number; roasText: string }; // $63,050 / $12,500 / 5 / "5x"
+  guarantee: { revenue: Money; budget: Money; roas: number; roasText: string }; // $25,000 / $10,000 / 2.5 / "2.5x" (the blend of 1x, 2x, 3x)
   checkout: { total: Money; vat: Money; budget: Money; last4: string };         // $1,050 / $50 / $1,000 / "4629"
-  roasScale: { min: number; max: number };                                      // 1 / 12
+  roasScale: { min: number; max: number };                                      // 1 / 3
   unlockPct: number;                                                            // 80
 }
 

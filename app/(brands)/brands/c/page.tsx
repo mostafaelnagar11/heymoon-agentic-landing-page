@@ -31,15 +31,12 @@ import { Suspense, useCallback, useEffect, useRef, useState, type ReactNode } fr
 import { SignInSheet } from "../components/SignInSheet";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  BUILD_TASKS, PHASE1_BUDGET, ladderTotals, marketName, repair, suggestPlanShape,
-  tools, underwriting,
+  BUILD_TASKS, PHASE1_BUDGET, PHASE_MULTIPLES, blendedFor, ladderTotals, marketName, planBudgetFor, planConfidence,
+  repair, suggestPlanShape, tools, underwriting,
   type Repair,
 } from "../lib/agent/tools";
 import type { BrandRead, Plan, PlanChange, PlanPatch, ProductFocus, Report } from "../lib/agent/types";
-import {
-  PLAN_BUDGET_MAX, PLAN_BUDGET_MIN, ROAS_MAX, ROAS_MIN,
-  budgetForHigh, budgetForMedium, getConfidence, roasForHigh, roasForMedium,
-} from "../lib/agent/model";
+import { PLAN_BUDGET_MAX, PLAN_BUDGET_MIN } from "../lib/agent/model";
 import { useStream } from "../lib/agent/useStream";
 import {
   activePlanLive, activeThread, claimOnce, correctRead, markPaid, openPanel, useAccount,
@@ -73,7 +70,7 @@ import { IncludesBlock, MarketsPick, ProductsPick, focusText } from "../componen
    instead. The brief and the audience can still move, because they change
    what the creators are told, not what the brand was charged. */
 const touchesLocked = (p: PlanPatch) =>
-  p.budget !== undefined || p.strategy !== undefined || p.guaranteedRoas !== undefined ||
+  p.budget !== undefined || p.strategy !== undefined ||
   p.markets !== undefined || !!p.dropCreatorIds?.length || !!p.addCreatorIds?.length || !!p.setCrewIds?.length;
 
 /* The chips offered when the agent is not waiting on a specific answer.
@@ -90,12 +87,7 @@ const WHY_CHIP = `Why is it ${fmtUSD(PHASE1_BUDGET)}?`;
    this row offered four. A plan on screen can always be started, so the
    way to start it is always on screen. `liveChips` takes it back out
    once the payment card is open, so it is never offered twice. */
-/* The multiple the opening pitch quotes, and therefore the one the
-   calculator opens on. They were 4x and 5x, which had the agent talk
-   about one plan and then propose a different one. */
-const PITCH_MULTIPLE = 4;
-
-const PRE_CHIPS = ["Start Phase 1", "Kuwait only", "Women 25 to 45", "Guarantee 8x instead", WHY_CHIP];
+const PRE_CHIPS = ["Start Phase 1", "Kuwait only", "Women 25 to 45", "See all three phases", WHY_CHIP];
 /* After payment there is exactly one thing left to do, and it is now
    ON the dashboard: the connect step moved there, because a task with
    no deadline does not belong in a thread that scrolls away. So the
@@ -230,7 +222,7 @@ function ChatInner() {
   /* The two numbers the calculator owns, before there is a plan to hold
      them. Once the plan exists it is the source of truth and this only
      mirrors it. */
-  const [shape, setShape] = useState(() => suggestPlanShape(PITCH_MULTIPLE));
+  const [shape, setShape] = useState(() => suggestPlanShape());
   const [shapeSettled, setShapeSettled] = useState(false);
   /* The calculator IS the question while it is open. Chips underneath it
      would offer a second answer to a question the block already asks. */
@@ -501,6 +493,7 @@ function ChatInner() {
   /** The calculator's Build my plan. Settles the two numbers, then runs
       the same build the conversation would have run. */
   const confirmShape = (chosen: { planBudget: number; roas: number }) => {
+    /* One number now: the plan size. The multiples are set per phase (PHASE_MULTIPLES). */
     const r =
       pendingRead ??
       (readUrl ? getRead(readIdFor(readUrl)) : null) ??
@@ -508,8 +501,11 @@ function ChatInner() {
       (plan ? getRead(plan.readId) : null);
     if (!r) return;
     setShapeSettled(true);
-    const conf = getConfidence(chosen.planBudget, chosen.roas);
-    say(`${fmtUSD(chosen.planBudget)} at ${chosen.roas}x, ${conf.label.toLowerCase()}. Building it now.`);
+    const conf = planConfidence(chosen.planBudget);
+    say(
+      `${fmtUSD(chosen.planBudget)} across the three phases, ${fmtUSD(ladderTotals(chosen.planBudget).revenue)} in ` +
+      `guaranteed sales, ${conf.label.toLowerCase()}. Building it now.`
+    );
     setPendingRead(null);
     startBuild(r, chosen);
   };
@@ -532,7 +528,7 @@ function ChatInner() {
         const v2 = withShape
           ? tools.edit_plan({
               plan: v1,
-              patch: { planBudget: withShape.planBudget, guaranteedRoas: withShape.roas },
+              patch: { planBudget: withShape.planBudget },
               because: "because that is the campaign you set",
               by: "brand",
             }).plan
@@ -640,35 +636,28 @@ function ChatInner() {
        calculator was once detected by grepping the transcript for
        its own opening line, and rewriting that line switched the
        whole branch off. */
-    const sug = suggestPlanShape(PITCH_MULTIPLE);
+    const sug = suggestPlanShape();
     setShape(sug);
     setShapeSettled(false);
     setShapeAsked(true);
-    /* The question, restored. It had been cut on the grounds that
-       the bar carries the pair and the chips carry the answers,
-       which is true and still leaves a brand looking at a meter
-       and three buttons with nothing asking them anything. Two
-       sentences, which is the length rule, not none. */
-    /* The client's own words, verbatim, and their claim to make.
-       Two things in it are worth knowing when this is read back:
-       the $10k and $40k are a general illustration rather than a
-       quote for this brand, and the calculator directly below
-       opens on a different pair; and the line about the fee
-       following delivered ROAS is the one sentence here that the
-       rest of the product contradicts, because Phase 1 is a flat
-       $1,000 for every brand and the plan card says so three
-       times. Flagged, not edited: it is their pricing to
-       describe. */
+    /* The client's pitch, in its own shape (the surprise, the number, "and the best part?"), with the figures made
+       true. It said $10k could make $40k+, that 4x+ was very possible and that the fee followed the ROAS delivered;
+       the multiples are now set per phase (1x, 2x, 3x) and a miss is a refund (brand team, 15 Oct), so the numbers
+       come from the plan it is about to propose and the best part is the refund. */
+    const total = ladderTotals(sug.planBudget).revenue;
+    const conf = planConfidence(sug.planBudget);
+    const k = (n: number) => `$${Math.round(n / 1000)}k`;
     say(
       `Wow, okay... this is interesting.\n\n` +
-      `Do you know that $10k in influencer spending could generate $40k+ in sales?\n\n` +
-      `Based on campaigns I've managed before, 4x+ ROAS is very possible.\n\n` +
+      `Do you know that ${k(sug.planBudget)} in influencer spending could bring back ${k(total)} in guaranteed sales?\n\n` +
+      `Every phase comes with its own guarantee: ${PHASE_MULTIPLES[0]}x on the warm-up, ${PHASE_MULTIPLES[1]}x on Phase 2 ` +
+      `and ${PHASE_MULTIPLES[2]}x on Phase 3.\n\n` +
       `And the best part?\n` +
-      `Our fee is based on the ROAS we actually deliver. Wanna know more?\n\n` +
-      `${fmtUSD(sug.planBudget)} at ${sug.roas}x is the smallest plan HeyMoon can back at high confidence.`
+      `If a phase falls short, you get back the same share of what you paid for it. Wanna know more?\n\n` +
+      `${fmtUSD(sug.planBudget)} across the three phases is the plan I'd start you on, ${conf.label.toLowerCase()}.`
     );
     push({ kind: "score", planBudget: sug.planBudget, roas: sug.roas });
-    ask("", [`${fmtUSD(sug.planBudget)} at ${sug.roas}x`, "Something smaller", "Guarantee 8x instead"]);
+    ask("", [`${fmtUSD(sug.planBudget)} plan`, "Something smaller", "Something bigger"]);
   };
 
   /** Who the agent is talking to, asked once and remembered (BuyerRole). It decides what the conversation leads with,
@@ -954,7 +943,7 @@ function ChatInner() {
       ask(
         `Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand, and it isn't sized to your store. ` +
         `What you choose is what it's pointed at, and the guarantee moves with it.`,
-        ["Guarantee 8x instead", "Kuwait only", "See all three phases", "Start Phase 1"]
+        ["Kuwait only", "Women 25 to 45", "See all three phases", "Start Phase 1"]
       );
       return;
     }
@@ -982,12 +971,9 @@ function ChatInner() {
       return;
     }
 
-    /* The multiplication sign is how the chips write "8×", and a person
-       may type it too; `interpret` reads the letter x. Same meaning. */
-    /* While the two numbers are open, a figure or a multiple is an
-       answer to that question and nothing else. The agent restates the
-       pair, gives the confidence, and — when it is not high — names the
-       change that would make it so and offers to make it. */
+    /* While the plan size is open, a figure is an answer to that question and nothing else. The agent restates the
+       size, what it guarantees and the confidence, and when it is not high names the size that would make it so.
+       A multiple is answered too, but never applied: they are set per phase (PHASE_MULTIPLES). */
     if (awaitingShape) {
       const wantsBuild = /^(build|go|do it|yes|confirm)\b|build (it|my plan)( anyway)?|that.s? (it|right|fine)|looks good/.test(lower);
       const flat = v.replace(/,/g, "").replace(/×/g, "x");
@@ -995,21 +981,16 @@ function ChatInner() {
       const money = flat.match(/\$\s*(\d[\d.]*)\s*(k\b)?|\b(\d{3,})\s*(k\b)?/i);
       const next = { ...shape };
 
-      /* What the parser had to change about what the brand typed. A
-         clamp or a rounding used to happen in silence, which meant a
-         brand who asked for "$400" or "20×" was answered as though they
-         had agreed with the standing pair — the worst possible reading
-         of a number we quietly threw away. Anything in here is said out
-         loud before the confidence is. */
+      /* What the parser had to change or refuse about what the brand typed, said out loud before the confidence is.
+         A number quietly thrown away reads as agreement with the standing plan. */
       const adjusted: string[] = [];
 
-      if (mult) {
-        const asked = Number(mult[1]);
-        const r = Math.max(ROAS_MIN, Math.min(ROAS_MAX, Math.round(asked)));
-        if (asked > ROAS_MAX) adjusted.push(`${asked}x is past the most I will guarantee, which is ${ROAS_MAX}x.`);
-        else if (asked < ROAS_MIN) adjusted.push(`${asked}x is below ${ROAS_MIN}x, which is your money back and nothing more.`);
-        else if (r !== asked) adjusted.push(`I guarantee whole multiples, so ${asked}x becomes ${r}x.`);
-        next.roas = r;
+      const asksMultiple = !!mult || /guarantee more|more return|higher (guarantee|return|multiple)/.test(lower);
+      if (asksMultiple) {
+        adjusted.push(
+          `The guarantee is set by phase, the same for every brand: ${PHASE_MULTIPLES.map((m) => `${m}x`).join(", ")}. ` +
+          `What moves the total is the plan size.`
+        );
       }
       if (money) {
         const raw = Number(money[1] ?? money[3]) * ((money[2] ?? money[4]) ? 1000 : 1);
@@ -1025,128 +1006,66 @@ function ChatInner() {
           next.planBudget = b;
         }
       }
-      /* "Guarantee more" is about the MULTIPLE. It used to sit in the
-         budget-raising list, so the chip the agent offers under a
-         high-confidence reading raised the plan and left the guarantee
-         exactly where the brand had just asked for more of it. */
-      const wantsMore = /guarantee more|more return|higher (guarantee|return|multiple)|more aggressive/.test(lower);
-      if (wantsMore && !mult) {
-        const r = Math.min(ROAS_MAX, next.roas + 1);
-        if (r === next.roas) adjusted.push(`${ROAS_MAX}x is the most I will guarantee, so there is nowhere above this to go.`);
-        next.roas = r;
-      }
-      /* A nudge that hits a bound and moves nothing has to say so. It
-         leaves the pair identical to the one on screen, and silence
-         there is read as agreement by the branch below. */
+      /* A nudge that hits a bound and moves nothing has to say so. */
       if (/smaller|less|cheaper|lower the plan|lower the budget/.test(lower) && !money) {
         const b = Math.max(PLAN_BUDGET_MIN, Math.round((next.planBudget * 0.6) / 500) * 500);
         if (b === next.planBudget) adjusted.push(`${fmtUSD(PLAN_BUDGET_MIN)} is the smallest plan I can build, so this is as far down as it goes.`);
         next.planBudget = b;
       }
-      if (/bigger|larger|more budget|raise the plan|raise the budget/.test(lower) && !mult && !money) {
+      if (/bigger|larger|more budget|raise the plan|raise the budget/.test(lower) && !money) {
         const b = Math.min(PLAN_BUDGET_MAX, Math.round((next.planBudget * 1.5) / 500) * 500);
         if (b === next.planBudget) adjusted.push(`${fmtUSD(PLAN_BUDGET_MAX)} is the largest plan I can commit to, so this is as far up as it goes.`);
         next.planBudget = b;
       }
+      next.roas = blendedFor(next.planBudget);
 
-      const changed = next.planBudget !== shape.planBudget || next.roas !== shape.roas;
-      /* Restating the pair the agent just suggested is agreement, not a
-         non-answer. Only a message with no numbers in it at all needs
-         the prompt repeated. */
+      const changed = next.planBudget !== shape.planBudget;
+      /* Restating the size the agent just suggested is agreement, not a non-answer. */
       const answered =
-        !!(mult || money) || wantsMore ||
+        !!money || asksMultiple ||
         /smaller|less|cheaper|bigger|larger|more budget|lower the (plan|budget)|raise the (plan|budget)/.test(lower);
       if (!answered && !wantsBuild) {
         ask(
-          "Give me a plan size, a multiple, or both, like “$40,000 at 5x” or “8x”. " +
+          "Give me a plan size for all three phases, like “$20,000”, or say smaller or bigger. " +
           "I'll tell you how confident I am before anything is built.",
-          [`${fmtUSD(shape.planBudget)} at ${shape.roas}x`, "Something smaller", "Guarantee 8x instead"]
+          [`${fmtUSD(shape.planBudget)} plan`, "Something smaller", "Something bigger"]
         );
         return;
       }
       if (changed) setShape(next);
 
-      const conf = getConfidence(next.planBudget, next.roas);
+      const conf = planConfidence(next.planBudget);
+      const total = ladderTotals(next.planBudget).revenue;
 
-      /* Medium is the floor. High and medium both build; low never
-         does, however the brand phrases it. The guarantee is the
-         product here — it is what the brand is buying — so
-         a number we do not believe is not a bolder promise, it is one
-         we have already decided to lose money on.
-
-         `!changed` is the other half. A build request takes the pair
-         that is STANDING; a message that also moves the pair is an
-         answer first and a build second. "go smaller" starts with "go",
-         which used to settle a plan the brand had asked to change,
-         without ever showing them the pair or the confidence in it. */
+      /* Medium is the floor: high and medium build, low never does. `!changed` because a build request takes the
+         size that is STANDING; a message that also moves it is an answer first. */
       if (wantsBuild && !changed && conf.level !== "low") { confirmShape(next); return; }
 
-      /* A brand who answers with the pair the agent just proposed has
-         agreed, not asked a new question — and the bar for that pair is
-         already on screen. Drawing a second identical one, under a
-         paragraph restating a reading they can still see, is the same
-         picture twice. So the bar is pushed only when the numbers move,
-         and agreement gets one line instead of the whole explanation. */
+      /* Answering with the size already on screen IS the confirmation, unless a figure was refused or the reading is
+         one we will not build at. */
       const shown = [...thread].reverse().find((i) => i.kind === "score");
-      const same =
-        shown?.kind === "score" && shown.planBudget === next.planBudget && shown.roas === next.roas;
+      const same = shown?.kind === "score" && shown.planBudget === next.planBudget;
       const note = adjusted.length ? `${adjusted.join(" ")} ` : "";
-
-      /* Answering with the pair already on screen IS the confirmation.
-         Reading the reading back and then asking "shall I build it?"
-         made the brand agree twice to the same two numbers, under a bar
-         that had not changed — the second question carried no new
-         information, so it could only read as hesitation on our part.
-
-         Two things disqualify a match from counting as agreement: a
-         reading we will not build at, and a figure the parser threw
-         away. In the second case the pair is identical because we
-         rejected something, not because they agreed to anything. */
       if (same && !adjusted.length && conf.level !== "low") { confirmShape(next); return; }
-      /* When a number was clamped away, "still" is a lie by omission —
-         the brand did ask for something and did not get it. Lead with
-         what happened to it, then say where that leaves the pair. */
       const still = note
-        ? `${note}That leaves the plan at ${fmtUSD(next.planBudget)} and ${next.roas}x, ${conf.label.toLowerCase()}. `
-        : `Still ${conf.label.toLowerCase()} at ${fmtUSD(next.planBudget)} and ${next.roas}x. `;
+        ? `${note}That leaves the plan at ${fmtUSD(next.planBudget)}, ${conf.label.toLowerCase()}. `
+        : `Still ${conf.label.toLowerCase()} at ${fmtUSD(next.planBudget)}. `;
 
       if (!same) {
-        /* The ratio, the line we commit at and the reading itself are
-           all on the bar below. The sentence says the two numbers and
-           what they are worth in sales, and stops. */
-        say(
-          `${note}${conf.label}. ${fmtUSD(next.planBudget)} at ${next.roas}x guarantees you ` +
-          `${fmtUSD(ladderTotals(next.planBudget, next.roas).revenue)} in sales.`
-        );
+        say(`${note}${conf.label}. ${fmtUSD(next.planBudget)} across the three phases guarantees you ${fmtUSD(total)} in sales.`);
         push({ kind: "score", planBudget: next.planBudget, roas: next.roas });
       }
 
       if (conf.level === "high") {
-        ask(`${same ? still : ""}Shall I build it?`, ["Build the plan", "Something smaller", "Guarantee more"]);
+        ask(`${same ? still : ""}Shall I build it?`, ["Build the plan", "Something smaller", "Something bigger"]);
         return;
       }
 
-      /* The two ways out, in the brand's own terms: a bigger plan at
-         the same multiple, or the same plan at a multiple we can stand
-         behind. Aim at high; where the range cannot reach it, aim at
-         medium and say which one the suggestion actually buys. */
-      const highB = budgetForHigh(next.roas);
-      const highR = roasForHigh(next.planBudget);
-      const needB = highB ?? budgetForMedium(next.roas);
-      const needR = highR ?? roasForMedium(next.planBudget);
-      /* Only a BIGGER plan is a way out of a thin ratio. Where high is
-         out of reach the medium fallback can come back smaller than the
-         plan already is — at $60,000 and 8× it suggested "$32,000",
-         which the brand is already well past and which would make the
-         reading worse, not better. */
+      /* The way out is a bigger plan: the multiples don't move. Only ever a BIGGER one. */
+      const needB = planBudgetFor("high");
       const raise = needB !== null && needB > next.planBudget;
-      const soften = needR !== null && needR < next.roas;
-      const fixes: string[] = [];
-      if (raise) fixes.push(`Raise it to ${fmtUSD(needB!)}`);
-      if (soften) fixes.push(`Guarantee ${needR}x instead`);
-      const ways =
-        (raise ? `At ${next.roas}x, a ${fmtUSD(needB!)} plan reaches ${highB !== null ? "high" : "medium"} confidence. ` : "") +
-        (soften ? `Or keep the plan at ${fmtUSD(next.planBudget)} and let me guarantee ${needR}x, which is ${highR !== null ? "high" : "medium"}. ` : "");
+      const fixes = raise ? [`Raise it to ${fmtUSD(needB!)}`] : [];
+      const ways = raise ? `A ${fmtUSD(needB!)} plan reaches high confidence. ` : "";
 
       if (conf.level === "medium") {
         ask(
@@ -1156,13 +1075,12 @@ function ChatInner() {
         return;
       }
 
-      /* Low. No build chip, and no build on request either — the only
-         moves offered are the ones that make the promise keepable. */
+      /* Low. No build chip, and no build on request either. */
       ask(
         (wantsBuild ? `I won't build that one. ` : "") +
         (same ? still : `Low is below the line I commit at, and I won't sell a guarantee I expect to miss. `) +
-        (ways || `No plan in range carries a ${next.roas}x promise, so lower the multiple and I can commit. `),
-        fixes
+        ways,
+        fixes.length ? fixes : ["Something bigger"]
       );
       return;
     }
@@ -1255,7 +1173,7 @@ function ChatInner() {
          move. Leaving them with no next step would read as a refusal, so
          they are offered the two things that DO move instead. */
       if (out.answerRef === "budget" && plan && !paid) {
-        setAsking({ q: "", options: ["Guarantee 8x instead", "Kuwait only", "See all three phases", "Start Phase 1"] });
+        setAsking({ q: "", options: ["Kuwait only", "Women 25 to 45", "See all three phases", "Start Phase 1"] });
       }
       return;
     }
@@ -1558,18 +1476,17 @@ function ChatInner() {
                         patch: {
                           ...(fix.markets ? { markets: fix.markets } : {}),
                           setCrewIds: fix.crewIds,
-                          guaranteedRoas: fix.multiple,
                         },
                         because: fix.addMarket
                           ? `because adding ${marketName(fix.addMarket)} is what makes this deliverable`
-                          : `because that is the largest campaign I can guarantee in these markets`,
+                          : `because that is what makes the warm-up deliverable`,
                         by: "agent",
                       });
                       putPlan(next);
                       const crew = next.creators.value.length;
                       say(
                         `${listOf(next.markets.value.map(marketName))}. ${countUp(crew)} creator${crew === 1 ? "" : "s"}, ` +
-                        `${fix.multiple}x guaranteed, and I expect about ${fix.implied.toFixed(1)}x.`
+                        `still ${fix.multiple}x guaranteed on the warm-up, and I expect about ${fix.implied.toFixed(1)}x.`
                       );
                       const id = push({ kind: "changes", changeIds: made.map((c) => c.id) });
                       setChanges((c) => ({ ...c, [id]: made }));

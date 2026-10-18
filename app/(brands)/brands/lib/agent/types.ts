@@ -288,7 +288,7 @@ export interface PlanPatch {
   markets?: string[];
   audience?: Partial<Audience>;
   budget?: number;
-  guaranteedRoas?: number;
+  /* No guaranteedRoas: the multiples are set per phase (tools.ts, PHASE_MULTIPLES), never patched. */
   dropCreatorIds?: number[];
   addCreatorIds?: number[];
   /** The crew is exactly this. Used when the agent proposes a repaired

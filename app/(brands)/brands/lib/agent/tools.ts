@@ -30,8 +30,8 @@ import {
   ADS, UNLOCK_AT, VAT_RATE, fmtCount, fmtUSD, pace, phaseTitle, vatOn, type Phase,
 } from "../mock/campaigns";
 import {
-  CONFIDENCE_HIGH_RATIO, CONFIDENCE_RULE,
-  PLAN_BUDGET_MAX, PLAN_BUDGET_MIN, budgetForHigh, getConfidence, roasForHigh,
+  CONFIDENCE_RULE,
+  PLAN_BUDGET_MAX, PLAN_BUDGET_MIN, getConfidence,
   CREATOR_SHARE, FOCUS_MULTIPLIER, MIN_MARKET_FIT, POOL_MAX, confidenceFrom, efficiency,
   expectedFor, familyOf, marketFit, revenuePerView,
 } from "./model";
@@ -88,57 +88,66 @@ export function phasesFor(planBudget: number): [number, number, number] {
    THE WARM-UP GUARANTEES YOUR MONEY BACK, AND THEN IT CLIMBS
    ══════════════════════════════════════════════════════════════════
 
-   Phase 1 is guaranteed at 1x. A thousand dollars in, a thousand
-   dollars of revenue out — no profit, and that is the point. The
-   warm-up exists to prove the crew on real orders at no risk, not to
-   make the case; Alex said it plainly in the review call, that 1x on
-   1K is no return, which is exactly why a brand has to see all three
-   phases before they can judge any of them.
+   Every phase has its own multiple, and HeyMoon sets it, the same for
+   every brand (Mostafa, 18 Oct: "phase 1 x1 phase 2 x2 phase 3 x3"):
 
-   Phases 2 and 3 carry the return. They are solved so the WHOLE plan
-   averages the multiple the brand asked for: Phase 3 takes the peak,
-   Phase 2 sits midway between the warm-up and that peak, and the three
-   together blend to the target.
+       Phase 1  1x   the warm-up: $1,000 in, $1,000 of sales guaranteed
+       Phase 2  2x
+       Phase 3  3x
 
-       1 x b1  +  r2 x b2  +  r3 x b3   =   target x plan budget
-       r2 = (1 + r3) / 2
+   The brand used to pick a multiple for the whole plan (1x to 12x) and
+   the phases were solved to blend to it, which put 5x, 6.3x and 8x on
+   screen. None of that is chosen any more. What the brand still sizes
+   is the PLAN, and the plan decides how big Phases 2 and 3 are; the
+   whole-plan multiple is whatever those budgets blend to (2.5x on the
+   standard $1,000 / $3,000 / $6,000), shown as a result and never as a
+   promise anyone picked.
 
-   Rounded to one decimal for display, and every total on screen is the
-   SUM of the three phases rather than the ideal product — so the
+   Every total on screen is the SUM of the three phases, so the
    arithmetic a brand can do in their head always comes out right. */
 
-export const PHASE1_ROAS = 1;
+export const PHASE_MULTIPLES: readonly [number, number, number] = [1, 2, 3];
+export const PHASE1_ROAS = PHASE_MULTIPLES[0];
 
-export function phaseMultiples(planBudget: number, targetRoas: number): [number, number, number] {
-  const [b1, b2, b3] = phasesFor(planBudget);
-  const wanted = planBudget * targetRoas;
-  const denom = b2 / 2 + b3;
-  const raw = denom > 0 ? (wanted - b1 * PHASE1_ROAS - b2 / 2) / denom : targetRoas;
-  const r3 = Math.max(PHASE1_ROAS, Math.round(raw * 10) / 10);
-  const r2 = Math.max(PHASE1_ROAS, Math.round(((PHASE1_ROAS + r3) / 2) * 10) / 10);
-  return [PHASE1_ROAS, r2, r3];
+export function phaseMultiples(): [number, number, number] {
+  return [PHASE_MULTIPLES[0], PHASE_MULTIPLES[1], PHASE_MULTIPLES[2]];
 }
 
 /** What the three phases add up to. The revenue is the sum of what
-    each phase is guaranteed, never the ideal product — so the total on
-    screen matches the rows above it. */
-export function ladderTotals(planBudget: number, targetRoas: number) {
+    each phase is guaranteed, so the total on screen matches the rows
+    above it. */
+export function ladderTotals(planBudget: number) {
   const b = phasesFor(planBudget);
-  const m = phaseMultiples(planBudget, targetRoas);
+  const m = phaseMultiples();
   const budget = b[0] + b[1] + b[2];
   const revenue = Math.round(b[0] * m[0] + b[1] * m[1] + b[2] * m[2]);
   return { budget, revenue, blended: budget > 0 ? revenue / budget : 0, phases: b, multiples: m };
 }
 
-/** What the agent proposes before the brand touches anything: the
-    strategy's multiple, and the smallest plan that makes it a promise
-    we can commit to. When the cap makes high confidence impossible at
-    that multiple — it does at 8x — it proposes the largest plan we
-    would stand behind and says so. */
-export function suggestPlanShape(multiple: number): { planBudget: number; roas: number } {
-  const high = budgetForHigh(multiple);
-  if (high !== null) return { planBudget: high, roas: multiple };
-  return { planBudget: PLAN_BUDGET_MAX, roas: multiple };
+/** The whole plan's multiple: the three phases blended, to one decimal. A result of the plan size, not a choice. */
+export function blendedFor(planBudget: number): number {
+  return Math.round(ladderTotals(planBudget).blended * 10) / 10;
+}
+
+/** How sure HeyMoon is of a plan this size. The same rule as ever (plan budget ÷ multiple), against the blend. */
+export const planConfidence = (planBudget: number) => getConfidence(planBudget, blendedFor(planBudget));
+
+/** The smallest plan that reaches this confidence, or null if none in range does. */
+export function planBudgetFor(level: "high" | "medium"): number | null {
+  for (let b = PLAN_BUDGET_MIN; b <= PLAN_BUDGET_MAX; b += 500) {
+    const c = planConfidence(b).level;
+    if (c === "high" || (level === "medium" && c === "medium")) return b;
+  }
+  return null;
+}
+
+/* The plan HeyMoon starts every brand on: $1,000, then $3,000 and $6,000. $25,000 of guaranteed sales on $10,000,
+   which is high confidence. */
+export const DEFAULT_PLAN_BUDGET = 10_000;
+
+/** What the agent proposes before the brand touches anything: the standard plan, and what it blends to. */
+export function suggestPlanShape(): { planBudget: number; roas: number } {
+  return { planBudget: DEFAULT_PLAN_BUDGET, roas: blendedFor(DEFAULT_PLAN_BUDGET) };
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -271,32 +280,34 @@ async function* read_site(i: { url: string }, ctx: RunContext): ToolStream<Brand
    against how well a creator's niche matches the store; "value"
    ignores niche entirely and takes the best in-market reach per
    dollar. */
+/* The three plans differ in what the warm-up is pointed at, never in the guarantee: every phase carries the same
+   1x, 2x, 3x whichever plan is picked (PHASE_MULTIPLES). */
 export const STRATEGY_META: Record<StrategyKey, {
-  name: string; sentence: string; multiple: number; crew: number; lines: 2 | 4 | 8;
+  name: string; sentence: string; crew: number; lines: 2 | 4 | 8;
   pick: "score" | "value"; blurb: string; costLine: string; downside: string;
 }> = {
   steady: {
     name: "The wide, safe plan",
-    sentence: "your whole bestselling range, spread across the warm-up crew, with 3x guaranteed",
-    multiple: 3, crew: 8, lines: 8, pick: "score",
+    sentence: "your whole bestselling range, spread across the warm-up crew",
+    crew: 8, lines: 8, pick: "score",
     blurb: "The warm-up crew across your whole bestselling range. The widest read on what your audience actually buys.",
-    costLine: "Same $1,000 as the other two. You are spending it on breadth, which is why the promise on it is the smallest.",
-    downside: "Spread across eight product lines, no single one gets enough repetition to break out. You learn the most and you win slowly. A 3x floor on this much spend is a small promise.",
+    costLine: "Same $1,000 and the same guarantee as the other two. You are spending it on breadth.",
+    downside: "Spread across eight product lines, no single one gets enough repetition to break out. You learn the most and you win slowly.",
   },
   balanced: {
     name: "The balanced plan",
-    sentence: "your four strongest products, with 5x guaranteed",
-    multiple: 5, crew: 7, lines: 4, pick: "score",
+    sentence: "your four strongest products",
+    crew: 7, lines: 4, pick: "score",
     blurb: "The warm-up crew on your four strongest products. The default, and the one most brands start with.",
     costLine: "Same $1,000 as the other two, pointed at the four products most likely to carry it.",
     downside: "If two of the four lines underperform, the phase leans on the other two and the unlock date slips by a week or so.",
   },
   aggressive: {
     name: "The concentrated plan",
-    sentence: "your two bestsellers and nothing else, with 8x guaranteed",
-    multiple: 8, crew: 6, lines: 2, pick: "value",
+    sentence: "your two bestsellers and nothing else",
+    crew: 6, lines: 2, pick: "value",
     blurb: "Everything the warm-up has, pointed at your two bestsellers. Highest ceiling, thinnest margin for error.",
-    costLine: "Same $1,000 as the other two, with none of it spent on breadth. All of it goes behind two products.",
+    costLine: "Same $1,000 and the same guarantee as the other two, with none of it spent on breadth. All of it goes behind two products.",
     downside: "There is no third product to carry the phase. If both bestsellers stall in-market this misses, and you lose the month.",
   },
 };
@@ -472,9 +483,9 @@ function briefFor(read: BrandRead, lines: number): BriefDraft {
   };
 }
 
-function ladderFor(planBudget: number, multiple: number): LadderRung[] {
+function ladderFor(planBudget: number): LadderRung[] {
   const [, p2, p3] = phasesFor(planBudget);
-  const [m1, m2, m3] = phaseMultiples(planBudget, multiple);
+  const [m1, m2, m3] = phaseMultiples();
   /* Three phases is the standard, and the brand reads them as a plan, not
      as a ladder to climb: Phase 1 is the warm-up and the only thing paid
      for today; Phase 2 is built by the agent from Phase 1's results; Phase
@@ -502,14 +513,14 @@ function ladderFor(planBudget: number, multiple: number): LadderRung[] {
     (all three budgets, all three guarantees) can be shown through a
     <Claim> rather than as bare arithmetic. Shared by the build and by
     edit_plan, so a repriced plan never carries a stale sentence. */
-function ladderSourced(planBudget: number, multiple: number): Sourced<LadderRung[]> {
-  const rungs = ladderFor(planBudget, multiple);
+function ladderSourced(planBudget: number): Sourced<LadderRung[]> {
+  const rungs = ladderFor(planBudget);
   const totalBudget = rungs.reduce((n, r) => n + r.budget, 0);
   const totalGuaranteed = Math.round(rungs.reduce((n, r) => n + r.budget * r.multiple, 0));
   const blended = totalBudget > 0 ? totalGuaranteed / totalBudget : 0;
   return S(
     rungs,
-    `The warm-up gives your ${fmtUSD(PHASE1_BUDGET)} back and no more. It is there to prove the crew, not to pay you. The guarantee climbs after it: ${rungs[1].multiple}x on Phase 2 and ${rungs[2].multiple}x on Phase 3, which is how ${fmtUSD(totalBudget)} across the three carries ${fmtUSD(totalGuaranteed)} of guaranteed sales and averages ${blended.toFixed(1)}x overall. Each phase is offered only when the one before it reaches 80% of its own target.`,
+    `The warm-up gives your ${fmtUSD(PHASE1_BUDGET)} back and no more. It is there to prove the crew, not to pay you. The guarantee climbs after it: ${rungs[1].multiple}x on Phase 2 and ${rungs[2].multiple}x on Phase 3, the same for every brand, which is how ${fmtUSD(totalBudget)} across the three carries ${fmtUSD(totalGuaranteed)} of guaranteed sales, ${blended.toFixed(1)}x overall. Each phase is offered only when the one before it reaches 80% of its own target.`,
     [
       ev("p-lad", "policy", "the three phases", "Three phases, run one at a time. You start Phase 1 only, and you decide on each next phase when it unlocks. Stopping after Phase 1 is allowed."),
       ev("p-lad-total", "platform", "the whole campaign", `${rungs.map((r) => `Phase ${r.phaseNo} ${fmtUSD(r.budget)} at ${r.multiple}x = ${fmtUSD(Math.round(r.budget * r.multiple))}`).join(" · ")}. Total ${fmtUSD(totalGuaranteed)} on ${fmtUSD(totalBudget)}.`),
@@ -528,22 +539,22 @@ export function strategyOptions(read: BrandRead, markets: string[]): Strategy[] 
     const expected = crew.reduce((n, c) => n + expectedFor(c, rpv, markets, focus), 0);
     const implied = budget > 0 ? expected / budget : 0;
     return {
-      key, name: m.name, multiple: m.multiple, blurb: m.blurb, budget,
+      key, name: m.name, multiple: PHASE1_ROAS, blurb: m.blurb, budget,
       expected: { low: Math.round(expected * 0.72), high: Math.round(expected * 1.18) },
       downside: m.downside,
-      confidence: confidenceFrom(implied, m.multiple),
+      confidence: confidenceFrom(implied, PHASE1_ROAS),
     };
   });
 }
 
-function priceOf(read: BrandRead, markets: string[], budget: number, multiple: number, crew: CreatorSeed[], lines: number): PriceQuote {
+function priceOf(read: BrandRead, markets: string[], budget: number, crew: CreatorSeed[], lines: number): PriceQuote {
   const { rpv } = economicsOf(read);
   const focus = FOCUS_MULTIPLIER[lines] ?? 1;
   const expected = crew.reduce((n, c) => n + expectedFor(c, rpv, markets, focus), 0);
   const vat = vatOn(budget);
-  /* Phase 1 is metered at 1x, not at the plan's multiple. It is
-     guaranteed to return the thousand dollars it cost, and nothing
-     more; the return lives in the two phases it unlocks. */
+  /* Phase 1 is metered at 1x. It is guaranteed to return the thousand
+     dollars it cost, and nothing more; the return lives in the two
+     phases it unlocks, at 2x and 3x. */
   const target = budget * PHASE1_ROAS;
   const crewCost = crew.reduce((n, c) => n + c.rate, 0);
 
@@ -555,11 +566,11 @@ function priceOf(read: BrandRead, markets: string[], budget: number, multiple: n
   const benchEv = ev("q-bench", "benchmark", "HeyMoon category benchmark", `$${(rpv * 1000).toFixed(0)} of sales per thousand views at your price band.`);
 
   return {
-    budget: S(budget, `Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand. It is not sized from your store or negotiated. It is the fixed price of the warm-up, and what it buys is ${fmtUSD(crewCost)} of creator fees plus the tracking and the reserve that pays you if the guarantee misses.`, [crewEv, shareEv]),
+    budget: S(budget, `Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand. It is not sized from your store or negotiated. It is the fixed price of the warm-up, and what it buys is ${fmtUSD(crewCost)} of creator fees plus the tracking and the share held back to refund you if the guarantee misses.`, [crewEv, shareEv]),
     crewCost: S(crewCost, "What the whole crew is paid for one deliverable each, as one number. It is never split out per person. A price beside a creator is against the premise of the product.", [crewEv, shareEv], "Σ creator fees"),
     vat: S(vat, "VAT at 5%, on the budget only.", [ev("q-vat", "policy", "UAE VAT", `${Math.round(VAT_RATE * 100)}% standard rate.`)], "budget x 5%"),
     total: S(budget + vat, "Budget plus VAT. This is the figure you would be charged.", [ev("q-total", "policy", "what you pay", "One payment, for this phase only.")], "budget + VAT"),
-    revenueTarget: S(target, `What the warm-up is metered against. Phase 1 is guaranteed at ${PHASE1_ROAS}x. ${fmtUSD(budget)} in, ${fmtUSD(target)} of sales out. No profit on this phase, deliberately: it is here to prove the crew on your real orders at no risk, and the ${multiple}x you asked for is the average across all three phases, carried by the two it unlocks.`, [ev("q-tgt", "policy", "the guarantee", `${fmtUSD(target)} is what HeyMoon guarantees on the warm-up.`), ev("q-blend", "policy", "where the guarantee climbs", `Phase 1 is ${PHASE1_ROAS}x; Phases 2 and 3 climb so the whole plan averages ${multiple}x.`)], `${fmtUSD(budget)} x ${PHASE1_ROAS}`),
+    revenueTarget: S(target, `What the warm-up is metered against. Phase 1 is guaranteed at ${PHASE1_ROAS}x. ${fmtUSD(budget)} in, ${fmtUSD(target)} of sales out. No profit on this phase, deliberately: it is here to prove the crew on your real orders at no risk. The return is in the two phases it unlocks, at ${PHASE_MULTIPLES[1]}x and ${PHASE_MULTIPLES[2]}x.`, [ev("q-tgt", "policy", "the guarantee", `${fmtUSD(target)} is what HeyMoon guarantees on the warm-up.`), ev("q-blend", "policy", "where the guarantee climbs", `Phase 1 is ${PHASE_MULTIPLES[0]}x, Phase 2 ${PHASE_MULTIPLES[1]}x and Phase 3 ${PHASE_MULTIPLES[2]}x, the same for every brand.`)], `${fmtUSD(budget)} x ${PHASE1_ROAS}`),
     unlockAt: S(target * UNLOCK_AT, `The next phase is offered here, at ${Math.round(UNLOCK_AT * 100)}% of this phase's target.`, [ev("q-unlock", "policy", "the 80% line", "One phase runs at a time. Crossing 80% of its own target unlocks the next, which you then start.")], `target x ${UNLOCK_AT}`),
     expected: S(
       { low: Math.round(expected * 0.72), high: Math.round(expected * 1.18) },
@@ -568,9 +579,9 @@ function priceOf(read: BrandRead, markets: string[], budget: number, multiple: n
       "Σ (creator views x sales per view x market fit) x focus"
     ),
     downside: S(
-      `${fmtUSD(target)} in sales is guaranteed on this phase. You are never out more than the ${fmtUSD(budget + vat)} you put in, and nothing beyond Phase 1 is committed.`,
+      `${fmtUSD(target)} in sales is guaranteed on this phase. Fall short and the same share of the ${fmtUSD(budget)} comes back, and nothing beyond Phase 1 is committed.`,
       "The guarantee, stated as the worst case rather than as a promise.",
-      [ev("q-down", "policy", "the guarantee, in reverse", "The reserve inside the budget is what pays for this.")]
+      [ev("q-down", "policy", "the guarantee, in reverse", "Creators are paid only out of the sales they bring in, so what a shortfall leaves unspent is what is refunded.")]
     ),
   };
 }
@@ -627,8 +638,9 @@ function planBuild(read: BrandRead, strategy?: StrategyKey) {
 
   const crewSeeds = shortlist(read, markets, CREW_BUDGET, meta.pick);
   const budget = PHASE1_BUDGET;
-  const shape = suggestPlanShape(meta.multiple);
+  const shape = suggestPlanShape();
   const planBudget = shape.planBudget;
+  const blended = shape.roas;
 
   /* The strategy is always said as its name AND its sentence. "Balanced"
      on its own tells a store owner nothing. */
@@ -640,17 +652,17 @@ function planBuild(read: BrandRead, strategy?: StrategyKey) {
 
   const base: Plan = {
     id, readId: read.id, brandName: read.identity?.name.value ?? read.url,
-    strategy: S(key, strategyWhy, [ev("p-str", "benchmark", "comparable brands", "Of brands in your category and traffic band, most start with a 5x guarantee.")]),
+    strategy: S(key, strategyWhy, [ev("p-str", "benchmark", "comparable brands", "Of brands in your category and traffic band, most start with the balanced plan.")]),
     markets: S([], "", []),
     audience: S({ gender: "all", ageLow: 18, ageHigh: 44, interests: [] }, "", []),
     budget: S(0, "", []),
     planBudget: S(0, "", []),
-    guaranteedRoas: S(meta.multiple, "", []),
+    guaranteedRoas: S(blended, "", []),
     creators: S([], "", []),
     pool: S(0, "", []),
     brief: S(briefFor(read, meta.lines), "", []),
     ladder: S([], "", []),
-    price: priceOf(read, markets, budget, meta.multiple, crewSeeds, meta.lines),
+    price: priceOf(read, markets, budget, crewSeeds, meta.lines),
     changes: [],
   };
 
@@ -710,20 +722,22 @@ function planBuild(read: BrandRead, strategy?: StrategyKey) {
       task: buildTask("pricing"), weight: 3,
       apply: (p) => {
         p.budget = p.price.budget;
-        const conf = getConfidence(planBudget, meta.multiple);
+        const conf = planConfidence(planBudget);
         const [, p2, p3] = phasesFor(planBudget);
+        const total = ladderTotals(planBudget).revenue;
         p.planBudget = S(planBudget,
-          `${fmtUSD(planBudget)} across all three phases is the smallest plan on which I can call a ${meta.multiple}x guarantee ${conf.label.toLowerCase()}. ` +
-          `Confidence is the plan budget divided by the multiple you are asking HeyMoon to guarantee: ${fmtUSD(planBudget)} ÷ ${meta.multiple} is ${Math.round(conf.ratio).toLocaleString("en-US")}, and anything from ${CONFIDENCE_HIGH_RATIO.toLocaleString("en-US")} up we can commit to. ` +
+          `${fmtUSD(planBudget)} across all three phases, the plan HeyMoon starts most brands on. Each phase carries its own guarantee, ` +
+          `${PHASE_MULTIPLES.map((m) => `${m}x`).join(", ")}, so the whole plan guarantees ${fmtUSD(total)} in sales, which is ${conf.label.toLowerCase()}. ` +
           `Only ${fmtUSD(PHASE1_BUDGET)} of it is due today.`,
           [
             ev("p-conf", "policy", "how confidence is set", CONFIDENCE_RULE),
             ev("p-split", "policy", "how the plan splits", `${fmtUSD(PHASE1_BUDGET)} warm-up, then ${fmtUSD(p2)} and ${fmtUSD(p3)}. Each is offered only when the phase before it reaches 80% of its target.`),
           ],
-          "plan budget ÷ guaranteed multiple");
-        p.guaranteedRoas = S(meta.multiple,
-          `${meta.multiple}x is what HeyMoon will guarantee on this crew and this budget. HeyMoon's own model puts the likely sales higher; the guarantee is the floor, not the forecast.`,
-          [ev("p-g", "policy", "what a guarantee is", `${fmtUSD(budget * meta.multiple)} in sales, guaranteed.`)]);
+          "plan budget ÷ blended multiple");
+        p.guaranteedRoas = S(blended,
+          `${blended}x is what the three phases blend to: ${PHASE_MULTIPLES.map((m) => `${m}x`).join(", ")} on ${fmtUSD(PHASE1_BUDGET)}, ${fmtUSD(p2)} and ${fmtUSD(p3)}. ` +
+          `The multiples are the same for every brand; the plan size is what moves the total.`,
+          [ev("p-g", "policy", "what a guarantee is", `${fmtUSD(total)} in sales across the three phases, guaranteed phase by phase.`)]);
       },
     },
     {
@@ -737,7 +751,7 @@ function planBuild(read: BrandRead, strategy?: StrategyKey) {
     {
       task: buildTask("ladder"), weight: 2,
       apply: (p) => {
-        p.ladder = ladderSourced(planBudget, meta.multiple);
+        p.ladder = ladderSourced(planBudget);
       },
     },
   ];
@@ -818,12 +832,10 @@ function edit_plan(i: { plan: Plan; patch: PlanPatch; because: string; by: "agen
      first and the shortlist is rebuilt once at the end. */
   let markets = plan.markets.value;
   let strategyKey = plan.strategy.value;
-  let multiple = plan.guaranteedRoas.value;
 
   if (patch.strategy && patch.strategy !== strategyKey) {
     mk("strategy", "strategy", STRATEGY_META[strategyKey].name, STRATEGY_META[patch.strategy].name);
     strategyKey = patch.strategy;
-    multiple = STRATEGY_META[strategyKey].multiple;
     next.strategy = { ...plan.strategy, value: strategyKey, setBy: by, why: `You chose ${STRATEGY_META[strategyKey].name.toLowerCase()}. ${STRATEGY_META[strategyKey].sentence}.` };
   }
   if (patch.markets) {
@@ -841,15 +853,13 @@ function edit_plan(i: { plan: Plan; patch: PlanPatch; because: string; by: "agen
     mk("audience", "audience", fmtAud(plan.audience.value), fmtAud(a));
     next.audience = { ...plan.audience, value: a, setBy: by };
   }
-  let planBudget = plan.planBudget?.value ?? suggestPlanShape(multiple).planBudget;
+  let planBudget = plan.planBudget?.value || suggestPlanShape().planBudget;
   if (patch.planBudget && patch.planBudget !== planBudget) {
     mk("planBudget", "plan budget", fmtUSD(planBudget), fmtUSD(patch.planBudget));
     planBudget = patch.planBudget;
   }
-  if (patch.guaranteedRoas && patch.guaranteedRoas !== multiple) {
-    mk("guaranteedRoas", "guaranteed multiple", `${multiple}x`, `${patch.guaranteedRoas}x`);
-    multiple = patch.guaranteedRoas;
-  }
+  /* The multiples are not patchable (PHASE_MULTIPLES). The whole-plan one follows the plan size. */
+  const multiple = blendedFor(planBudget);
 
   /* Rebuild the crew for the new markets / strategy, then apply explicit
      creator removals and additions on top. */
@@ -972,23 +982,24 @@ function edit_plan(i: { plan: Plan; patch: PlanPatch; because: string; by: "agen
      the product does not negotiate. */
   const budget = PHASE1_BUDGET;
 
-  next.price = priceOf(read, markets, budget, multiple, crewSeeds, meta.lines);
+  next.price = priceOf(read, markets, budget, crewSeeds, meta.lines);
   next.budget = patch.budget
     ? { ...next.price.budget, value: budget, setBy: "brand", why: `You set this budget by hand. At ${fmtUSD(budget)} the crew costs ${Math.round((crewSeeds.reduce((n, c) => n + c.rate, 0) / budget) * 100)}% of it.` }
     : next.price.budget;
-  next.guaranteedRoas = {
-    ...plan.guaranteedRoas, value: multiple, setBy: patch.guaranteedRoas ? "brand" : plan.guaranteedRoas.setBy,
-    why: `${multiple}x is what HeyMoon guarantees on this crew and this budget, which is ${fmtUSD(budget * multiple)} in sales.`,
-  };
-  next.ladder = ladderSourced(planBudget, multiple);
+  next.ladder = ladderSourced(planBudget);
   {
-    const conf = getConfidence(planBudget, multiple);
+    const conf = planConfidence(planBudget);
     const [, p2, p3] = phasesFor(planBudget);
+    const total = ladderTotals(planBudget).revenue;
+    next.guaranteedRoas = {
+      ...plan.guaranteedRoas, value: multiple, setBy: "agent",
+      why: `${multiple}x is what the three phases blend to: ${PHASE_MULTIPLES.map((m) => `${m}x`).join(", ")} on ${fmtUSD(PHASE1_BUDGET)}, ${fmtUSD(p2)} and ${fmtUSD(p3)}, which is ${fmtUSD(total)} in sales.`,
+    };
     next.planBudget = {
       value: planBudget, setBy: patch.planBudget ? "brand" : (plan.planBudget?.setBy ?? "agent"),
-      computedFrom: "plan budget ÷ guaranteed multiple",
+      computedFrom: "plan budget ÷ blended multiple",
       why:
-        `${fmtUSD(planBudget)} across all three phases, against a ${multiple}x guarantee. That is a ratio of ` +
+        `${fmtUSD(planBudget)} across all three phases guarantees ${fmtUSD(total)} in sales, ${multiple}x blended. That is a ratio of ` +
         `${Math.round(conf.ratio).toLocaleString("en-US")}, which is ${conf.label.toLowerCase()}. ${conf.desc} Only ${fmtUSD(PHASE1_BUDGET)} of it is due today.`,
       evidence: [
         ev("p-conf", "policy", "how confidence is set", CONFIDENCE_RULE),
@@ -1265,16 +1276,19 @@ function interpret(i: { text: string; plan?: Plan; paid?: boolean }): Interpreta
       say: `Phase 1 runs in ${plan.markets.value.map(marketName).join(", ") || "no markets yet"}. Tell me the markets you want and the crew and the guarantee are rebuilt around them.`,
     };
 
-  /* Guaranteed multiple. The `x` is not a word character, so the old
-     `\b` after it never matched the "8x instead" chip. */
+  /* A multiple. They are set per phase and the same for every brand (PHASE_MULTIPLES), so "8x" or "guarantee more"
+     is answered, not applied: what moves the guaranteed total is the plan size. The `x` is not a word character, so
+     the match does not end on `\b`. */
   const mult = lower.match(/(\d+(?:\.\d)?)\s*(?:x\b|x)/);
-  if (mult) {
-    const m = Math.max(1, Math.min(12, parseFloat(mult[1])));
-    const strat: StrategyKey = m <= 3.5 ? "steady" : m <= 6 ? "balanced" : "aggressive";
-    const meta = STRATEGY_META[strat];
+  if (mult || /guarantee more|higher (guarantee|multiple|roas)|bigger multiple|more roas|change the (multiple|roas|guarantee)/.test(lower)) {
+    const pb = plan?.planBudget.value || DEFAULT_PLAN_BUDGET;
+    const t = ladderTotals(pb);
     return {
-      kind: "edit", patch: { strategy: strat }, because: `because you asked for ${m}x`,
-      say: `${m}x is closest to ${meta.name.toLowerCase()}. ${meta.sentence}. The plan is on it, and Phase 1 is repriced.`,
+      kind: "question", answerRef: "confirm",
+      say:
+        `The guarantee is set by phase, the same for every brand: ${PHASE_MULTIPLES[0]}x on the warm-up, ` +
+        `${PHASE_MULTIPLES[1]}x on Phase 2 and ${PHASE_MULTIPLES[2]}x on Phase 3. ` +
+        `What you choose is the plan size. At ${fmtUSD(pb)} that is ${fmtUSD(t.revenue)} in guaranteed sales; a bigger plan guarantees more.`,
     };
   }
 
@@ -1288,7 +1302,7 @@ function interpret(i: { text: string; plan?: Plan; paid?: boolean }): Interpreta
         say: `${meta.name}. ${meta.sentence}. Rebuilding Phase 1 around it.`,
       };
   }
-  if (/more aggressive|be bolder|push harder|go bigger|bigger multiple|more ambitious/.test(lower)) {
+  if (/more aggressive|be bolder|push harder|go bigger|more ambitious/.test(lower)) {
     const m = STRATEGY_META.aggressive;
     return { kind: "edit", patch: { strategy: "aggressive" }, because: "because you asked to push harder",
       say: `${m.name}. ${m.sentence}. ${m.costLine}` };
@@ -1348,36 +1362,30 @@ function interpret(i: { text: string; plan?: Plan; paid?: boolean }): Interpreta
   const money = parseMoney(t);
   if (money && /budget|spend|plan|make it|set it|raise|increase|lower|reduce|cap/.test(lower)) {
     const clamped = Math.max(PLAN_BUDGET_MIN, Math.min(PLAN_BUDGET_MAX, Math.round(money / 500) * 500));
-    const roas = plan?.guaranteedRoas.value ?? 5;
-    const conf = getConfidence(clamped, roas);
-    const need = budgetForHigh(roas);
+    const conf = planConfidence(clamped);
+    const need = planBudgetFor("high");
     return {
       kind: "edit", patch: { planBudget: clamped }, because: `because you set the plan to ${fmtUSD(clamped)}`,
       say:
-        `Plan set to ${fmtUSD(clamped)} across all three phases, at ${roas}x guaranteed. That is ${conf.label.toLowerCase()}. ${conf.desc}` +
+        `Plan set to ${fmtUSD(clamped)} across all three phases, which guarantees ${fmtUSD(ladderTotals(clamped).revenue)} in sales. ` +
+        `That is ${conf.label.toLowerCase()}. ${conf.desc}` +
         (conf.level === "high"
           ? " Phase 1 is still the $1,000 warm-up, and it is all that is due today."
           : need !== null
-            ? ` To make it high confidence at ${roas}x, the plan needs to be ${fmtUSD(need)}. I would rather push you there than promise something I am not sure of.`
-            : ` At ${roas}x no plan inside HeyMoon's range reaches high confidence. Drop the multiple and I can commit properly.`),
+            ? ` At ${fmtUSD(need)} or more it is high confidence. I would rather push you there than promise something I am not sure of.`
+            : ""),
     };
   }
 
   /* The push. A brand asking for high confidence is asking the agent to
-     pick the numbers, which it can do exactly. */
+     pick the plan size, which it can do exactly. */
   if (plan && /high confidence|make (it|this) (high|safe|certain)|most confident|safest (plan|option)|be sure/.test(lower)) {
-    const roas = plan.guaranteedRoas.value;
-    const need = budgetForHigh(roas);
-    if (need !== null) {
-      return {
-        kind: "edit", patch: { planBudget: need }, because: "because you asked for high confidence",
-        say: `Done. At ${fmtUSD(need)} across the three phases, a ${roas}x guarantee is high confidence. The ratio is ${Math.round(need / roas).toLocaleString("en-US")}, and ${CONFIDENCE_HIGH_RATIO.toLocaleString("en-US")} is the line above which HeyMoon commits rather than hopes. Phase 1 is still ${fmtUSD(PHASE1_BUDGET)}, due today.`,
-      };
-    }
-    const best = roasForHigh(PLAN_BUDGET_MAX) ?? 3;
+    const need = planBudgetFor("high") ?? PLAN_BUDGET_MAX;
+    if (planConfidence(plan.planBudget.value).level === "high")
+      return { kind: "question", answerRef: "confirm", say: `It already is. ${fmtUSD(plan.planBudget.value)} across the three phases is high confidence.` };
     return {
-      kind: "edit", patch: { planBudget: PLAN_BUDGET_MAX, guaranteedRoas: best }, because: "because you asked for high confidence",
-      say: `A ${roas}x guarantee cannot reach high confidence at any plan size HeyMoon offers. Even at ${fmtUSD(PLAN_BUDGET_MAX)} the ratio only gets to ${Math.round(PLAN_BUDGET_MAX / roas).toLocaleString("en-US")}. I have taken it to ${best}x at ${fmtUSD(PLAN_BUDGET_MAX)}, which is high confidence and something I can stand behind.`,
+      kind: "edit", patch: { planBudget: need }, because: "because you asked for high confidence",
+      say: `Done. At ${fmtUSD(need)} across the three phases the plan is high confidence, ${fmtUSD(ladderTotals(need).revenue)} in guaranteed sales. Phase 1 is still ${fmtUSD(PHASE1_BUDGET)}, due today.`,
     };
   }
 
@@ -1470,7 +1478,7 @@ export const tools: AgentTools = {
   price_plan: (i) => {
     const read = getRead(i.plan.readId);
     const meta = STRATEGY_META[i.plan.strategy.value];
-    return priceOf(read, i.plan.markets.value, i.plan.budget.value, i.plan.guaranteedRoas.value, i.plan.creators.value.map((c) => creatorById(c.id)), meta.lines);
+    return priceOf(read, i.plan.markets.value, i.plan.budget.value, i.plan.creators.value.map((c) => creatorById(c.id)), meta.lines);
   },
   match_creators,
   edit_plan,
@@ -1531,7 +1539,9 @@ export function underwriting(plan: Plan): Underwriting {
   const mid = (exp.low + exp.high) / 2;
   const budget = plan.budget.value;
   const implied = budget > 0 ? mid / budget : 0;
-  const promised = plan.guaranteedRoas.value;
+  /* What is sold today is Phase 1, at its own 1x. Phases 2 and 3 are priced when they open, on Phase 1's results,
+     so they are judged then and not here. */
+  const promised = PHASE1_ROAS;
   return {
     implied,
     promised,
@@ -1550,7 +1560,7 @@ export function underwriting(plan: Plan): Underwriting {
    Searched rather than guessed: every crew size from one up is priced,
    and the largest one that clears a real multiple with room to spare wins. */
 export interface Repair {
-  kind: "shrink" | "lower" | "widen";
+  kind: "widen";
   crewIds: number[];
   budget: number;
   multiple: number;
@@ -1570,10 +1580,9 @@ export function repair(plan: Plan): Repair {
   const focus = FOCUS_MULTIPLIER[meta.lines] ?? 1;
   const budget = PHASE1_BUDGET;
 
-  /* With the warm-up price fixed, shrinking the crew no longer helps —
-     it spends less of a budget that does not move and earns less. So
-     there are exactly two ways back: promise less on what we have, or
-     widen the markets so the same $1,000 reaches more people. */
+  /* With the warm-up price and its 1x both fixed, there is one way back: widen the markets so the same $1,000
+     reaches more people. Shrinking the crew spends less of a budget that does not move, and the multiple is not
+     ours to lower. */
   const expectedOf = (seeds: CreatorSeed[], ms: string[]) =>
     seeds.reduce((a, c) => a + expectedFor(c, rpv, ms, focus), 0);
   const expectedIn = (ms: string[]) => expectedOf(shortlist(read, ms, CREW_BUDGET, meta.pick), ms);
@@ -1582,38 +1591,18 @@ export function repair(plan: Plan): Repair {
      pick. `underwriting` judges the real crew through
      `plan.price.expected`; this used to judge a rebuilt one, so the two
      `implied` figures printed in the same sentence were measured on
-     different people — and "keep the crew" then handed back a crew the
-     brand had never seen, silently undoing their edits. */
+     different people. */
   const crew = plan.creators.value.map((c) => creatorById(c.id));
   const implied = expectedOf(crew, markets) / budget;
 
-  for (const m of [8, 5, 3]) {
-    if (implied >= m * 1.1) {
-      return {
-        kind: "lower",
-        crewIds: crew.map((c) => c.id), budget, multiple: m, implied,
-        headline: `Keep the crew and lower the guarantee to ${m}x, which I can stand behind on ${fmtUSD(budget)} in ${markets.map(marketName).join(", ")}.`,
-      };
-    }
-  }
-
-  /* Nothing in these markets works at any multiple. Do not stop at
-     "no" — find the one market that would fix it, and name it. */
+  /* Find the one market that would fix it, and name it. */
   const candidates = ["AE", "SA", "KW", "QA", "BH", "OM"].filter((m) => !markets.includes(m));
-  let bestAdd: { code: string; implied: number; crewIds: number[]; multiple: number } | undefined;
+  let bestAdd: { code: string; implied: number; crewIds: number[] } | undefined;
   for (const code of candidates) {
     const ms = [...markets, code];
     const impliedThere = expectedIn(ms) / budget;
-    for (const m of [8, 5, 3]) {
-      if (impliedThere >= m * 1.1) {
-        if (!bestAdd || impliedThere > bestAdd.implied) {
-          bestAdd = {
-            code, implied: impliedThere, multiple: m,
-            crewIds: shortlist(read, ms, CREW_BUDGET, meta.pick).map((c) => c.id),
-          };
-        }
-        break;
-      }
+    if (impliedThere >= PHASE1_ROAS * 1.1 && (!bestAdd || impliedThere > bestAdd.implied)) {
+      bestAdd = { code, implied: impliedThere, crewIds: shortlist(read, ms, CREW_BUDGET, meta.pick).map((c) => c.id) };
     }
   }
 
@@ -1621,11 +1610,11 @@ export function repair(plan: Plan): Repair {
     kind: "widen",
     crewIds: bestAdd?.crewIds ?? crew.map((c) => c.id),
     budget,
-    multiple: bestAdd?.multiple ?? plan.guaranteedRoas.value,
+    multiple: PHASE1_ROAS,
     implied: bestAdd?.implied ?? implied,
     markets: bestAdd ? [...markets, bestAdd.code] : undefined,
     headline: bestAdd
-      ? `${markets.map(marketName).join(", ")} on its own cannot carry a guarantee. The creators with real audience there do not reach enough people for ${fmtUSD(budget)} to be worth guaranteeing. Add ${marketName(bestAdd.code)} and it works: ${bestAdd.crewIds.length} creators, ${bestAdd.multiple}x guaranteed.`
+      ? `${markets.map(marketName).join(", ")} on its own cannot carry the warm-up's ${PHASE1_ROAS}x. The creators with real audience there do not reach enough people for ${fmtUSD(budget)} of sales. Add ${marketName(bestAdd.code)} and it works: ${bestAdd.crewIds.length} creators, and I expect about ${bestAdd.implied.toFixed(1)}x.`
       : `There is nobody in ${markets.map(marketName).join(", ")} I can guarantee sales on, and no single market I can add that fixes it. Widen it further and I will rebuild.`,
     addMarket: bestAdd?.code,
   };

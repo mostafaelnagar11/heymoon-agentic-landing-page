@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { CaretRight, Lightning, PencilSimple } from "@phosphor-icons/react";
 import type { Plan } from "../lib/agent/types";
 import { UNLOCK_AT, fmtUSD } from "../lib/mock/campaigns";
-import { STRATEGY_META, marketName } from "../lib/agent/tools";
+import { PHASE1_ROAS, STRATEGY_META, marketName } from "../lib/agent/tools";
 import { getRead } from "../lib/agent/registry";
 import { roundBudget } from "../lib/agent/model";
 import { T } from "../lib/tokens";
@@ -223,7 +223,9 @@ export function ConfidenceMeter({ plan, className = "" }: { plan: Plan; classNam
   const mid = (exp.low + exp.high) / 2;
   const budget = plan.budget.value;
   const implied = budget > 0 ? mid / budget : 0;
-  const g = plan.guaranteedRoas.value;
+  /* Against the warm-up's own multiple, the phase this crew is for and the only one sold today. The plan's
+     guaranteedRoas is the blend of 1x, 2x and 3x across all three phases, which this crew does not run. */
+  const g = budget > 0 ? Math.round((plan.price.revenueTarget.value / budget) * 10) / 10 : PHASE1_ROAS;
   const ratio = g > 0 ? implied / g : 0;
   const pctv = Math.max(6, Math.min(100, Math.round((ratio - 0.9) * 130)));
   const room = Math.round((ratio - 1) * 100);
@@ -243,8 +245,8 @@ export function ConfidenceMeter({ plan, className = "" }: { plan: Plan; classNam
         <p className={`shrink-0 text-body font-semibold ${tone.text}`} role="status">{tone.word}</p>
         <p className="min-w-0 flex-1 text-meta leading-5 text-ink-soft">
           {ratio >= 1
-            ? `HeyMoon expects this crew to bring about ${implied.toFixed(1)}x in sales in these markets. The guarantee is ${g}x, which leaves ${room}% of room above it.`
-            : `HeyMoon expects this crew to bring about ${implied.toFixed(1)}x in sales in these markets, and the guarantee is ${g}x. There is no room above it, so HeyMoon will not quote this until the budget or the crew changes.`}
+            ? `HeyMoon expects this crew to bring about ${implied.toFixed(1)}x in sales in these markets. The warm-up's guarantee is ${g}x, which leaves ${room}% of room above it.`
+            : `HeyMoon expects this crew to bring about ${implied.toFixed(1)}x in sales in these markets, and the warm-up's guarantee is ${g}x. There is no room above it, so HeyMoon will not quote this until the markets or the crew change.`}
         </p>
       </div>
     </div>
