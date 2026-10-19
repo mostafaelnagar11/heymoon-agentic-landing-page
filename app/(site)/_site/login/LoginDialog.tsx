@@ -100,7 +100,7 @@ function Panel() {
         try { sessionStorage.setItem(LOGIN_HANDOFF_KEY, JSON.stringify({ dialCode: c.dial, phone: digits, at: Date.now() })); } catch { /* blocked storage: the creators sheet asks again */ }
         window.location.assign("/creators/login");
       } else {
-        window.location.assign("/brands/dashboard");
+        window.location.assign("/brands/dashboard?signin=1");   // opens the sample account on an empty browser (brands lib/demo.ts)
       }
     }, 700);
   };

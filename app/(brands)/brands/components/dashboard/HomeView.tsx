@@ -38,7 +38,8 @@ import {
   useLivePhase, useReadyPhase, type Campaign,
 } from "../../lib/store";
 import { useGo } from "../../lib/surface";
-import { AgentMoves, AskChip } from "./HeyMoon";
+import { AskChip } from "./HeyMoon";
+import { CatchUp } from "./CatchUp";
 import { paceSentence } from "../../lib/agent/dashboard";
 import { Surface } from "./kit";
 import { RevenueRuler } from "../Ruler";
@@ -293,8 +294,8 @@ export function HomeView() {
         {account ? `Welcome back, ${account.firstName}` : "Welcome back"}
       </h2>
 
-      {/* What the agents would do next, on the page rather than in a chat beside it (HeyMoon.tsx). */}
-      <AgentMoves />
+      {/* A · Catch me up: what changed since the last visit, each line with its one action (CatchUp.tsx). */}
+      <CatchUp />
 
       {/* One row, three cards. The two totals used to sit below the
           staircase, which put the money the brand has made two screens

@@ -30,6 +30,7 @@ import {
   setAdState, useAds, useLivePhase,
 } from "../../lib/store";
 import { LiveAdGrid } from "../AdCards";
+import { ReviewDeck } from "./ReviewDeck";
 import { Claim } from "../Evidence";
 import { Avatar, Btn, Sheet } from "../ui";
 import { Detail, Section, Surface } from "./kit";
@@ -70,6 +71,8 @@ const TITLE: Record<Shelf, string> = {
 
 export function AdsView() {
   const [shelf, setShelf] = useState<Shelf>("waiting");
+  /* D · Review with HeyMoon: the queue one draft at a time by default; the grid is a press away. */
+  const [deck, setDeck] = useState(true);
   const [sel, setSel] = useState<string[]>([]);
   const ads = useAds();
   const phase = useLivePhase();
@@ -112,7 +115,7 @@ export function AdsView() {
       {/* The batch row. One line: what I would do, and the two presses
           that do it. The paragraph that used to explain the review
           window is now a chip on every card that has a clock on it. */}
-      {shelf === "waiting" && counts.waiting > 0 && (
+      {shelf === "waiting" && counts.waiting > 0 && !deck && (
         <Surface className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
           <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand text-[11px] font-bold text-white">
             {counts.waiting}
@@ -132,6 +135,16 @@ export function AdsView() {
       <Section
         title={TITLE[shelf]}
         aside={
+          <div className="flex flex-wrap items-center gap-2">
+          {shelf === "waiting" && counts.waiting > 0 && (
+            <button
+              type="button"
+              onClick={() => setDeck((d) => !d)}
+              className="text-[11px] font-semibold text-brand hover:underline"
+            >
+              {deck ? "See all as a grid" : "Review one by one"}
+            </button>
+          )}
           <div role="tablist" aria-label="Ad shelves" className="flex gap-0.5 rounded-control border border-hairline bg-canvas p-0.5">
             {([
               { k: "waiting" as const, label: "Waiting", n: counts.waiting },
@@ -151,9 +164,12 @@ export function AdsView() {
               </button>
             ))}
           </div>
+          </div>
         }
       >
-        {shelf === "live" ? (
+        {shelf === "waiting" && deck && waiting.length > 0 ? (
+          <ReviewDeck drafts={waiting} phase={phase} />
+        ) : shelf === "live" ? (
           <LiveAdGrid ads={shown} />
         ) : shown.length === 0 ? (
           <Surface className="p-8 text-center">

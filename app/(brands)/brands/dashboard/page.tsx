@@ -40,6 +40,7 @@ import {
   useCampaigns, useDrill,
 } from "../lib/store";
 import { SurfaceProvider } from "../lib/surface";
+import { openSampleAccount } from "../lib/demo";
 import { phaseTitle } from "../lib/mock/campaigns";
 import type { DashboardView } from "../lib/agent/dashboard";
 
@@ -94,6 +95,16 @@ export default function DashboardPage() {
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+
+  /* Arriving from the landing's Login (?signin=1): open the sample account when this browser has nothing, so the
+     login lands on a dashboard with data (lib/demo.ts). The flag is taken off the URL straight away. */
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (!q.has("signin")) return;
+    openSampleAccount();
+    q.delete("signin");
+    window.history.replaceState(null, "", window.location.pathname + (q.toString() ? `?${q}` : ""));
+  }, []);
 
   /* No early return for an empty account.
 

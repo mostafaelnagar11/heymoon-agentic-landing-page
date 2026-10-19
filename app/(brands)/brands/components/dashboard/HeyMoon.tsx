@@ -10,7 +10,8 @@
  *
  * So there are four pieces, and the rail is the last of them:
  *
- *   AgentMoves   on the page, the few moves the agents would make right now, each one a press away (lib/agent/moves)
+ *   On the page  the agents' work where it happens: Catch me up (CatchUp), Grow the lead (LeadMoves), Review with
+ *                HeyMoon (ReviewDeck), all from lib/agent/moves and all carried out through `run` below
  *   AskBar       in the top bar, a request in words; a request to go somewhere just goes, nothing opens
  *   AskChip      on a card, the question that card raises, answered about that card
  *   HeyMoonPanel the column, closed until there is an answer to read or a request to confirm
@@ -22,12 +23,13 @@
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from "react";
-import { ArrowUp, Check, Lightning, PencilSimple, Sparkle, X } from "@phosphor-icons/react";
+import { ArrowUp, Check, Sparkle, X } from "@phosphor-icons/react";
 import { dashboardChips, interpretDashboard, type DashboardView } from "../../lib/agent/dashboard";
-import { nextMoves, type Move, type MoveAction } from "../../lib/agent/moves";
+import type { MoveAction } from "../../lib/agent/moves";
 import {
-  openPhase, putApproval, undoActivity, useActivity, useAds, useLivePhase, useReadyPhase,
+  logActivity, openPhase, putApproval, setAdState, undoActivity, useActivity, useAds, useLivePhase,
 } from "../../lib/store";
+import { fmtUSD } from "../../lib/mock/campaigns";
 import { useGo } from "../../lib/surface";
 import { tools } from "../../lib/agent/tools";
 import type { ApprovalRequest } from "../../lib/agent/types";
@@ -143,6 +145,23 @@ export function HeyMoonProvider({ children }: { children: ReactNode }) {
         undoActivity(a.activityId);
         setNote(`Undid “${a.title}”`);
         return;
+      case "recut":
+        /* The existing decline-with-a-reason: it never publishes, and the creator gets the note to re-cut it. */
+        setAdState(a.adId, "declined", a.note);
+        setNote(`Note sent to ${a.creator}`);
+        return;
+      case "rebalance": {
+        const at = Date.now();
+        logActivity({
+          id: `act-lead-${at}`, at, ruleKey: "rebalance", agent: "MoonScore AI",
+          title: `Moved ${fmtUSD(a.amount)} from ${a.fromName} to ${a.toName}`,
+          because: `You asked for it from the campaign's moves: ${a.toName} sells more on the same spend.`,
+          effect: `Phase spend: −${fmtUSD(a.amount)} from ${a.fromName}, +${fmtUSD(a.amount)} to ${a.toName}. Total phase budget unchanged.`,
+          undone: false, undoable: true, adds: a.adds,
+        });
+        setNote(`Moved ${fmtUSD(a.amount)} to ${a.toName}`);
+        return;
+      }
       case "why":
         show({ q: a.q, say: a.say });
     }
@@ -277,82 +296,6 @@ export function AskChip({ q, say, tone = "light", className = "" }: {
       <Sparkle size={10} weight="fill" aria-hidden />
       {q}
     </button>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* The agents' next moves, on the page                                 */
-/* ------------------------------------------------------------------ */
-
-const TONE: Record<Move["tone"], { icon: typeof Lightning; ring: string; dot: string }> = {
-  money: { icon: Lightning, ring: "bg-good/10 text-good-deep", dot: "bg-good" },
-  work: { icon: PencilSimple, ring: "bg-brand/10 text-brand", dot: "bg-brand" },
-  done: { icon: Check, ring: "bg-neutral-100 text-ink-faint", dot: "bg-ink-faint" },
-};
-
-export function AgentMoves({ className = "" }: { className?: string }) {
-  const { run } = useHeyMoon();
-  const ads = useAds();
-  const activity = useActivity();
-  const live = useLivePhase();
-  const ready = useReadyPhase();
-  const [gone, setGone] = useState<string[]>([]);
-  const moves = nextMoves({ ads, live, ready, activity }).filter((m) => !gone.includes(m.id));
-  if (!moves.length) return null;
-
-  const btn = (a: MoveAction, primary: boolean) => (
-    <button
-      key={a.label}
-      type="button"
-      onClick={() => run(a)}
-      className={`inline-flex h-8 shrink-0 items-center rounded-pill px-3.5 text-meta font-semibold transition ${
-        primary ? "g-button border border-white/50 text-[#FBF8FE]" : "text-ink-60 hover:bg-black/[0.04] hover:text-ink"
-      }`}
-    >
-      {a.label}
-    </button>
-  );
-
-  return (
-    <section aria-label="HeyMoon's next moves" className={`rounded-tile border border-brand/15 bg-white shadow-card ${className}`}>
-      <div className="flex items-center gap-2 border-b border-hairline px-5 py-3">
-        <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-brand text-white">
-          <Sparkle size={11} weight="fill" />
-        </span>
-        <h2 className="text-body font-semibold text-ink">Next moves</h2>
-      </div>
-      <ul className="divide-y divide-hairline">
-        {moves.map((m) => {
-          const t = TONE[m.tone];
-          return (
-            <li key={m.id} className="flex flex-col gap-2.5 px-5 py-3.5 sm:flex-row sm:items-center">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <span aria-hidden className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${t.ring}`}>
-                  <t.icon size={13} weight="fill" />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-body font-semibold text-ink">{m.title}</p>
-                  <p className="truncate text-[11px] text-ink-faint">{m.meta} · {m.agent}</p>
-                </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-1 ps-10 sm:ps-0">
-                {m.secondary && btn(m.secondary, false)}
-                {btn(m.primary, m.tone !== "done")}
-                <button
-                  type="button"
-                  onClick={() => setGone((g) => [...g, m.id])}
-                  aria-label="Not now"
-                  title="Not now"
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink-faint transition hover:bg-black/[0.04] hover:text-ink"
-                >
-                  <X size={12} weight="bold" aria-hidden />
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
   );
 }
 

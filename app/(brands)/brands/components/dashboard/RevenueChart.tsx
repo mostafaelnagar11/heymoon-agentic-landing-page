@@ -25,7 +25,12 @@ const W = 720;
 const H = 360;
 const PAD = { t: 14, r: 16, b: 24, l: 56 };
 
-export function RevenueChart({ phase }: { phase: Phase }) {
+/** Where the line is heading (B · Grow the lead): at the current rate, and with the campaign's moves made. */
+export interface Projection { onPace: number; withMoves?: number }
+
+const MOVES_HUE = "#A21CAF";
+
+export function RevenueChart({ phase, projection }: { phase: Phase; projection?: Projection }) {
   const [at, setAt] = useState<number | null>(null);
   const pts = revenueSeries(phase);
   if (!pts.length || !phase.revTarget) return null;
@@ -33,7 +38,7 @@ export function RevenueChart({ phase }: { phase: Phase }) {
   const days = phase.plannedDays ?? pts.length;
   const target = phase.revTarget;
   const unlock = target * UNLOCK_AT;
-  const top = Math.max(target, pts[pts.length - 1].rev) * 1.08;
+  const top = Math.max(target, pts[pts.length - 1].rev, projection?.onPace ?? 0, projection?.withMoves ?? 0) * 1.08;
 
   const x = (d: number) => PAD.l + ((d - 1) / Math.max(1, days - 1)) * (W - PAD.l - PAD.r);
   const y = (v: number) => PAD.t + (1 - v / top) * (H - PAD.t - PAD.b);
@@ -90,6 +95,30 @@ export function RevenueChart({ phase }: { phase: Phase }) {
         <polygon points={area} fill="url(#rev-fill)" />
         <polyline points={line} fill="none" stroke="#4D2FB0" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
 
+        {/* The two endings, from today to the last day: dashed at the current rate, solid with the moves made. */}
+        {projection && pts.length < days && (() => {
+          const end = pts[pts.length - 1];
+          const lift = projection.withMoves && projection.withMoves > projection.onPace ? projection.withMoves : null;
+          return (
+            <g>
+              <line x1={x(end.day)} y1={y(end.rev)} x2={x(days)} y2={y(projection.onPace)} stroke="#4D2FB0" strokeOpacity="0.55" strokeWidth="1.75" strokeDasharray="5 5" />
+              <circle cx={x(days)} cy={y(projection.onPace)} r="3.5" fill="#4D2FB0" fillOpacity="0.55" />
+              <text x={x(days) - 8} y={y(projection.onPace) + 15} textAnchor="end" className="fill-main text-[10px] tabular-nums">
+                on pace · {fmtUSD(projection.onPace)}
+              </text>
+              {lift && (
+                <>
+                  <line x1={x(end.day)} y1={y(end.rev)} x2={x(days)} y2={y(lift)} stroke={MOVES_HUE} strokeWidth="2.25" strokeLinecap="round" />
+                  <circle cx={x(days)} cy={y(lift)} r="4" fill={MOVES_HUE} />
+                  <text x={x(days) - 8} y={y(lift) - 9} textAnchor="end" fill={MOVES_HUE} className="text-[10px] font-semibold tabular-nums">
+                    with the moves · {fmtUSD(lift)}
+                  </text>
+                </>
+              )}
+            </g>
+          );
+        })()}
+
         {/* The end of the line, ringed so it reads over the fill. */}
         <circle cx={x(pts[pts.length - 1].day)} cy={y(pts[pts.length - 1].rev)} r="4.5" fill="#4D2FB0" stroke="#fff" strokeWidth="2" />
 
@@ -102,8 +131,8 @@ export function RevenueChart({ phase }: { phase: Phase }) {
 
         <text x={PAD.l} y={H - 7} className="fill-ink-faint text-[10px]">Day 1</text>
         <text x={W - PAD.r} y={H - 7} textAnchor="end" className="fill-ink-faint text-[10px]">Day {days}</text>
-        <text x={x(days) - 4} y={y(target) - 6} textAnchor="end" className="fill-ink-faint text-[10px]">target</text>
-        <text x={x(days) - 4} y={y(unlock) - 6} textAnchor="end" className="fill-ink-faint text-[10px]">80% unlock</text>
+        <text x={PAD.l + 4} y={y(target) - 6} className="fill-ink-faint text-[10px]">target</text>
+        <text x={PAD.l + 4} y={y(unlock) - 6} className="fill-ink-faint text-[10px]">80% unlock</text>
       </svg>
 
       <figcaption className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-ink-faint">
@@ -113,6 +142,11 @@ export function RevenueChart({ phase }: { phase: Phase }) {
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden className="h-0 w-4 border-t-[1.5px] border-dashed border-black/25" /> Straight run at target
         </span>
+        {projection?.withMoves && projection.withMoves > projection.onPace && (
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden className="h-0.5 w-4 rounded" style={{ background: MOVES_HUE }} /> With the moves
+          </span>
+        )}
         <span className="ms-auto tabular-nums" aria-live="polite">
           {hovered ? `Day ${hovered.day} · ${fmtUSD(hovered.rev)}` : `Day ${pts.length} · ${fmtUSD(phase.rev)}`}
         </span>

@@ -20,7 +20,7 @@
 import { CaretRight, Lightning, Warning } from "@phosphor-icons/react";
 import { fmtUSD, pace, phaseTitle, UNLOCK_AT, type Phase } from "../../lib/mock/campaigns";
 import {
-  campaignLabel, openCampaign, openPhase, showCampaignList, useActiveCampaign, useAds,
+  campaignLabel, openCampaign, openPhase, showCampaignList, useActiveCampaign, useActivity, useAds,
   useCampaignPhases, useDrill, useLivePhase, type Campaign,
 } from "../../lib/store";
 import { CampaignsList } from "./CampaignsList";
@@ -31,7 +31,9 @@ import { ActivityView } from "./ActivityView";
 import { PhaseDetail } from "./PhaseDetail";
 import { RevenueChart } from "./RevenueChart";
 import { Section, Surface, Tile } from "./kit";
-import { AgentMoves, AskChip } from "./HeyMoon";
+import { AskChip } from "./HeyMoon";
+import { LeadMoves } from "./LeadMoves";
+import { leadMoves } from "../../lib/agent/moves";
 import { phasesSentence } from "../../lib/agent/tools";
 
 
@@ -161,6 +163,8 @@ function Crumbs({ campaign, phase }: { campaign: Campaign; phase: Phase | null }
 function OneCampaign() {
   const phase = useLivePhase();
   const phases = useCampaignPhases();
+  const ads = useAds();
+  const activity = useActivity();
 
   if (!phase) {
     return (
@@ -178,15 +182,11 @@ function OneCampaign() {
   const promised = phases.reduce((n, ph) => n + (ph.revTarget ?? 0), 0);
   const pct = target ? Math.round((phase.rev / target) * 100) : 0;
   const crossed = p ? p.pctNow >= UNLOCK_AT * 100 : false;
+  /* B · Grow the lead: where the phase lands, and the moves that add the most (lib/agent/moves). */
+  const lead = leadMoves({ phase, ads, activity });
 
   return (
     <div className="space-y-6">
-      {/* The one thing to do, above everything. If there is nothing,
-          this row is not rendered rather than rendered empty. */}
-      {/* The agents' next moves for this campaign, each a press away. It replaces the red "drafts need a decision"
-          bar, which said the same thing and could only send you elsewhere (HeyMoon.tsx). */}
-      <AgentMoves />
-
       {/* Two figures, which are the two questions: how is the phase
           that is running doing, and how is the campaign doing.
 
@@ -226,7 +226,7 @@ function OneCampaign() {
       {/* The chart and the ladder read together: the line is this
           phase, the rows are the phases around it. Side by side you can
           see which rung the line belongs to without scrolling. */}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-stretch">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
         <Section
           title="Sales against target"
           aside={
@@ -242,11 +242,29 @@ function OneCampaign() {
               it: the plot grows with the card and keeps the padding
               even on all four sides. */}
           <Surface className="flex h-full flex-col p-5">
-            <div className="flex min-h-[300px] flex-1 flex-col justify-center">
-              <RevenueChart phase={phase} />
+            {/* The three numbers the line and the moves card share. */}
+            <div className="flex flex-wrap gap-x-8 gap-y-2">
+              {([
+                ["Sold", fmtUSD(phase.rev), "text-ink"],
+                ["On pace for", fmtUSD(lead.onPace), "text-ink"],
+                ...(lead.withMoves > lead.onPace ? [["With the moves", fmtUSD(lead.withMoves), "text-[#A21CAF]"]] : []),
+              ] as const).map(([k, v, c]) => (
+                <div key={k}>
+                  <p className="text-[11px] text-ink-faint">{k}</p>
+                  <p className={`num text-[24px] font-semibold tracking-[-0.02em] ${c}`}>{v}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 flex min-h-[280px] flex-1 flex-col justify-center">
+              <RevenueChart phase={phase} projection={{ onPace: lead.onPace, withMoves: lead.withMoves }} />
             </div>
           </Surface>
         </Section>
+
+        <LeadMoves phase={phase} moves={lead.moves} />
+      </div>
+
+      <div>
 
         <Section
           title="The phases"

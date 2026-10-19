@@ -124,6 +124,8 @@ export interface ActivityEntry {
   effect: string;
   undone: boolean;
   undoable: boolean;
+  /** For a move made from the campaign's moves: the sales it was estimated to add, so the forecast keeps it. */
+  adds?: number;
   /** Only when `undoable` is false: what reversing it would actually
       take, in the entry's own words rather than one sentence the log
       prints over every irreversible action. */
@@ -693,6 +695,14 @@ export const undoActivity = (id: string) =>
 
 export const redoActivity = (id: string) =>
   set((s) => ({ activity: s.activity.map((a) => (a.id === id ? { ...a, undone: false } : a)) }));
+
+/** Something done in the phase at the brand's press (a budget move from the campaign's moves), logged beside what
+    the agents did on their own so the activity log is the one record, with the same undo. */
+export const logActivity = (e: ActivityEntry) => set((s) => ({ activity: [e, ...s.activity] }));
+
+/** For code outside React (lib/demo.ts): whether this browser has built anything, and who is signed in. */
+export const hasCampaigns = () => { hydrate(); return state.campaignOrder.length > 0; };
+export const currentAccount = () => { hydrate(); return state.account; };
 
 export const setLocale = (l: "en" | "ar") => {
   try { localStorage.setItem(LOCALE_KEY, l); } catch {}
