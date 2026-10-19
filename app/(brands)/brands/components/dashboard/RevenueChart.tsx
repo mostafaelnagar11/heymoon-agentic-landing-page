@@ -22,7 +22,6 @@ import { useState } from "react";
 import { fmtUSD, revenueSeries, UNLOCK_AT, type Phase } from "../../lib/mock/campaigns";
 
 const W = 720;
-const H = 360;
 const PAD = { t: 14, r: 16, b: 24, l: 56 };
 
 /** Where the line is heading (B · Grow the lead): at the current rate, and with the campaign's moves made. */
@@ -30,7 +29,13 @@ export interface Projection { onPace: number; withMoves?: number }
 
 const MOVES_HUE = "#A21CAF";
 
-export function RevenueChart({ phase, projection }: { phase: Phase; projection?: Projection }) {
+export function RevenueChart({ phase, projection, height = 360 }: {
+  phase: Phase;
+  projection?: Projection;
+  /** The viewBox height against a 720 width: 360 on the phase page, shorter on the campaign overview. */
+  height?: number;
+}) {
+  const H = height;
   const [at, setAt] = useState<number | null>(null);
   const pts = revenueSeries(phase);
   if (!pts.length || !phase.revTarget) return null;

@@ -13,11 +13,11 @@
  * and says plainly that everything else is priced when it opens.
  */
 
-import { ArrowRight, LockSimple } from "@phosphor-icons/react";
+import { ArrowRight, CheckCircle, CreditCard, LockSimple } from "@phosphor-icons/react";
 import {
   fmtUSD, pace, phaseTitle, UNLOCK_AT, vatOn, withVat, type Phase,
 } from "../../lib/mock/campaigns";
-import { useAds, type Campaign } from "../../lib/store";
+import { queuePhase, useAds, type Campaign } from "../../lib/store";
 import { useGo } from "../../lib/surface";
 import { RevenueChart } from "./RevenueChart";
 import { DataRow, Section, Surface, Tile } from "./kit";
@@ -33,7 +33,9 @@ export function PhaseDetail({ campaign, phase }: { campaign: Campaign; phase: Ph
 
   return (
     <div className="space-y-6">
-      {!ran ? (
+      {phase.status === "ready" || phase.status === "queued" ? (
+        <StartPhase campaign={campaign} phase={phase} />
+      ) : !ran ? (
         <Surface className="p-5">
           <p className="flex items-center gap-2 text-body font-semibold text-ink">
             <LockSimple size={14} weight="fill" aria-hidden className="text-ink-faint" />
@@ -136,5 +138,51 @@ export function PhaseDetail({ campaign, phase }: { campaign: Campaign; phase: Ph
         {phase.end ? ` · closed ${phase.end}` : ""}
       </p>
     </div>
+  );
+}
+
+/* Starting a later phase (the campaign page's Start, 20 Oct). It is paid now and runs the day the live phase closes,
+   so two phases never run at once. Paying is the brand's press, here as everywhere; no agent can make it. */
+function StartPhase({ campaign, phase }: { campaign: Campaign; phase: Phase }) {
+  const prev = campaign.phases.find((p) => p.phaseNo === phase.phaseNo - 1);
+  const live = campaign.phases.find((p) => p.status === "live");
+  const name = phaseTitle(phase.phaseNo).split(" · ")[0];
+  const prevName = prev ? phaseTitle(prev.phaseNo).split(" · ")[0] : "the phase before";
+  const vat = withVat(phase.budget) - phase.budget;
+  const paid = phase.status === "queued";
+  return (
+    <Surface className="p-5">
+      <p className="flex items-center gap-2 text-body font-semibold text-ink">
+        {paid
+          ? <CheckCircle size={15} weight="fill" aria-hidden className="text-good" />
+          : <span aria-hidden className="h-2 w-2 rounded-full bg-amber" />}
+        {paid ? `${name} is paid` : `${name} is ready`}
+      </p>
+      <p className="mt-1 text-meta text-ink-soft">
+        {paid
+          ? `It starts the day ${prevName} closes${live?.plannedDays && live.dayOfPhase ? `, in ${live.plannedDays - live.dayOfPhase} days` : ""}.`
+          : `${prevName} passed ${Math.round(UNLOCK_AT * 100)}% of its target. Start it now and it begins the day ${prevName} closes.`}
+      </p>
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <Tile label="Budget" value={fmtUSD(phase.budget)} />
+        <Tile label="Guarantee" value={`${phase.guaranteedRoas}x`} />
+        <Tile tone="hero" label="Sales guaranteed" value={fmtUSD(Math.round(phase.budget * phase.guaranteedRoas))} />
+      </div>
+      {!paid && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-control border border-hairline bg-rail px-4 py-3">
+          <CreditCard size={16} weight="fill" aria-hidden className="text-ink-faint" />
+          <p className="min-w-0 flex-1 text-meta text-ink-soft">
+            <span className="num font-semibold text-ink">{fmtUSD(phase.budget)}</span> + {fmtUSD(vat)} VAT · Visa ••••4629
+          </p>
+          <button
+            type="button"
+            onClick={() => queuePhase(phase.id)}
+            className="g-button inline-flex h-10 items-center rounded-pill border border-white/50 px-5 text-body font-semibold text-[#FBF8FE]"
+          >
+            Pay {fmtUSD(withVat(phase.budget))}
+          </button>
+        </div>
+      )}
+    </Surface>
   );
 }

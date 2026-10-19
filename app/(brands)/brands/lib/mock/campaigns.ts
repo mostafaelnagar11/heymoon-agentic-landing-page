@@ -52,7 +52,9 @@ export function fmtCount(n: number) {
 }
 export const pct = (n: number) => `${Math.round(n)}%`;
 
-export type PhaseStatus = "live" | "ready" | "locked" | "ended";
+/* "queued": paid while the phase before it is still running; it starts the day that one closes, so two phases never
+   run at once (the campaign page's Start, 20 Oct). */
+export type PhaseStatus = "live" | "ready" | "locked" | "ended" | "queued";
 
 export interface Phase {
   id: string;

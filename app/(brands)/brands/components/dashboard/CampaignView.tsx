@@ -20,32 +20,31 @@
 import { CaretRight, Lightning, Warning } from "@phosphor-icons/react";
 import { fmtUSD, pace, phaseTitle, UNLOCK_AT, type Phase } from "../../lib/mock/campaigns";
 import {
-  campaignLabel, openCampaign, openPhase, showCampaignList, useActiveCampaign, useActivity, useAds,
+  campaignLabel, openCampaign, showCampaignList, useActiveCampaign, useActivity, useAds,
   useCampaignPhases, useDrill, useLivePhase, type Campaign,
 } from "../../lib/store";
 import { CampaignsList } from "./CampaignsList";
 import { CreatorsView } from "./CreatorsView";
-import { InboxView } from "./InboxView";
 import { AdsView } from "./AdsView";
 import { ActivityView } from "./ActivityView";
 import { PhaseDetail } from "./PhaseDetail";
 import { RevenueChart } from "./RevenueChart";
-import { Section, Surface, Tile } from "./kit";
-import { AskChip } from "./HeyMoon";
+import { Surface } from "./kit";
 import { LeadMoves } from "./LeadMoves";
+import { CampaignHeader, PhaseStepper, TopSellers, WaitingOnYou, WhoSelling } from "./CampaignOverview";
 import { leadMoves } from "../../lib/agent/moves";
-import { phasesSentence } from "../../lib/agent/tools";
 
 
 /** The five faces of one campaign. They were five rows in the rail,
     ranked alongside Campaigns itself, which made them read as five
     places rather than five views of one thing — and they are views of
     one thing: switch the brand and every one of them changes. */
+/* Four (20 Oct redesign). "Needs you" went: the moves beside the chart and the review in Ads say the same thing with
+   the presses attached. Its key still opens a campaign (as the Overview), so old deep links keep working. */
 export const CAMPAIGN_TABS = [
-  { key: "campaign", label: "Phases" },
+  { key: "campaign", label: "Overview" },
   { key: "ads", label: "Ads" },
   { key: "creators", label: "Creators" },
-  { key: "inbox", label: "Needs you" },
   { key: "activity", label: "Activity" },
 ] as const;
 export type CampaignTab = (typeof CAMPAIGN_TABS)[number]["key"];
@@ -75,41 +74,39 @@ export function CampaignView({ tab = "campaign", onTab }: {
      face of the active one rather than dropping you on the list of
      brands to find it yourself. */
   if (!campaign || (drill.level === "list" && tab === "campaign")) return <CampaignsList />;
+  const live = campaign.phases.find((p) => p.status === "live") ?? null;
 
   const phase = drill.phaseId ? phases.find((p) => p.id === drill.phaseId) ?? null : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <Crumbs campaign={campaign} phase={phase} />
-      {/* The tabs belong to the campaign, not to the phase: drilling
-          into one rung is a level deeper than choosing which face of
-          the campaign to look at, so the row steps aside there. */}
+      {/* Which campaign this is, above every face of it (CampaignOverview.tsx). The tabs belong to the campaign, not
+          to the phase: drilling into one rung steps them aside. */}
+      {!phase && <CampaignHeader campaign={campaign} />}
       {!phase && (
-        <div role="tablist" aria-label="Campaign" className="flex flex-wrap gap-1 rounded-pill bg-lilac/70 p-1">
-          {CAMPAIGN_TABS.map((t) => (
-            <button
-              key={t.key}
-              role="tab"
-              aria-selected={tab === t.key}
-              onClick={() => onTab?.(t.key)}
-              className={`flex items-center gap-1.5 rounded-pill px-3.5 py-1.5 text-body transition ${
-                tab === t.key
-                  ? "bg-white font-semibold text-main shadow-card"
-                  : "font-normal text-ink-50 hover:bg-white/60 hover:text-ink-90"
-              }`}
-            >
-              {t.label}
-              {t.key === "inbox" && waiting > 0 && (
-                <span
-                  className={`grid h-5 min-w-5 place-items-center rounded-pill px-1 text-tiny font-semibold ${
-                    tab === t.key ? "bg-main text-white" : "bg-danger/[0.10] text-danger"
-                  }`}
-                >
-                  {waiting}
-                </span>
-              )}
-            </button>
-          ))}
+        <div role="tablist" aria-label="Campaign" className="flex flex-wrap gap-1 border-b border-hairline">
+          {CAMPAIGN_TABS.map((t) => {
+            const on = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={on}
+                onClick={() => onTab?.(t.key)}
+                className={`-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-body transition ${
+                  on ? "border-main font-semibold text-ink" : "border-transparent text-ink-50 hover:text-ink-90"
+                }`}
+              >
+                {t.label}
+                {t.key === "ads" && waiting > 0 && (
+                  <span className="grid h-5 min-w-5 place-items-center rounded-pill bg-danger/[0.10] px-1 text-tiny font-semibold text-danger">
+                    {waiting}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
       {phase ? (
@@ -124,9 +121,10 @@ export function CampaignView({ tab = "campaign", onTab }: {
           </p>
         </Surface>
       ) : tab === "creators" ? (
-        <CreatorsView />
-      ) : tab === "inbox" ? (
-        <InboxView />
+        <div className="space-y-6">
+          {live && <WhoSelling phase={live} />}
+          <CreatorsView />
+        </div>
       ) : tab === "ads" ? (
         <AdsView />
       ) : tab === "activity" ? (
@@ -166,171 +164,61 @@ function OneCampaign() {
   const ads = useAds();
   const activity = useActivity();
 
+  /* Between phases there is no line to draw and nothing selling; the row of phases says where things stand. */
   if (!phase) {
     return (
-      <Surface className="p-6 text-center">
-        <p className="text-body text-ink-soft">No phase is running. Start one from the campaign you built.</p>
-      </Surface>
+      <div className="space-y-6">
+        <PhaseStepper phases={phases} />
+        <Surface className="p-6 text-center">
+          <p className="text-body text-ink-soft">No phase is running. Open the next one above to start it.</p>
+        </Surface>
+      </div>
     );
   }
 
   const p = pace(phase);
-  const target = phase.revTarget ?? 0;
-  /* The same two sums the card in the list shows, computed the same
-     way, so the page you land on carries the number you clicked. */
-  const earned = phases.reduce((n, ph) => n + ph.rev, 0);
-  const promised = phases.reduce((n, ph) => n + (ph.revTarget ?? 0), 0);
-  const pct = target ? Math.round((phase.rev / target) * 100) : 0;
   const crossed = p ? p.pctNow >= UNLOCK_AT * 100 : false;
   /* B · Grow the lead: where the phase lands, and the moves that add the most (lib/agent/moves). */
   const lead = leadMoves({ phase, ads, activity });
 
   return (
     <div className="space-y-6">
-      {/* Two figures, which are the two questions: how is the phase
-          that is running doing, and how is the campaign doing.
+      {/* 1 · The phases as one row: what each sold against what it guarantees, and the next one to start. */}
+      <PhaseStepper phases={phases} />
 
-          There were four. "This phase at close" was a FORECAST, and a
-          forecast beside a guarantee is the one thing this product has
-          been careful not to print anywhere: it reads as a second,
-          softer promise sitting next to the real one, and a brand who
-          reads $19,895 there will remember that number rather than the
-          $16,000 HeyMoon actually signed. "Waiting on you" was the
-          fourth copy of the same 6 — the action bar directly above it
-          says it in a sentence with a button, the Needs you tab wears
-          it as a badge, and so does the brand in the rail.
-
-          What is left is labelled with what it counts, because three
-          screens show sales for this campaign and they count different
-          things: the card in the list sums every phase, this view is
-          about the phase running now, and the phase page is one rung. */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Tile
-          tone="hero"
-          label={`${phaseTitle(phase.phaseNo).split(" · ")[0]} sales`}
-          value={fmtUSD(phase.rev)}
-          sub={`${pct}% of ${fmtUSD(target)}`}
-          foot={
-            <div className="h-1 w-full overflow-hidden rounded-pill bg-white/25">
-              <div className="h-full rounded-pill bg-white" style={{ width: `${Math.min(100, pct)}%` }} />
-            </div>
-          }
-        />
-        <Tile
-          label="Campaign to date"
-          value={fmtUSD(earned)}
-          sub={promised ? `of ${fmtUSD(promised)} guaranteed` : "across every phase"}
-        />
-      </div>
-
-      {/* The chart and the ladder read together: the line is this
-          phase, the rows are the phases around it. Side by side you can
-          see which rung the line belongs to without scrolling. */}
+      {/* 2 · Where the running phase is heading, beside the moves that change it. */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
-        <Section
-          title="Sales against target"
-          aside={
-            <span className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] font-semibold ${
+        <Surface className="p-5">
+          <div className="flex flex-wrap items-start gap-x-8 gap-y-2">
+            {([
+              ["Sold", fmtUSD(phase.rev), "text-ink"],
+              ["On pace for", fmtUSD(lead.onPace), "text-ink"],
+              ...(lead.withMoves > lead.onPace ? [["With the moves", fmtUSD(lead.withMoves), "text-[#A21CAF]"]] : []),
+            ] as const).map(([k, v, c]) => (
+              <div key={k}>
+                <p className="text-[11px] text-ink-faint">{k}</p>
+                <p className={`num text-[24px] font-semibold tracking-[-0.02em] ${c}`}>{v}</p>
+              </div>
+            ))}
+            <span className={`ms-auto inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] font-semibold ${
               crossed ? "bg-good/10 text-good-deep" : "bg-brand/10 text-brand"
             }`}>
               {crossed ? <Lightning size={11} weight="fill" aria-hidden /> : <Warning size={11} weight="fill" aria-hidden />}
               {crossed ? "Next phase unlocked" : `${p?.daysToUnlock ?? 0} days to the unlock line`}
             </span>
-          }
-        >
-          {/* The chart earns the extra height rather than floating in
-              it: the plot grows with the card and keeps the padding
-              even on all four sides. */}
-          <Surface className="flex h-full flex-col p-5">
-            {/* The three numbers the line and the moves card share. */}
-            <div className="flex flex-wrap gap-x-8 gap-y-2">
-              {([
-                ["Sold", fmtUSD(phase.rev), "text-ink"],
-                ["On pace for", fmtUSD(lead.onPace), "text-ink"],
-                ...(lead.withMoves > lead.onPace ? [["With the moves", fmtUSD(lead.withMoves), "text-[#A21CAF]"]] : []),
-              ] as const).map(([k, v, c]) => (
-                <div key={k}>
-                  <p className="text-[11px] text-ink-faint">{k}</p>
-                  <p className={`num text-[24px] font-semibold tracking-[-0.02em] ${c}`}>{v}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-2 flex min-h-[280px] flex-1 flex-col justify-center">
-              <RevenueChart phase={phase} projection={{ onPace: lead.onPace, withMoves: lead.withMoves }} />
-            </div>
-          </Surface>
-        </Section>
-
+          </div>
+          <div className="mt-2">
+            <RevenueChart phase={phase} projection={{ onPace: lead.onPace, withMoves: lead.withMoves }} height={280} />
+          </div>
+        </Surface>
         <LeadMoves phase={phase} moves={lead.moves} />
       </div>
 
-      <div>
-
-        <Section
-          title="The phases"
-          aside={
-            <AskChip
-              q="How do the phases work?"
-              say={
-                `Every brand gets the same three phases: ${phasesSentence()}. You start one at a time. Each phase after ` +
-                `the first is offered when the one before it reaches ${Math.round(UNLOCK_AT * 100)}% of its target, and ` +
-                `you decide then. If a phase falls short, you get back the same share of what you paid for it.`
-              }
-            />
-          }
-        >
-          {/* Three rungs in a card sized for the chart beside it left a
-              third of the card empty. The rows share the height evenly
-              instead, so the list reads as a ladder with rungs at equal
-              intervals, which is what it is. */}
-          <Surface className="flex h-full flex-col">
-            <ul className="flex flex-1 flex-col divide-y divide-hairline">
-              {phases.map((ph) => {
-                const isLive = ph.id === phase.id;
-                const done = ph.status === "ended";
-                return (
-                  <li key={ph.id} className="flex flex-1">
-                  <button
-                    onClick={() => openPhase(ph.id)}
-                    className="flex w-full items-center gap-3 px-5 py-4 text-start transition hover:bg-brand/[0.03]"
-                  >
-                    <span
-                      aria-hidden
-                      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${
-                        isLive ? "bg-brand text-white" : done ? "bg-good/15 text-good-deep" : "bg-neutral-100 text-ink-faint"
-                      }`}
-                    >
-                      {ph.phaseNo}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-body font-medium text-ink">{phaseTitle(ph.phaseNo)}</span>
-                      {/* The arithmetic, whole (Mostafa, 18 Oct: "1x 1000 = 1000$, 2x $2000 = 4000$"): the budget, the
-                          multiple and what they guarantee. A bare multiple beside a bare sales figure read as
-                          though the two did not belong to each other. */}
-                      <span className="block truncate text-[11px] text-ink-faint">
-                        {fmtUSD(ph.budget)} at {ph.guaranteedRoas}x · {fmtUSD(Math.round(ph.budget * ph.guaranteedRoas))} guaranteed
-                      </span>
-                    </span>
-                    {/* What it has sold, against what it guarantees. Nothing for a phase not started. */}
-                    <span className="shrink-0 text-end">
-                      <span className="block text-body font-semibold tabular-nums text-ink">
-                        {ph.status === "live" || ph.status === "ended" ? fmtUSD(ph.rev) : "—"}
-                      </span>
-                      {(ph.status === "live" || ph.status === "ended") && (
-                        <span className="block text-[11px] tabular-nums text-ink-faint">sold</span>
-                      )}
-                    </span>
-                    <CaretRight size={11} weight="bold" aria-hidden className="shrink-0 text-ink-faint rtl:rotate-180" />
-                  </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </Surface>
-        </Section>
+      {/* 3 · Who is selling, next to what is waiting on the brand. */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <TopSellers phase={phase} />
+        <WaitingOnYou phase={phase} />
       </div>
-
     </div>
   );
 }
-

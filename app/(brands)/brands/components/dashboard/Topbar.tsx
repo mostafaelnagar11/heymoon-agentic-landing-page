@@ -77,7 +77,7 @@ export function DashboardTopbar({
           : <List size={18} aria-hidden />}
       </button>
 
-      <h1 className="shrink-0 text-head font-semibold text-ink">{title}</h1>
+      <h1 className="min-w-0 truncate text-head font-semibold text-ink">{title}</h1>
 
       <div className="ms-auto flex shrink-0 items-center gap-2">
         {/* HeyMoon, asked in words. It used to be a toggle for a chat rail; the agents work in the page now and

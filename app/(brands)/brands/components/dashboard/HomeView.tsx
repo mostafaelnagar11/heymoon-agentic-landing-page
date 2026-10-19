@@ -48,7 +48,7 @@ import { RevenueRuler } from "../Ruler";
 /* Ladder arithmetic                                                   */
 /* ------------------------------------------------------------------ */
 
-const isFunded = (p: Phase) => p.status === "live" || p.status === "ended";
+const isFunded = (p: Phase) => p.status === "live" || p.status === "ended" || p.status === "queued";
 const sumBy = (rows: Phase[], pick: (p: Phase) => number) => rows.reduce((n, p) => n + pick(p), 0);
 
 
@@ -90,7 +90,13 @@ function StatusBadge({ status }: { status: PhaseStatus }) {
   if (status === "locked") return (
     <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-hairline bg-wash px-2.5 py-1 text-[11px] font-semibold text-ink-faint">
       <LockSimple size={11} weight="fill" aria-hidden />
-      Queued
+      Locked
+    </span>
+  );
+  if (status === "queued") return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-good/25 bg-good/[0.07] px-2.5 py-1 text-[11px] font-semibold text-good-deep">
+      <Check size={11} weight="bold" aria-hidden />
+      Paid · next
     </span>
   );
   return (

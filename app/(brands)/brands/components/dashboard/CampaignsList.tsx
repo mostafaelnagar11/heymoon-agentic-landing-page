@@ -60,7 +60,7 @@ function Card({ c, waiting }: { c: Campaign; waiting: number }) {
      but not bought and a locked one cannot be bought at all, so neither
      has a budget committed or a dollar earned: they stay out of the
      spend, or the card overstates what this campaign cost. */
-  const funded = c.phases.filter((p) => p.status === "live" || p.status === "ended");
+  const funded = c.phases.filter((p) => p.status === "live" || p.status === "ended" || p.status === "queued");
   /* Everything earned so far, across every phase that has run. A
      campaign is judged on its total, not on the rung it happens to be
      standing on. */

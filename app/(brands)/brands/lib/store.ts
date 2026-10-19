@@ -700,6 +700,16 @@ export const redoActivity = (id: string) =>
     the agents did on their own so the activity log is the one record, with the same undo. */
 export const logActivity = (e: ActivityEntry) => set((s) => ({ activity: [e, ...s.activity] }));
 
+/** A ready phase, paid for from its page. It waits for the live one to close rather than running beside it. */
+export const queuePhase = (phaseId: string) =>
+  set((s) => {
+    const id = s.activeCampaignId;
+    const c = id ? s.campaigns[id] : null;
+    if (!id || !c) return {};
+    const phases = c.phases.map((p) => (p.id === phaseId && p.status === "ready" ? { ...p, status: "queued" as const } : p));
+    return { campaigns: { ...s.campaigns, [id]: { ...c, phases } } };
+  });
+
 /** For code outside React (lib/demo.ts): whether this browser has built anything, and who is signed in. */
 export const hasCampaigns = () => { hydrate(); return state.campaignOrder.length > 0; };
 export const currentAccount = () => { hydrate(); return state.account; };
