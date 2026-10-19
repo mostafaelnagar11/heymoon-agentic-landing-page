@@ -31,10 +31,13 @@ import { Suspense, useCallback, useEffect, useRef, useState, type ReactNode } fr
 import { SignInSheet } from "../components/SignInSheet";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  BUILD_TASKS, PHASE1_BUDGET, ladderTotals, marketName, phasesSentence,
-  repair, suggestPlanShape, tools, underwriting,
+  BUILD_TASKS, PHASE1_BUDGET, PHASE_BUDGETS, PHASE_MULTIPLES, ladderTotals, marketName,
+  repair, tools, underwriting,
   type Repair,
 } from "../lib/agent/tools";
+import {
+  CREATORS_ANSWER, GOALS, HELD, TALK, firstAnswer, isEnterpriseHost, isQuestion, looksLikeName, lookupBrand,
+} from "../lib/agent/intake";
 import type { BrandRead, Plan, PlanChange, PlanPatch, ProductFocus, Report } from "../lib/agent/types";
 import { useStream } from "../lib/agent/useStream";
 import {
@@ -42,12 +45,12 @@ import {
   ROLES, accessFor, claimBrand, requestAccess, salesFirst, setRole, useRole,
   push, putApproval, putCampaign, putFunding, putPlan, putRead, threadIsEmpty,
   useActivePlan, useAds, useCampaigns, useActiveThreadId, useLivePhase, usePaid, usePhaseRequested,
-  useStore, type PanelView,
+  activeCampaignLive, isLaunching, markSent, startConversation, useActiveCampaign, useStore, type PanelView,
 } from "../lib/store";
 import { fmtUSD } from "../lib/mock/campaigns";
 import { getRead, readIdFor } from "../lib/agent/registry";
 import { normaliseUrl } from "../lib/mock/reads";
-import { maskEmail } from "../lib/email";
+import { looksLikeEmail, maskEmail } from "../lib/email";
 import { useT } from "../lib/i18n";
 import { Btn, Card } from "../components/ui";
 import { Thinking, Typed, WorkingLine } from "../components/Stream";
@@ -62,7 +65,9 @@ import {
 } from "../components/blocks";
 import { PlanCard } from "../components/PlanCard";
 import { shortfallLine } from "../lib/agent/guarantee";
-import { IncludesBlock, MarketsPick, ProductsPick, focusText } from "../components/ScopeBlocks";
+import {
+  BriefChoiceBlock, EmailSentBlock, IncludesBlock, MarketsPick, ProductsPick, focusText, type BriefSource,
+} from "../components/ScopeBlocks";
 
 /* What the Phase 1 payment was made against. After the phase is paid an
    edit to any of these is not applied — the agent carries it into Phase 2
@@ -86,7 +91,12 @@ const WHY_CHIP = `Why is it ${fmtUSD(PHASE1_BUDGET)}?`;
    this row offered four. A plan on screen can always be started, so the
    way to start it is always on screen. `liveChips` takes it back out
    once the payment card is open, so it is never offered twice. */
-const PRE_CHIPS = ["Start Phase 1", "Kuwait only", "Women 25 to 45", "See all three phases", WHY_CHIP];
+const PRE_CHIPS = ["Start Phase 1", "I still want to talk it through", "Email me the plan", "Kuwait only", "See all three phases"];
+/* The three ways out of a finished plan (brand flows, P0 "ready?"): start, keep talking, or leave with it saved. The
+   second is as plain as the first, because 56% of what a brand asks at kickoff it already asked once (19 Oct). */
+const READY_CHIPS = ["Start Phase 1", "I still want to talk it through", "Email me the plan"];
+/* Phase 1, explained before any plan (brand flows, P0): the questions brands ask about it, then on. */
+const PHASE1_CHIPS = ["Makes sense", "How does the refund work?", "Any other fees?", "Can I choose the creators?"];
 /* After payment there is exactly one thing left to do, and it is now
    ON the dashboard: the connect step moved there, because a task with
    no deadline does not belong in a thread that scrolls away. So the
@@ -155,6 +165,18 @@ const PANEL_INTENT: { re: RegExp; view: PanelView; say: string }[] = [
   },
 ];
 
+/** What the agent is waiting on (see `wait` below). */
+type Wait =
+  | null | "store" | "other-store" | "goal" | "focus" | "launch-note" | "products" | "phase1"
+  | "brief-choice" | "brief-1" | "brief-2" | "brief-3" | "email" | "email-them";
+
+/** What the brand settles before the plan is built (brand flows, P0). */
+type Scope = { markets?: string[]; focus?: ProductFocus; brief?: BriefSource };
+
+/** "a or b", for the stores a brand name points at. */
+const orList = (parts: string[]) =>
+  parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} or ${parts[parts.length - 1]}`;
+
 function ChatInner() {
   const { t } = useT();
   const router = useRouter();
@@ -170,6 +192,8 @@ function ChatInner() {
   const approvals = useStore((s) => s.approvals);
   const connected = useStore((s) => (s.activeCampaignId ? s.campaigns[s.activeCampaignId]?.connectedStore ?? null : null));
   const account = useAccount();
+  /* Paid and not live yet: the launch checklist on the dashboard is where they are (brand flows, P2). */
+  const launching = isLaunching(useActiveCampaign());
   const role = useRole();
   const brands = useStore((s) => s.brands);
   const [signInOpen, setSignIn] = useState(false);
@@ -194,6 +218,9 @@ function ChatInner() {
      brand's own message. So it survives a reload, and it is per thread
      for free — a second campaign has not asked anything yet. */
   const EXPLAINERS = new Set(["What happens next?", WHY_CHIP]);
+  /* Whether this conversation has read a store yet. Before it has, whatever the brand types is a link, a brand name
+     or a question (brand flows, P0). */
+  const hasRead = thread.some((i) => i.kind === "read");
   const asked = new Set(thread.filter((i) => i.kind === "user").map((i) => (i as { text: string }).text));
 
   /* "Start Phase 1" comes out of the chip row the moment the card
@@ -218,35 +245,24 @@ function ChatInner() {
      "Something's off" parks the build until the brand says what — the
      next message is recorded as a correction and the build proceeds. */
   const [pendingRead, setPendingRead] = useState<BrandRead | null>(null);
-  /* The two numbers the calculator owns, before there is a plan to hold
-     them. Once the plan exists it is the source of truth and this only
-     mirrors it. */
-  const [shape, setShape] = useState(() => suggestPlanShape());
-  const [shapeSettled, setShapeSettled] = useState(false);
-  /* The calculator IS the question while it is open. Chips underneath it
-     would offer a second answer to a question the block already asks. */
-  /* The agent is waiting on two numbers. This is not a form — it is a
-     question, and it stays open until the brand answers it in words. */
-  /* Whether the two-numbers question is on the table.
- 
-     This used to be detected by grepping the thread for the phrase
-     "two numbers to settle". Rewriting that sentence silently killed
-     the entire calculator: `awaitingShape` went permanently false, and
-     answering "$60,000 at 5×" fell through to the plan interpreter,
-     which read the 5× as a strategy change. A copy edit should never
-     be able to switch off a branch of the product, so the state is
-     state now and the sentence is just a sentence. */
-  const [shapeAsked, setShapeAsked] = useState(false);
-  const awaitingShape = shapeAsked && !shapeSettled && !plan;
+  /* The one answer the agent is waiting on, when it asked for something specific: a store, the brand's goal, what
+     is launching, which products, the questions about Phase 1, the brief, an email address. State rather than a
+     sentence matched in the thread, so rewording a question can never switch its answer off. */
+  const [wait, setWait] = useState<Wait>(null);
+  /* What the brand said it is hoping for, and whether Phase 1 has been explained. Per conversation. */
+  const goalRef = useRef<string | null>(null);
+  const explainedRef = useRef(false);
+  /* The brief, written with the agent one question at a time. */
+  const briefDraft = useRef<{ feel: string; must: string }>({ feel: "", must: "" });
   const [awaitingCorrection, setAwaitingCorrection] = useState(false);
   /* The scope the brand confirms before the plan is built (brand team, 15 Oct): which markets, which products. A
      ref beside the state, because the build's completion callback reads it after the closure that started it. */
-  const [scope, setScopeState] = useState<{ markets?: string[]; focus?: ProductFocus }>({});
+  const [scope, setScopeState] = useState<Scope>({});
   const scopeRef = useRef(scope);
   /* The build's callback outlives the render that started it, so it reads the role through a ref. */
   const roleRef = useRef(role);
   roleRef.current = role;
-  const setScope = (next: { markets?: string[]; focus?: ProductFocus }) => { scopeRef.current = next; setScopeState(next); };
+  const setScope = (next: Scope) => { scopeRef.current = next; setScopeState(next); };
   /* Which agent messages have finished typing. Held here rather than in
      the store: it is a property of this viewing, not of the thread. */
   const [typedDone, setTypedDone] = useState<Record<string, true>>({});
@@ -263,6 +279,10 @@ function ChatInner() {
     : thread;
   const qs = useSearchParams();
   const buildFor = qs.get("build");
+  /* What the landing field passed when it was not a link: a brand name or a question (brand flows, P0). */
+  const firstText = qs.get("q");
+  /* From the plan email's link, or the dashboard's "Pick up where you left off" (brand flows, P1). */
+  const back = qs.has("back");
   const readUrl = qs.get("read") ? normaliseUrl(qs.get("read")!) : null;
   const build = useStream<Plan>();
   /* The build roster waits for the sentence introducing it. Declared
@@ -318,7 +338,24 @@ function ChatInner() {
      plan assembles in front of you, and it ends by asking you something
      — which is what makes the next turn yours. */
   useEffect(() => {
+    const existing0 = activePlanLive();
+    /* Read from the store, not from this render: on a cold load the first render has not seen the saved session yet,
+       and a paid brand was welcomed back as if they had never paid. */
+    const camp0 = activeCampaignLive();
+    const paid0 = !!camp0?.paid;
+    if (back) {
+      /* Taken off the URL, so a reload does not welcome them back twice. */
+      const q = new URLSearchParams(window.location.search);
+      q.delete("back");
+      window.history.replaceState(null, "", window.location.pathname + (q.toString() ? `?${q}` : ""));
+      if (existing0 && !paid0 && claimOnce(`back:${threadId}`)) { welcomeBack(existing0); return; }
+    }
     if (!threadIsEmpty()) return;
+    if (firstText && !readUrl) {
+      push({ kind: "user", text: firstText });
+      intake(firstText);
+      return;
+    }
     if (readUrl) {
       /* A read that already finished is shown as it stands, not re-run.
          The agent picks the conversation up at the question it would
@@ -340,21 +377,24 @@ function ChatInner() {
       return;
     }
     if (existing) {
+      /* Unpaid, it is a return visit (brand flows, P1). Paid, the plan and the brief are what they came back for
+         (19 Oct review: "a way back to the plan and brief after paying"). */
+      if (!paid0) { welcomeBack(existing); return; }
       push({
         kind: "say",
-        text: paid
-          ? `Your campaign for ${existing.brandName}. Phase 1 is live and paid.`
-          : `Your campaign for ${existing.brandName}. Phase 1 is the ${fmtUSD(PHASE1_BUDGET)} warm-up.`,
+        text: isLaunching(camp0)
+          ? `Your plan for ${existing.brandName}, and the brief. Phase 1 is paid, and the launch checklist is on the dashboard.`
+          : `Your campaign for ${existing.brandName}. Phase 1 is live and paid.`,
       });
       push({ kind: "plan-card" });
-      if (paid) setAsking({ q: "", options: postChips });
-      else ask("Anything you want different about it?", ["Markets are right", "Kuwait only", "Go more aggressive", "See all three phases"]);
+      push({ kind: "brief-card" });
+      setAsking({ q: "", options: postChips });
     } else {
       push({
         kind: "say",
         text: campaignCount
-          ? "A new campaign, then. Paste the store link."
-          : "Nothing is planned yet. Paste a store link and I will build a campaign from it.",
+          ? "A new campaign, then. Paste the store link, or the brand's name."
+          : "Nothing is planned yet. Paste your store link, or tell me the brand's name, and I'll build a campaign from it.",
       });
     }
     /* Keyed on the thread, not on mount. Opening a second conversation
@@ -386,7 +426,8 @@ function ChatInner() {
       if (v.eligibility?.missing?.some((m) => /online store/i.test(m.label))) {
         say(`There's no online store at ${v.url}, so I stopped there. HeyMoon needs a store with a checkout to guarantee sales.`);
         push({ kind: "rejected", readId: v.id });
-        ask("Paste your store's link and I'll read that instead.", ["Read a different store"]);
+        ask("Paste your store's link, or the brand's name, and I'll read that instead.", []);
+        setWait("store");
         return;
       }
       say(`One thing didn't clear. Everything else stands.`);
@@ -427,7 +468,7 @@ function ChatInner() {
            second one begins — but only one may REPORT, or the brand sees
            the same answer twice. The claim is on the result, not on the
            attempt. */
-        if (!claimOnce(`read-done:${readUrl}`)) return;
+        if (!claimOnce(`read-done:${url}`)) return;
         afterRead(v);
       }
     );
@@ -489,23 +530,22 @@ function ChatInner() {
     push({ kind: "funding", requestId: req.id });
   };
 
-  /** The calculator's Build my plan. Settles the two numbers, then runs
-      the same build the conversation would have run. */
-  const confirmShape = (chosen: { planBudget: number; roas: number }) => {
-    /* Nothing to settle: the three phases are the same for every brand (PHASE_BUDGETS, PHASE_MULTIPLES). */
-    const r =
-      pendingRead ??
-      (readUrl ? getRead(readIdFor(readUrl)) : null) ??
-      (buildFor ? getRead(buildFor) : null) ??
-      (plan ? getRead(plan.readId) : null);
-    if (!r) return;
-    setShapeSettled(true);
-    say("Building it now.");
+  /** Everything is settled: build the plan. */
+  const buildNow = (r: BrandRead) => {
     setPendingRead(null);
-    startBuild(r, chosen);
+    setWait(null);
+    say("Building your plan now.");
+    startBuild(r);
   };
 
-  const startBuild = (read: BrandRead, withShape?: { planBudget: number; roas: number }) => {
+  /** The read this conversation is about, wherever it came from. */
+  const currentRead = () =>
+    pendingRead ??
+    (readUrl ? getRead(readIdFor(readUrl)) : null) ??
+    (buildFor ? getRead(buildFor) : null) ??
+    (plan ? getRead(plan.readId) : null);
+
+  const startBuild = (read: BrandRead) => {
     build.start(
       (ctx) => tools.propose_plan({ read, strategy: "balanced" }, ctx),
       (v0, cancelled) => {
@@ -520,11 +560,28 @@ function ChatInner() {
         if (sc.markets?.length && sc.markets.join() !== v0.markets.value.join() && !cancelled) {
           v1 = tools.edit_plan({ plan: v0, patch: { markets: sc.markets }, because: "because those are the markets you picked", by: "brand" }).plan;
         }
-        const v2 = withShape
+        /* A brief written with the agent goes in as the brand's own words: their line leads, their musts first. An
+           uploaded one is read in by name; the prototype cannot parse the file. */
+        const br = sc.brief;
+        /* The agent's own brief tells creators to cover the bestsellers. When the brand chose a launch or named
+           products, that line says what they chose instead. */
+        const f = sc.focus;
+        const lead = f?.kind === "launch" ? `Lead with the launch: ${f.note}` : f?.kind === "specific" ? `Cover one of: ${f.products.join(", ")}` : null;
+        const b0 = lead
+          ? { ...v1.brief.value, mustSay: { ...v1.brief.value.mustSay, value: v1.brief.value.mustSay.value.map((l) => (/^Cover one of:/.test(l) ? lead : l)) } }
+          : v1.brief.value;
+        if (lead && br?.kind !== "written") v1 = { ...v1, brief: { ...v1.brief, value: b0 } };
+        const v2 = br?.kind === "written" && !cancelled
           ? tools.edit_plan({
               plan: v1,
-              patch: { planBudget: withShape.planBudget },
-              because: "because that is the campaign you set",
+              patch: {
+                brief: {
+                  headline: br.feel.charAt(0).toUpperCase() + br.feel.slice(1),
+                  mustSay: [br.must, ...b0.mustSay.value].filter(Boolean),
+                  ...(br.mustNot && !/^(nothing|no|none)\b/i.test(br.mustNot) ? { mustNotSay: [br.mustNot, ...b0.mustNotSay.value] } : {}),
+                },
+              },
+              because: "because you wrote it with HeyMoon",
               by: "brand",
             }).plan
           : v1;
@@ -579,6 +636,7 @@ function ChatInner() {
             `And the part most brands do not believe until they read it: ${shortfallLine(v.budget.value, v.price.revenueTarget.value).replace(/^Fall/, "fall")}`,
         });
         push({ kind: "plan-card" });
+        if (br && br.kind !== "agent") push({ kind: "brief-card" });
         if (v.ladder.value.length) push({ kind: "ladder" });
         /* What the $1,000 buys, before the brand is asked to pay it (brand team, 15 Oct). */
         push({ kind: "includes" });
@@ -591,16 +649,10 @@ function ChatInner() {
            the panel covers the chat, and a brand who has just watched a
            plan being built should not lose the thread that built it. */
         if (typeof window !== "undefined" && window.innerWidth >= 768) openPanel("plan");
-        ask(
-          /* Not "this is a proposal, not a decision". That sentence
-             handed the brand a reason to hesitate at the exact moment
-             the plan is ready to start. The plan IS ready; what stays
-             open is what it is pointed at, and the price is the one
-             thing that never moves. */
-          `Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand. It isn't sized to your store, and it isn't negotiated. ` +
-          `Change anything else, or start now.`,
-          ["Start Phase 1", "Change something"]
-        );
+        /* Three ways out, all equally plain (brand flows, P0 "ready?"): start, keep talking, or leave with the plan
+           saved. The old line ("It isn't sized to your store, and it isn't negotiated") answered a question nobody
+           had asked yet, at the moment the brand was deciding. */
+        ask("That's the plan. Start Phase 1 when you're ready, or ask me anything first.", READY_CHIPS);
       }
     );
   };
@@ -617,93 +669,202 @@ function ChatInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildFor]);
 
-  /** The calculator's question: the plan size and the multiple, before anything is built. Asked after the brand has
-      confirmed the markets and the product focus. */
-  const askShape = () => {
-    /* Two numbers before anything is built, and the card asks
-       them. Saying "looks right" gets no sentence back at all:
-       the brand has just answered a question, and a paragraph
-       restating the question they answered is a turn that moves
-       nothing. The bar carries the pair, the confidence in it and
-       what it is worth; the chips carry the answers.
-
-       `shapeAsked` is STATE, not a sentence in the thread. The
-       calculator was once detected by grepping the transcript for
-       its own opening line, and rewriting that line switched the
-       whole branch off. */
-    const sug = suggestPlanShape();
-    setShape(sug);
-    setShapeSettled(false);
-    setShapeAsked(true);
-    /* The client's pitch, in its own shape (the surprise, the number, "and the best part?"), with the figures made
-       true. It said $10k could make $40k+, that 4x+ was very possible and that the fee followed the ROAS delivered.
-       The plan is now the same for every brand (Mostafa, 18 Oct: $1,000 at 1x, $2,000 at 2x, $3,000 at 3x) and a
-       miss is a refund (brand team, 15 Oct), so the numbers are the plan's own and the best part is the refund.
-       There is nothing left to size, so the old calculator's question is gone: the brand builds it or asks. */
-    const t = ladderTotals();
-    const k = (n: number) => `$${Math.round(n / 1000)}k`;
-    say(
-      `Wow, okay... this is interesting.\n\n` +
-      `Do you know that ${k(t.budget)} in influencer spending could bring back ${k(t.revenue)} in guaranteed sales?\n\n` +
-      `That's three phases, each with its own guarantee: ${phasesSentence()}. You only start the first.\n\n` +
-      `And the best part?\n` +
-      `If a phase falls short, you get back the same share of what you paid for it. Wanna know more?`
-    );
-    ask("", ["Build the plan", "How does the guarantee work?"]);
+  /* ── Before the plan (brand flows, P0) ────────────────────────────
+     Role, then the goal in their words, then what it pushes, said in the conversation rather than picked on a card,
+     then where it runs, then Phase 1 explained, then the brief. `nextStep` asks whichever of those is still open,
+     so every path in (a chip, a sentence, a stopped build) lands on the same next question. */
+  const nextStep = (r: BrandRead) => {
+    setPendingRead(r);
+    if (!roleRef.current) { askRole(r); return; }
+    if (!goalRef.current) { askGoal(r); return; }
+    if (!scopeRef.current.focus && (r.bestsellers?.value.length ?? 0) > 0) { askFocus(r, ""); return; }
+    if (!scopeRef.current.markets && (r.markets?.value.length ?? 0) > 0) { askMarkets(r); return; }
+    if (!explainedRef.current) { askPhase1(); return; }
+    if (!scopeRef.current.brief) { askBrief(); return; }
+    buildNow(r);
   };
 
   /** Who the agent is talking to, asked once and remembered (BuyerRole). It decides what the conversation leads with,
       never what the plan is. */
   const askRole = (r: BrandRead) => {
-    setPendingRead(r);
     const name = r.identity?.name.value;
-    say(`Before I size it, a few quick ones. What do you do${name ? ` at ${name}` : ""}?`);
+    say(`What do you do${name ? ` at ${name}` : ""}?`);
     setAsking({ q: "", options: ROLES.map((x) => x.label) });
   };
 
   const onRole = (r: BrandRead, key: (typeof ROLES)[number]["key"]) => {
     setRole(key);
-    /* The guarantee first for everyone, because no one else offers one (brand team, 15 Oct). */
-    const lead = salesFirst(key)
-      ? `Then I'll keep this about sales. Every phase comes with sales guaranteed, and if one falls short you get the ` +
-        `same share of what you paid back.`
-      : `Then you'll want to know what kind of creators it uses and what they'll post, and the plan shows both. What ` +
-        `nobody else does is guarantee the sales, so that's where it starts: if a phase falls short, you get the same ` +
-        `share of what you paid back.`;
-    if ((r.markets?.value.length ?? 0) > 0 && !scopeRef.current.markets) { askMarkets(r, `${lead}\n\nFirst, where should it run?`); return; }
-    say(lead);
-    if (!scopeRef.current.focus && (r.bestsellers?.value.length ?? 0) > 0) askProducts(r);
-    else askShape();
+    roleRef.current = key;
+    say(salesFirst(key) ? "Then I'll keep this about sales." : "Then I'll show you the creators and what they'll post.");
+    nextStep(r);
   };
 
-  /** Scope step 1: which markets, from the ones the read found (MarketsPick). */
-  const askMarkets = (r: BrandRead, lead?: string) => {
-    setPendingRead(r);
-    say(lead ?? "Before I size it, two quick ones. First, where should it run?");
+  /** Their goal, in their words (brand flows, P0). */
+  const askGoal = (r: BrandRead) => {
+    const name = r.identity?.name.value;
+    ask(`What are you hoping this does for ${name ?? "you"}?`, [...GOALS]);
+    setWait("goal");
+  };
+
+  const onGoal = (r: BrandRead, text: string) => {
+    goalRef.current = text;
+    setWait(null);
+    if (text === GOALS[1] || /\b(launch|new collection|new product|drop|releas)/i.test(text)) {
+      ask("What's launching? Name the product or the collection, and roughly when.", []);
+      setWait("launch-note");
+      return;
+    }
+    askFocus(r, text === GOALS[2] ? "Then start where it's safest: what already sells." : "Then I'd point it at what already sells.");
+  };
+
+  /** What it pushes, asked in words (19 Oct review: "in conversation instead of the picker"). */
+  const askFocus = (r: BrandRead, lead: string) => {
+    const top = (r.bestsellers?.value ?? []).slice(0, 3).map((p) => p.name);
+    if (!top.length) { setScope({ ...scopeRef.current, focus: { kind: "bestsellers" } }); nextStep(r); return; }
+    ask(`${lead ? `${lead} ` : ""}Your bestsellers are the ${listOf(top)}. Push those, or something else?`, ["Push the bestsellers", "Something else"]);
+    setWait("focus");
+  };
+
+  const setFocus = (r: BrandRead, focus: ProductFocus) => {
+    setScope({ ...scopeRef.current, focus });
+    setWait(null);
+    nextStep(r);
+  };
+
+  /** Where it runs: the markets the read found (MarketsPick), with the regional-store note. */
+  const askMarkets = (r: BrandRead) => {
+    say("Where should it run?");
     push({ kind: "pick-markets", readId: r.id });
-    setAsking({ q: "", options: [] });
-  };
-
-  /** Scope step 2: what it pushes (ProductsPick). */
-  const askProducts = (r: BrandRead) => {
-    setPendingRead(r);
-    say("And what should it push?");
-    push({ kind: "pick-products", readId: r.id });
     setAsking({ q: "", options: [] });
   };
 
   const onMarkets = (r: BrandRead, codes: string[]) => {
     setScope({ ...scopeRef.current, markets: codes });
     push({ kind: "user", text: `Run it in ${listOf(codes.map(marketName))}` });
-    if (!scopeRef.current.focus && (r.bestsellers?.value.length ?? 0) > 0) askProducts(r);
-    else askShape();
+    nextStep(r);
   };
 
+  /** A product focus picked on the old card, in a conversation from before the question moved into words. */
   const onProducts = (r: BrandRead, focus: ProductFocus) => {
-    setScope({ ...scopeRef.current, focus });
     const top = (r.bestsellers?.value ?? []).slice(0, 3).map((p) => p.name);
     push({ kind: "user", text: focus.kind === "bestsellers" ? "Push my bestsellers" : `Push ${focusText(focus, top).replace(/^Your/, "my")}` });
-    askShape();
+    setFocus(r, focus);
+  };
+
+  /* Phase 1, explained before any plan (19 Oct review). The pitch keeps the client's own shape (the number, "and the
+     best part?") but leads with the step the brand is actually being asked to take, and why it is small. */
+  const askPhase1 = () => {
+    const t = ladderTotals();
+    const k = (n: number) => `$${Math.round(n / 1000)}k`;
+    const [b1, b2, b3] = PHASE_BUDGETS;
+    const [, m2, m3] = PHASE_MULTIPLES;
+    say(
+      `Before I build it, here's how it works.\n\n` +
+      `You start with Phase 1: ${fmtUSD(b1)} of creators, with ${fmtUSD(b1)} in sales guaranteed. It's small on purpose, ` +
+      `so you see them sell on your real orders before you spend more.\n\n` +
+      `When it reaches 80%, Phase 2 opens: ${fmtUSD(b2)} at ${m2}x. Then Phase 3: ${fmtUSD(b3)} at ${m3}x. ` +
+      `That's ${k(t.budget)} bringing back ${k(t.revenue)} in guaranteed sales.\n\n` +
+      `And the best part? If a phase falls short, you get back the same share of what you paid for it.`
+    );
+    setAsking({ q: "", options: PHASE1_CHIPS });
+    setWait("phase1");
+  };
+
+  /** Has a brief, or writes one with the agent (brand flows, P0). */
+  const askBrief = () => {
+    say("Last thing before I build it.");
+    push({ kind: "brief-choice" });
+    setAsking({ q: "", options: [] });
+    setWait("brief-choice");
+  };
+
+  const onBrief = (source: BriefSource, said: string) => {
+    const r = currentRead();
+    if (!r) return;
+    push({ kind: "user", text: said });
+    setScope({ ...scopeRef.current, brief: source });
+    if (source.kind === "upload") say(`Got it. I'll build the plan on ${source.file}, and keep your wording.`);
+    buildNow(r);
+  };
+
+  /** The three questions. From the card, the brand's answer is said for them; typed, it is already in the thread. */
+  const writeBrief = (fromCard: boolean) => {
+    if (fromCard) push({ kind: "user", text: "Write it with me" });
+    briefDraft.current = { feel: "", must: "" };
+    /* The card says which was chosen from here; the answers fill it in as they come. */
+    setScope({ ...scopeRef.current, brief: { kind: "written", feel: "", must: "", mustNot: "" } });
+    ask("Three quick ones. After someone sees a post, what should they feel or do?", []);
+    setWait("brief-1");
+  };
+
+  /** Plan saved and emailed: to the brand leaving for now, or to whoever decides (brand flows, P0 and P1). */
+  const emailPlan = (who: "self" | "them") => {
+    if (who === "self" && account) { sendPlan(account.email, false); return; }
+    ask(who === "self" ? "Where should I send it?" : "What's their email? I'll send them the plan with a link back here.", []);
+    setWait(who === "self" ? "email" : "email-them");
+  };
+
+  const sendPlan = (to: string, them: boolean) => {
+    if (!plan) return;
+    markSent(plan.id, to, Date.now());
+    setWait(null);
+    say(
+      them
+        ? `Sent to ${to}. The link brings them to this plan, and they can ask me anything.`
+        : `Sent to ${to}. The link in it brings you straight back here.`
+    );
+    push({ kind: "email-sent", to, planId: plan.id });
+    setAsking({ q: "", options: ["Start Phase 1", "I still want to talk it through"] });
+  };
+
+  /** Back on a plan that was never started (brand flows, P1). Asked, not assumed. */
+  const welcomeBack = (p: Plan) => {
+    say(`Welcome back. Your plan for ${getRead(p.readId).url} is here.`);
+    push({ kind: "plan-card" });
+    ask("What held you back last time?", [...HELD, "Start Phase 1"]);
+  };
+
+  /** A different store, from a conversation about this one: a new conversation, read in place. */
+  const readOtherStore = (url: string) => {
+    startConversation();
+    setPendingRead(null);
+    setScope({});
+    setWait(null);
+    goalRef.current = null;
+    explainedRef.current = false;
+    readStore(url);
+  };
+
+  /** A store link: read it. */
+  const readStore = (url: string) => {
+    setScope({});
+    say(`Reading ${url}.`);
+    push({ kind: "read", url });
+    runRead(url);
+  };
+
+  /** A brand name: find its store, and ask which when there are several. */
+  const lookup = (name: string) => {
+    const hits = lookupBrand(name);
+    const shown = name.trim().replace(/^\w/, (c) => c.toUpperCase());
+    if (!hits.length) ask(`I couldn't find a store called ${shown}. Paste its link and I'll read it.`, []);
+    else if (hits.length === 1) ask(`Is this ${hits[0]}?`, [hits[0], "No, a different store"]);
+    else ask(`Is this ${orList(hits)}?`, [...hits, "Neither"]);
+    setWait("store");
+  };
+
+  /** A question before any store: two lines, then the offer (brand flows, P0). */
+  const answerFirst = (q: string) => {
+    say(firstAnswer(q));
+    ask("Want me to look at your store?", ["Yes, read my store", "How does the guarantee work?", "What does it cost?"].filter((c) => c.toLowerCase() !== q.trim().toLowerCase()));
+  };
+
+  /** Whatever arrives before there is a store: a link, a name, or a question. */
+  const intake = (v: string) => {
+    if (LOOKS_LIKE_STORE.test(v)) { setWait(null); readStore(normaliseUrl(v)); return; }
+    if (/^(yes,? )?read my store$|^yes$|^sure$/i.test(v.trim())) { ask("Paste your store link, or just the brand's name.", []); setWait("store"); return; }
+    if (!isQuestion(v) && looksLikeName(v)) { lookup(v); return; }
+    answerFirst(v);
   };
 
   /** The agent asks, and waits. */
@@ -782,18 +943,15 @@ function ChatInner() {
   const whatNext = () => {
     if (!paid)
       return (
-        `You start Phase 1 and pay for it, then connect your store so the sales can be counted. ` +
-        `MoonWriter AI briefs your creators the same day, and the first drafts arrive within 48 hours.`
+        `You start Phase 1 and pay for it. Then the launch checklist: connect your store, meet your creators and ` +
+        `approve the brief. The first drafts arrive within 48 hours, and nothing goes live until you approve it.`
       );
-    if (connected)
+    if (launching)
       return (
-        "Your store is connected, so every order through a creator's code is counted. " +
-        "The first drafts arrive within 48 hours, and MoonLive AI puts nothing out until you approve it."
+        "The launch checklist on the dashboard: connect your store, meet your creators and approve the brief. " +
+        "Phase 1 goes live with the first draft you approve."
       );
-    return (
-      "Connect your store on the dashboard so the sales can be counted. " +
-      "MoonWriter AI briefs your creators today, and the first drafts arrive within 48 hours."
-    );
+    return "Phase 1 is live. Every order through a creator's code counts, and drafts arrive for your approval as they're made.";
   };
 
   const runReport = () => {
@@ -828,6 +986,139 @@ function ChatInner() {
     setText("");
     setAsking(null);
     const lower = v.toLowerCase();
+    const r0 = currentRead();
+
+    /* ── The answer the agent asked for ── */
+    if (wait === "email" || wait === "email-them") {
+      if (!looksLikeEmail(v)) { ask("That doesn't look like an email address. Try again?", []); return; }
+      sendPlan(v.toLowerCase(), wait === "email-them");
+      return;
+    }
+    if (wait === "store" || wait === "other-store") {
+      if (/^(no|neither|a different store|no, a different store)\b/.test(lower)) { ask("Paste its link and I'll read it.", []); return; }
+      if (LOOKS_LIKE_STORE.test(v)) {
+        const url = normaliseUrl(v);
+        setWait(null);
+        if (wait === "other-store") readOtherStore(url);
+        else readStore(url);
+        return;
+      }
+      if (isQuestion(v)) { answerFirst(v); setWait(null); return; }
+      lookup(v);
+      return;
+    }
+    if (wait === "goal" && r0) { onGoal(r0, v); return; }
+    if (wait === "launch-note" && r0) {
+      say("Got it. The creators will lead with it.");
+      setFocus(r0, { kind: "launch", note: v });
+      return;
+    }
+    if (wait === "focus" && r0) {
+      if (/^(push (the|my) bestsellers|bestsellers|yes|yep|sure|those|fine|ok|okay)\b/.test(lower)) { setFocus(r0, { kind: "bestsellers" }); return; }
+      if (/^something else$|^(no|other|different)\b/.test(lower)) {
+        ask("Which products? Name them, and I'll point the creators at those.", []);
+        setWait("products");
+        return;
+      }
+    }
+    if ((wait === "products" || wait === "focus") && r0) {
+      const products = v.split(/,|\band\b|\n/).map((x) => x.trim()).filter(Boolean);
+      say("Got it. The creators will push those.");
+      setFocus(r0, { kind: "specific", products });
+      return;
+    }
+    if (wait === "phase1" && r0) {
+      if (/^(makes sense|got it|ok|okay|yes|yep|sure|sounds good|continue|go on|next|build|let.?s go)\b/.test(lower)) {
+        explainedRef.current = true;
+        setWait(null);
+        nextStep(r0);
+        return;
+      }
+      const left = PHASE1_CHIPS.filter((c) => c !== v && !asked.has(c));
+      if (/fee|cost|vat|charge|extra/.test(lower))
+        say(`No. VAT is the only addition, and nothing after Phase 1 is charged unless you choose to continue.`);
+      else if (/creator|choose|pick/.test(lower)) say(CREATORS_ANSWER);
+      else {
+        const out = tools.interpret({ text: v, plan: undefined, paid: false });
+        say(out.kind === "question" && out.say ? out.say : firstAnswer(v));
+      }
+      setAsking({ q: "", options: left });
+      return;
+    }
+    if (wait === "brief-choice") {
+      if (/write|with (me|you)|together|no\b|don.?t have|none/.test(lower)) { writeBrief(false); return; }
+      if (/skip|draft it|you write|from (my|the) store/.test(lower)) { setScope({ ...scopeRef.current, brief: { kind: "agent" } }); if (r0) buildNow(r0); return; }
+      if (/upload|yes|have (one|a brief)/.test(lower)) { ask("Use Upload it on the card above, and pick the file.", []); return; }
+    }
+    if (wait === "brief-1") {
+      briefDraft.current.feel = v;
+      ask("What must every creator say or show?", []);
+      setWait("brief-2");
+      return;
+    }
+    if (wait === "brief-2") {
+      briefDraft.current.must = v;
+      ask("And anything they must never say or do?", ["Nothing else"]);
+      setWait("brief-3");
+      return;
+    }
+    if (wait === "brief-3" && r0) {
+      setScope({ ...scopeRef.current, brief: { kind: "written", ...briefDraft.current, mustNot: v } });
+      say("That's the brief. I've kept your words.");
+      buildNow(r0);
+      return;
+    }
+
+    /* ── Before any store: a link, a brand name, or a question (brand flows, P0) ── */
+    if (!plan && !hasRead && readRun.status !== "running") { intake(v); return; }
+
+    /* ── A plan that isn't started: talk it through, save it, or say what held them (brand flows, P0 and P1) ── */
+    if (plan && !paid) {
+      /* "The creators" (a reason they held back) and "How are creators chosen?" get the same answer, so either one
+         takes the other off the row. */
+      const same = (t: string, said: string) => t === said || (/creators/i.test(t) && /creators/i.test(said));
+      const talkChips = (said: string) => ["Start Phase 1", ...TALK.filter((t) => !same(t, said) && !asked.has(t)), "Back to the plan"];
+      if (/talk it through|not (ready|yet)|i.?m not sure|need to think/.test(lower)) {
+        ask("Of course. What's on your mind? Most brands ask one of these.", ["Start Phase 1", ...TALK]);
+        return;
+      }
+      if (/^email me the plan$|^(send|email) (me )?(it|the plan)|^save (it|the plan)/.test(lower)) { emailPlan("self"); return; }
+      if (/^email the plan$|^send it to them$/.test(lower)) { emailPlan("them"); return; }
+      if (/^back to the plan$/.test(lower)) { push({ kind: "plan-card" }); setAsking({ q: "", options: READY_CHIPS }); return; }
+      if (/^how are (the )?creators (chosen|picked|matched)\??$|^the creators$/.test(lower)) {
+        say(CREATORS_ANSWER);
+        push({ kind: "creator-grid" });
+        setAsking({ q: "", options: talkChips(v) });
+        return;
+      }
+      if (/^someone else decides$/.test(lower)) {
+        say("Then let's get it to them. They'll see the plan, and they can ask me anything.");
+        emailPlan("them");
+        return;
+      }
+      if (/^the \$1,000$/.test(lower)) {
+        const [b1, b2, b3] = PHASE_BUDGETS;
+        const [, m2, m3] = PHASE_MULTIPLES;
+        say(
+          `Fair. Phase 1 is the smallest step: ${fmtUSD(b1)} in, ${fmtUSD(plan.price.revenueTarget.value)} in sales ` +
+          `guaranteed, and if it sells less you get the missed share back. If it works, Phase 2 is ${fmtUSD(b2)} at ${m2}x ` +
+          `and Phase 3 is ${fmtUSD(b3)} at ${m3}x.`
+        );
+        setAsking({ q: "", options: ["Start Phase 1", "How does the refund work?", "See all three phases"] });
+        return;
+      }
+      if (/^a different store$/.test(lower)) {
+        ask("Paste the other store's link, or its name.", []);
+        setWait("other-store");
+        return;
+      }
+      if (/^how does the refund work\??$/.test(lower)) {
+        const out = tools.interpret({ text: v, plan, paid });
+        if (out.say) say(out.say);
+        setAsking({ q: "", options: talkChips(v) });
+        return;
+      }
+    }
 
     /* A store link, typed. This is the only way into a read for a
        SECOND campaign: the first one arrives with `?read=` on the URL,
@@ -943,7 +1234,7 @@ function ChatInner() {
     if (plan && /what does (the |your )?(\$?1,?000|1k|it|this|phase 1|the fee|the payment) (include|cover|buy)|what.s included|what do i get|extra fees|hidden fees|other fees|any fees|choose (my )?(own )?creators|pick (my )?(own )?creators/.test(lower)) {
       say("Here's everything it covers.");
       push({ kind: "includes" });
-      setAsking({ q: "", options: paid ? postChips : ["Start Phase 1", "See all three phases"] });
+      setAsking({ q: "", options: paid ? postChips : ["Start Phase 1", "How does the refund work?", "How are creators chosen?", "Back to the plan"] });
       return;
     }
     /* "Change something" is a chip this thread offers, and `interpret`
@@ -960,17 +1251,6 @@ function ChatInner() {
         `the crew and the guarantee around them.`,
         ["Kuwait only", "UAE and Saudi Arabia only", "Add Qatar"]
       );
-      return;
-    }
-
-    /* The pitch is open and nothing is built yet. A yes builds the plan; anything else (a size, a multiple, a
-       question about the guarantee) goes to `interpret`, which answers it, and the build chip stays on offer. */
-    if (awaitingShape) {
-      const wantsBuild = /^(build|go|do it|yes|confirm|let.?s go|sounds good)\b|build (it|my plan|the plan)( anyway)?|that.s? (it|right|fine)|looks good/.test(lower);
-      if (wantsBuild) { confirmShape(shape); return; }
-      const ans = tools.interpret({ text: v.replace(/×/g, "x"), plan: undefined, paid });
-      say(ans.kind === "question" && ans.say ? ans.say : `Every brand gets the same three phases: ${phasesSentence()}. Shall I build it?`);
-      setAsking({ q: "", options: ["Build the plan", "How does the guarantee work?"] });
       return;
     }
 
@@ -999,14 +1279,12 @@ function ChatInner() {
             (readUrl ? getRead(readIdFor(readUrl)) : null) ??
             (buildFor ? getRead(buildFor) : null) ??
             (plan ? getRead(plan.readId) : null);
-          if (!r) { say("I need to read your store first. Paste the link on the first screen."); return; }
+          if (!r) { say("I need to read your store first. Paste the link, or the brand's name."); return; }
           if (paid) { say(ALREADY_PAID); return; }
-          /* Before anything is sized: where it runs and what it pushes (brand team, 15 Oct). Asked once each; a
-             plan that already exists is changed by sentences instead. */
-          if (!plan && !role) { askRole(r); return; }
-          if (!plan && !scopeRef.current.markets && (r.markets?.value.length ?? 0) > 0) { askMarkets(r); return; }
-          if (!plan && !scopeRef.current.focus && (r.bestsellers?.value.length ?? 0) > 0) { askProducts(r); return; }
-          askShape();
+          /* Before anything is built: whatever is still open (nextStep). A plan that already exists is changed by
+             sentences instead. */
+          if (!plan) { nextStep(r); return; }
+          ask("The plan is built. Start Phase 1 when you're ready, or change anything.", READY_CHIPS);
           return;
         }
         case "correct": {
@@ -1173,7 +1451,8 @@ function ChatInner() {
               onConfirmed={() => {
                 /* Per campaign, not global. A second campaign is not
                    paid for because the first one was. */
-                markPaid();
+                /* Phase 1 is paid, not live: it opens the launch checklist (brand flows, P2). */
+                markPaid({ enterprise: plan ? isEnterpriseHost(getRead(plan.readId).url) : false });
                 /* The first payment for a store makes the payer its owner (brand team, 15 Oct). */
                 if (plan && account) {
                   const r = getRead(plan.readId);
@@ -1183,13 +1462,12 @@ function ChatInner() {
                    creator cards here: the plan beside the conversation
                    holds the crew, and the full roster belongs on the
                    campaign view, not in the chat. */
-                say("Paid. Phase 1 has started, and MoonWriter AI is briefing your creators.");
+                say("Paid. Phase 1 is yours.");
                 push({ kind: "receipt", requestId: req.id });
                 push({ kind: "checklist" });
                 say(
-                  "One step left, and it is waiting for you on the dashboard: connect your store so the guarantee " +
-                  "can be measured. It comes after payment on purpose, because it is for counting your sales rather " +
-                  "than for qualifying you."
+                  "Next is the launch checklist on the dashboard: connect your store, meet your creators and approve " +
+                  "the brief. Phase 1 goes live with the first draft you approve."
                 );
                 setAsking({ q: "What happens next?", options: postChips });
               }}
@@ -1262,6 +1540,21 @@ function ChatInner() {
       }
       case "includes":
         return plan ? <BlockRow key={item.id}><IncludesBlock plan={plan} salesFirst={salesFirst(role)} /></BlockRow> : null;
+      case "brief-choice":
+        return (
+          <BlockRow key={item.id}>
+            <BriefChoiceBlock
+              chosen={scope.brief ?? (plan ? { kind: "agent" } : null)}
+              onUpload={(file) => onBrief({ kind: "upload", file }, `Uploaded ${file}`)}
+              onWrite={() => writeBrief(true)}
+              onSkip={() => onBrief({ kind: "agent" }, "Draft it from my store")}
+            />
+          </BlockRow>
+        );
+      case "email-sent": {
+        const p = plan?.id === item.planId ? plan : null;
+        return p ? <BlockRow key={item.id}><EmailSentBlock to={item.to} plan={p} /></BlockRow> : null;
+      }
       case "ad-card":
         return <BlockRow key={item.id}><AdCardBlock adId={item.adId} /></BlockRow>;
       case "working":
@@ -1406,8 +1699,9 @@ function ChatInner() {
            stages. */
         placeholder={
           paid ? "Ask me anything about this phase"
-          : plan ? "Change anything about the plan"
-          : "Paste your store link"
+          : plan ? "Ask anything, or tell me what to change"
+          : hasRead ? "Type your answer"
+          : "Paste your store link, or ask me anything"
         }
         note={!plan || paid ? undefined : NOTE}
         busy={!!stop}

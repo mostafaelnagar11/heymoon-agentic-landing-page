@@ -155,7 +155,10 @@ export function Field({ id, placement, tone = "night" }: FieldProps) {
     e.preventDefault();
     if (going) return;
     const raw = inputRef.current?.value ?? value;
-    const ok = audience === "brands" ? usableUrl(raw) : usableHandle(raw);
+    /* Brands may type a link, only the brand's name, or a question (brand flows, P0): a link is read, anything else
+       goes to the conversation as the first message. */
+    const url = audience === "brands" ? usableUrl(raw) : null;
+    const ok = audience === "brands" ? url ?? (raw.trim() || null) : usableHandle(raw);
     if (!ok) {
       setInvalidFor(audience);
       inputRef.current?.focus();
@@ -166,7 +169,7 @@ export function Field({ id, placement, tone = "night" }: FieldProps) {
     clearError();
     setGoing(true);
     await startDawn();
-    window.location.assign(`${copy.action}?${copy.param}=${encodeURIComponent(ok)}`);
+    window.location.assign(`${copy.action}?${audience === "brands" && !url ? "q" : copy.param}=${encodeURIComponent(ok)}`);
   };
 
   return (

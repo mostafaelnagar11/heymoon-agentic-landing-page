@@ -199,7 +199,7 @@ export function ReceiptBlock({ req }: { req: FundingRequest }) {
           <span>· {req.method.brand} ••••{req.method.last4}</span>
         </div>
         <p className="mt-1.5 text-body text-ink-soft">
-          <span className="font-semibold text-ink">Receipt:</span> Texted to you, and kept on this campaign.
+          <span className="font-semibold text-ink">Receipt:</span> Emailed to you, and kept on this campaign.
         </p>
       </div>
     </Card>
@@ -951,25 +951,31 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
 
 export function ChecklistBlock() {
   const paid = usePaid();
-  const connected = useStore((s) => (s.activeCampaignId ? s.campaigns[s.activeCampaignId]?.connectedStore ?? null : null));
+  const camp = useStore((s) => (s.activeCampaignId ? s.campaigns[s.activeCampaignId] ?? null : null));
+  /* The launch checklist lives on the dashboard (brand flows, P2); this card says where the brand is in it. */
+  const l = camp?.launch;
+  const launched = !l || !!l.liveAt;
+  const prepared = !!camp?.connectedStore && !!l?.creatorsKept && !!l?.briefApproved;
   const steps = [
-    { label: "Plan approved", detail: "Three phases planned. Phase 1 is the warm-up, and the only one you start today.", done: true },
+    { label: "Plan approved", detail: "Three phases planned. Phase 1 is the only one you start today.", done: true },
     {
       label: "Payment received",
       detail: `The ${fmtUSD(PHASE1_BUDGET)} warm-up, the same price for every brand.`,
       done: paid,
     },
     {
-      label: "Creators briefed",
-      detail: "MoonWriter AI gave each one the brief, the products and their own tracking code.",
-      done: paid,
+      label: "Launch checklist",
+      detail: "On the dashboard: connect your store, meet your creators, approve the brief.",
+      done: launched || prepared,
     },
     {
-      label: connected ? "Store connected" : "Store connected · one step left",
-      detail: "It is how HeyMoon counts the sales each creator earns you, which is what the guarantee is measured against.",
-      done: !!connected,
+      label: "First ad live",
+      detail: "Phase 1 goes live with the first draft you approve.",
+      done: launched,
     },
   ];
+  /* One step is next, not every step that is left. */
+  const nextAt = steps.findIndex((st) => !st.done);
   return (
     <Card className="overflow-hidden">
       <p className="border-b border-hairline px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.14em] text-ink-faint">
@@ -977,7 +983,7 @@ export function ChecklistBlock() {
       </p>
       <ol className="divide-y divide-hairline">
         {steps.map((st, i) => (
-          <li key={st.label} className={`flex items-start gap-3 px-4 py-3 ${!st.done ? "bg-brand/[0.04]" : ""}`}>
+          <li key={st.label} className={`flex items-start gap-3 px-4 py-3 ${i === nextAt ? "bg-brand/[0.04]" : ""}`}>
             <span
               aria-hidden
               className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${
@@ -992,7 +998,7 @@ export function ChecklistBlock() {
               </span>
               <span className="block text-meta leading-5 text-ink-faint">{st.detail}</span>
             </span>
-            {!st.done && <Pill tone="brand">Next</Pill>}
+            {i === nextAt && <Pill tone="brand">Next</Pill>}
           </li>
         ))}
       </ol>

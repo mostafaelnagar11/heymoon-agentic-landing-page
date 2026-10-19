@@ -23,6 +23,7 @@ import type {
 import { rememberRead } from "./agent/registry";
 import { hash } from "./agent/rng";
 import { ADS, PHASES, type Phase } from "./mock/campaigns";
+import { CREATORS } from "./mock/creators";
 
 /* ------------------------------------------------------------------ */
 /* Thread blocks                                                       */
@@ -69,7 +70,11 @@ export type ThreadItem =
   | { id: string; kind: "pick-markets"; readId: string; at: number }
   | { id: string; kind: "pick-products"; readId: string; at: number }
   /* What the $1,000 includes, shown with the plan before Pay. */
-  | { id: string; kind: "includes"; at: number };
+  | { id: string; kind: "includes"; at: number }
+  /* Has a brief, or writes one with the agent (brand flows, P0). Answered once, then it says which. */
+  | { id: string; kind: "brief-choice"; at: number }
+  /* The plan, emailed: to the brand leaving for now, or to whoever decides (brand flows, P0 "leaves", P1). */
+  | { id: string; kind: "email-sent"; to: string; planId: string; at: number };
 
 /* ------------------------------------------------------------------ */
 /* Autonomy                                                            */
@@ -226,7 +231,36 @@ export interface Campaign {
       campaign is not paid for because the first one was. */
   paid: boolean;
   connectedStore: StorePlatform | null;
+  /** Between paying and the first ad going live: the launch checklist (brand flows, P2). Absent on campaigns that
+      were running before the checklist existed, and on the running demo. */
+  launch?: Launch;
 }
+
+/* The cold start (brand flows, P2, 19 Oct review: "like Stripe's onboarding"). Phase 1 is paid and nothing is
+   selling yet, so the dashboard is a checklist rather than sales figures. Connecting the store lives on the campaign
+   (`connectedStore`) and the tracking codes follow from it; the rest is here. */
+export interface Launch {
+  creatorsKept: boolean;
+  briefApproved: boolean;
+  /** Big brands launch with their own legal and procurement steps; everyone else skips step 5. */
+  enterprise: boolean;
+  enterpriseSteps: { legal: boolean; products: boolean; signoff: boolean };
+  /** Invited someone, or chose not to. Optional, so it never holds the launch. */
+  teamDone: boolean;
+  /** When the first drafts arrived. */
+  draftsAt: number | null;
+  /** When the first ad was approved and Phase 1 went live. The checklist is finished from then on. */
+  liveAt: number | null;
+  /** Creators the brand swapped out while nobody in the matched pool fits the freed fee yet. MoonMatch keeps looking;
+      the replacement is offered before they are briefed. */
+  swapping?: number[];
+}
+
+/** One creator's tracking code: their first name and the brand's (brand flows, P2 step 2). */
+export const trackingCode = (creatorName: string, brandName: string) =>
+  `${creatorName.split(" ")[0].toUpperCase().replace(/[^A-Z]/g, "")}-${brandName.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 6)}`;
+
+export const isLaunching = (c: Campaign | null | undefined) => !!c?.paid && !!c.launch && !c.launch.liveAt;
 
 export type StorePlatform = "salla" | "zid" | "shopify" | "magento";
 
@@ -300,6 +334,11 @@ export interface State {
   brands: Record<string, BrandAccount>;
   /* What the person building the campaign does, asked once in the conversation (BuyerRole). Null until asked. */
   role: BuyerRole | null;
+  /* Plans emailed before paying, by plan id: who it went to and when. The email's link brings them back to it
+     (brand flows, P1). */
+  sent: Record<string, { to: string; at: number }>;
+  /* Drafts made for a campaign after the demo's fixtures: the first drafts of a launch (brand flows, P2 step 7). */
+  extraAds: AdRecord[];
   /* What the brand tells HeyMoon about itself, as opposed to what
      HeyMoon read off the shop. The read is evidence and cannot be
      typed over; this is the paperwork a campaign needs to be invoiced,
@@ -407,14 +446,16 @@ const AUTONOMY_KEY = "mtab_autonomy";
 /* v3, 18 Oct: the phase multiples became a fixed 1x, 2x, 3x. v4, the same day: the budgets became a fixed $1,000,
    $2,000, $3,000. A plan saved under either carries a ladder that no longer exists ($3,000 / $6,000, 3.7x, 6.3x)
    and would keep showing it, so it is dropped rather than read. */
-const STATE_KEY = "mtab_state_v4";
+/* v5, 20 Oct: a paid campaign starts on the launch checklist rather than on the demo's running ladder, so the
+   running account a login used to open is dropped and the login opens the cold start instead (19 Oct review). */
+const STATE_KEY = "mtab_state_v5";
 const KEPT = [
   "campaigns", "campaignOrder", "activeCampaignId",
   "reads", "plans", "activePlanId",
   "threads", "activeThreadId",
   "funding", "approvals",
   "ads", "declineNotes", "creatorSignals", "dismissedInbox",
-  "activity", "account", "profile", "role",
+  "activity", "account", "profile", "role", "sent", "extraAds",
 ] as const;
 /* The brand accounts, apart from the work: see State.brands. */
 const BRANDS_KEY = "mtab_brands_v1";
@@ -438,7 +479,8 @@ function initial(): State {
     approvals: {},
     ads: Object.fromEntries(ADS.map((a) => [a.id, a.state])),
     declineNotes: {},
-    activity: SEED_ACTIVITY,
+    /* Empty until something has run. The seeded log belongs to the running demo, which brings it (putCampaign). */
+    activity: [],
     autonomy: DEFAULT_AUTONOMY,
     locale: "en",
     dismissedInbox: [],
@@ -450,6 +492,8 @@ function initial(): State {
     account: null,
     brands: {},
     role: null,
+    sent: {},
+    extraAds: [],
     profile: { industry: "", country: "", vat: "", tradeLicence: "", street: "", city: "", notifications: true },
   };
 }
@@ -756,7 +800,7 @@ export const openConversation = (threadId: string) =>
 /** Mint the campaign this conversation is building, or update it. The
     plan is the thing that makes a campaign real — before there is one
     there is only a read and a conversation about it. */
-export const putCampaign = (plan: Plan, url?: string) =>
+export const putCampaign = (plan: Plan, url?: string, opts?: { running?: boolean }) =>
   set((s) => {
     const existing = Object.values(s.campaigns).find((c) => c.threadId === s.activeThreadId);
     if (existing) {
@@ -764,11 +808,11 @@ export const putCampaign = (plan: Plan, url?: string) =>
       return { campaigns: { ...s.campaigns, [existing.id]: next }, activeCampaignId: existing.id };
     }
     const id = nextId("camp");
-    /* The FIRST campaign adopts the demo's running ladder and its ads,
-       so the dashboard has a phase in flight to show. Every one after
-       it starts where a real second campaign starts: phase 1 about to
-       run, nothing attributed, no drafts in yet. */
-    const first = s.campaignOrder.length === 0;
+    /* Every campaign starts where a real one starts: Phase 1 about to run, nothing attributed, no drafts in yet. Only
+       the running demo (lib/demo.ts, ?demo=running) adopts the fixture ladder, its ads and its activity log. The
+       first campaign used to adopt them too, which is how a brand who had just paid landed on Phase 2 of a campaign
+       they had never run (19 Oct review). */
+    const first = !!opts?.running;
     const camp: Campaign = {
       id,
       threadId: s.activeThreadId,
@@ -786,6 +830,7 @@ export const putCampaign = (plan: Plan, url?: string) =>
       campaigns: { ...s.campaigns, [id]: camp },
       campaignOrder: [...s.campaignOrder, id],
       activeCampaignId: id,
+      ...(first ? { activity: SEED_ACTIVITY } : {}),
     };
   });
 
@@ -809,20 +854,83 @@ function freshLadder(campId: string, plan: Plan): Phase[] {
 }
 
 
-/** Phase 1 is paid for. On a campaign with a fresh ladder that also
-    starts the first rung running. */
-export const markPaid = () =>
+/** Phase 1 is paid for. A fresh campaign does not start running here: it opens the launch checklist, and Phase 1
+    goes live when its first ad is approved (`goLive`). The running demo's ladder is already in flight. */
+export const markPaid = (opts?: { enterprise?: boolean }) =>
   set((s) => {
     const id = s.activeCampaignId;
     const c = id ? s.campaigns[id] : null;
     if (!id || !c) return {};
-    const phases = c.phases.map((p, i) =>
-      i === 0 && p.status === "ready"
-        ? { ...p, status: "live" as const, dayOfPhase: 1 }
-        : p
-    );
-    return { campaigns: { ...s.campaigns, [id]: { ...c, paid: true, phases } } };
+    const fresh = c.phases[0]?.status === "ready";
+    const launch: Launch | undefined = fresh
+      ? {
+          creatorsKept: false, briefApproved: false,
+          enterprise: !!opts?.enterprise, enterpriseSteps: { legal: false, products: false, signoff: false },
+          teamDone: false, draftsAt: null, liveAt: null,
+        }
+      : c.launch;
+    return { campaigns: { ...s.campaigns, [id]: { ...c, paid: true, ...(launch ? { launch } : {}) } } };
   });
+
+/** One step of the launch checklist done (or undone). */
+export const patchLaunch = (campaignId: string, patch: Partial<Launch>) =>
+  set((s) => {
+    const c = s.campaigns[campaignId];
+    if (!c?.launch) return {};
+    return patchCampaignIn(s, campaignId, { launch: { ...c.launch, ...patch } });
+  });
+
+/** The first drafts arrive (brand flows, P2 step 7). In the product they come from the creators within 48 hours;
+    the prototype takes them from the demo's drafts, re-pointed at this campaign's Phase 1 and its own crew. */
+export const deliverDrafts = (campaignId: string, crewIds: number[], at: number) =>
+  set((s) => {
+    const c = s.campaigns[campaignId];
+    if (!c?.launch || c.launch.draftsAt) return {};
+    const p1 = c.phases[0];
+    /* One draft per creator on the crew, each in their own photo. The templates give the three verdicts a first
+       review should show: on brief, a miss with a re-cut note, and on brief again. */
+    const templates = ["ad-1", "ad-4", "ad-6"].map((id) => ADS.find((a) => a.id === id)!).filter(Boolean);
+    const drafts: AdRecord[] = crewIds.slice(0, templates.length).map((creatorId, i) => {
+      const t = templates[i];
+      const who = CREATORS.find((x) => x.id === creatorId);
+      const name = who?.name ?? t.creatorName;
+      return {
+        ...t,
+        id: `${campaignId}-draft-${i + 1}`, campaignId: p1.id, creatorId, creatorName: name,
+        avatar: who?.avatar ?? t.avatar,
+        img: who ? who.avatar.replace(/avatar\.jpg$/, "p1.jpg") : t.img,
+        video: undefined,
+        track: trackingCode(name, c.brandName),
+        state: "waiting" as const, performance: undefined,
+        submitted: i === 0 ? "1 hour ago" : `${i + 1} hours ago`,
+      };
+    });
+    return {
+      extraAds: [...s.extraAds.filter((a) => !a.id.startsWith(`${campaignId}-draft-`)), ...drafts],
+      ads: { ...s.ads, ...Object.fromEntries(drafts.map((d) => [d.id, "waiting" as const])) },
+      campaigns: {
+        ...s.campaigns,
+        [campaignId]: { ...c, adIds: [...c.adIds, ...drafts.map((d) => d.id)], launch: { ...c.launch, draftsAt: at } },
+      },
+    };
+  });
+
+/** The first ad is approved: it goes live, and so does Phase 1. From here the dashboard is the running one. */
+export const goLive = (campaignId: string, adId: string, at: number) =>
+  set((s) => {
+    const c = s.campaigns[campaignId];
+    if (!c?.launch || c.launch.liveAt) return {};
+    const today = new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const phases = c.phases.map((p, i) => (i === 0 ? { ...p, status: "live" as const, dayOfPhase: 1, start: today } : p));
+    return {
+      ads: { ...s.ads, [adId]: "live" as const },
+      campaigns: { ...s.campaigns, [campaignId]: { ...c, phases, launch: { ...c.launch, liveAt: at } } },
+    };
+  });
+
+/** A plan emailed before paying (brand flows, P0 "leaves" and P1 "someone else decides"). */
+export const markSent = (planId: string, to: string, at: number) =>
+  set((s) => ({ sent: { ...s.sent, [planId]: { to, at } } }));
 
 /** The brand verified a number. Called once the code has been
     accepted, with the caller's clock: the store stays deterministic. */
@@ -913,7 +1021,8 @@ export const useUnconnected = () =>
   useStore((s) => {
     for (const id of s.campaignOrder) {
       const c = s.campaigns[id];
-      if (c?.paid && !c.connectedStore) return c;
+      /* A launching campaign asks for its store on the checklist, as step 1. */
+      if (c?.paid && !c.connectedStore && !isLaunching(c)) return c;
     }
     return null;
   });
@@ -1071,10 +1180,12 @@ export const dismissInbox = (id: string) =>
    cached against the identity of the slice it depends on — the cache
    invalidates exactly when a decision changes and never otherwise. */
 let adsCache: { key: State["ads"]; value: AdRecord[] } | null = null;
+let extraCache: State["extraAds"] | null = null;
 export function adsWithState(s: State): AdRecord[] {
-  if (adsCache && adsCache.key === s.ads) return adsCache.value;
-  const value = ADS.map((a) => ({ ...a, state: s.ads[a.id] ?? a.state }));
+  if (adsCache && adsCache.key === s.ads && extraCache === s.extraAds) return adsCache.value;
+  const value = [...ADS, ...s.extraAds].map((a) => ({ ...a, state: s.ads[a.id] ?? a.state }));
   adsCache = { key: s.ads, value };
+  extraCache = s.extraAds;
   return value;
 }
 

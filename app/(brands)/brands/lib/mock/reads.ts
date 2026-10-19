@@ -349,9 +349,13 @@ export function normaliseUrl(raw: string): string {
 /** An unknown store still gets a read — a real one would. It is
     explicitly marked as a store we have not seen, so nothing on the
     screen pretends to more certainty than it has. */
+/** The same store under another domain: a brand found by name can pick either (lib/agent/intake.ts). */
+const ALIASES: Record<string, string> = { "ounass.ae": "ounass.com" };
+
 export function fixtureFor(url: string): (id: string) => BrandRead {
   const key = normaliseUrl(url);
   if (FIXTURES[key]) return FIXTURES[key];
+  if (ALIASES[key]) return (id: string) => ({ ...FIXTURES[ALIASES[key]](id), url: key });
   return (id: string) => {
     const base = ounass(id);
     const name = key.replace(/\.(com|ae|sa|co|net|store|shop)(\.[a-z]{2})?$/, "");

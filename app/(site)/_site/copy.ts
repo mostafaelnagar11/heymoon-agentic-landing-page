@@ -58,8 +58,8 @@ export const COPY = {
       phone: ["A campaign in", "fifteen seconds.", "Sales, guaranteed."], gradPhone: 2,
     },
     field: {                                                                                                // [A1]
-      label: "Your store link", placeholder: "yourstore.com", cta: "Start", going: "Reading",
-      invalid: "Paste a store link, like yourstore.com.", icon: "globe", action: "/brands/c", param: "read", inputMode: "url",
+      label: "Your store link or brand name", placeholder: "yourstore.com", cta: "Start", going: "Reading", // [CHANGE] 19 Oct review: a name or a question goes to the chat
+      invalid: "Type your store link or your brand's name.", icon: "globe", action: "/brands/c", param: "read", inputMode: "url",
     },
     chips: ["No forms to fill in", "No brief to write", "No agency to manage"],                              // [A1]
     nav: { dashboard: "Login", dashboardHref: "/brands/dashboard", start: "Start" },                          // [CHANGE] Mostafa 5 Oct: "Login"; Start [NEW on brands]

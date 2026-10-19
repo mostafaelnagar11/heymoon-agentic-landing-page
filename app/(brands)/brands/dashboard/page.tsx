@@ -35,8 +35,9 @@ import { DashboardSidebar, NAV } from "../components/dashboard/Sidebar";
 import { DashboardTopbar } from "../components/dashboard/Topbar";
 import { HeyMoonPanel, HeyMoonProvider, useHeyMoon } from "../components/dashboard/HeyMoon";
 import { ConnectAlert } from "../components/dashboard/ConnectAlert";
+import { LaunchChecklist } from "../components/dashboard/LaunchChecklist";
 import {
-  campaignLabel, setDashboardView, showCampaignList, useActiveCampaign, useAds, useDashboardView,
+  campaignLabel, isLaunching, setDashboardView, showCampaignList, useActiveCampaign, useAds, useDashboardView,
   useCampaigns, useDrill,
 } from "../lib/store";
 import { SurfaceProvider } from "../lib/surface";
@@ -67,6 +68,27 @@ function EmptyDashboard() {
   );
 }
 
+/** Built, not started: the plan is saved and waiting (brand flows, P1). The way back is the conversation, which
+    welcomes them back with it and asks what held them. */
+function PlanWaiting({ brandName }: { brandName: string }) {
+  return (
+    <div className="rounded-card border border-hairline bg-white p-8 shadow-card">
+      <p className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-brand-500">Not started yet</p>
+      <p className="mt-1.5 text-row font-semibold text-ink">Your plan for {brandName} is saved</p>
+      <p className="mt-1 max-w-[460px] text-body leading-6 text-ink-soft">
+        Phase 1 starts when you&apos;re ready. Ask anything first, or change what you want.
+      </p>
+      <Link
+        href="/brands/c?back=1"
+        className="mt-5 inline-flex items-center gap-2 rounded-control bg-brand px-4 py-2 text-body font-semibold text-white transition hover:bg-brand-hover"
+      >
+        Pick up where you left off
+        <ArrowRight size={13} weight="bold" aria-hidden className="rtl:rotate-180" />
+      </Link>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   /* The dashboard's own view. It used to share `panel.view` with the
      conversation, which meant moving around here silently repointed
@@ -87,6 +109,7 @@ export default function DashboardPage() {
 
   const camp = useActiveCampaign();
   const anyCampaign = useCampaigns().length > 0;
+  const launching = isLaunching(camp);
   const drill = useDrill();
   const ads = useAds();
   /* Scoped to the campaign on screen. Counting every ad in the store
@@ -98,11 +121,13 @@ export default function DashboardPage() {
 
   /* Arriving from the landing's Login (?signin=1): open the sample account when this browser has nothing, so the
      login lands on a dashboard with data (lib/demo.ts). The flag is taken off the URL straight away. */
+  /* ?demo=running opens the same brand two phases in, for showing what a running campaign looks like. */
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    if (!q.has("signin")) return;
-    openSampleAccount();
+    if (!q.has("signin") && q.get("demo") !== "running") return;
+    openSampleAccount({ running: q.get("demo") === "running" });
     q.delete("signin");
+    q.delete("demo");
     window.history.replaceState(null, "", window.location.pathname + (q.toString() ? `?${q}` : ""));
   }, []);
 
@@ -208,13 +233,17 @@ export default function DashboardPage() {
             ) : (
               <>
             {!anyCampaign && <EmptyDashboard />}
-            {anyCampaign && view === "home" && <HomeView />}
+            {/* Paid, nothing live yet: the launch checklist stands in for the overview (brand flows, P2). The
+                campaign's other tabs stay open. */}
+            {launching && (view === "home" || view === "campaign") && <LaunchChecklist />}
+            {anyCampaign && !launching && camp && !camp.paid && view === "home" && <PlanWaiting brandName={camp.brandName} />}
+            {anyCampaign && !launching && (!camp || camp.paid) && view === "home" && <HomeView />}
             {/* One component for five views. Creators, Needs you, Ads
                 and Activity are tabs of a campaign now, and the view
                 key IS the tab, so every deep link that used to open one
                 of them still opens it: the assistant's intents, the
                 activity log's cross-links, the action bar's Review. */}
-            {anyCampaign && isCampaignView && (
+            {anyCampaign && isCampaignView && !(launching && view === "campaign") && (
               <CampaignView tab={view as CampaignTab} onTab={(t) => setDashboardView(t)} />
             )}
               </>
