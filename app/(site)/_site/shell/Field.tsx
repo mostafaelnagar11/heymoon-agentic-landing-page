@@ -20,7 +20,7 @@ import s from "./Field.module.css";
 
 const prefetched = new Set<string>();
 
-export function Field({ id, placement }: FieldProps) {
+export function Field({ id, placement, tone = "night" }: FieldProps) {
   const { audience } = useAudience();
   const { focus, startDawn, resetDawn } = useWorld();
   const copy = COPY[audience].field;
@@ -185,6 +185,9 @@ export function Field({ id, placement }: FieldProps) {
         noValidate
         onSubmit={onSubmit}
         className={`${s.form} relative h-16 rounded-field bg-white shadow-field sm:h-[76px]`}
+        /* On white the night shadow (a white ring and a heavy black drop) reads as a smudge, so paper gets a hairline
+           and a soft drop. Inline: the first-paint CSS budget has no room for another shadow utility. */
+        style={tone === "paper" ? { boxShadow: "0 0 0 1px rgb(18 21 27 / .1), 0 18px 44px -22px rgb(18 21 27 / .32)" } : undefined}
       >
         <span aria-hidden className="pointer-events-none absolute inset-y-0 start-5 grid place-items-center text-ink/30">
           <Globe size={19} className={`${s.icon} col-start-1 row-start-1`} data-on={audience === "brands" ? "true" : "false"} />
@@ -228,7 +231,7 @@ export function Field({ id, placement }: FieldProps) {
           {going ? <><Moon working size={15} className="text-white" />{copy.going}</> : copy.cta}
         </button>
       </form>
-      <p id={errorId} role="alert" className="absolute inset-x-0 top-[calc(100%+18px)] flex items-center justify-center gap-2 text-center text-micro text-white/92">
+      <p id={errorId} role="alert" className={`absolute inset-x-0 top-[calc(100%+18px)] flex items-center justify-center gap-2 text-center text-micro ${tone === "paper" ? "text-ink/72" : "text-white/92"}`}>
         {invalid && <><span aria-hidden className="size-1.5 flex-none rounded-full bg-danger" />{copy.invalid}</>}
       </p>
     </div>

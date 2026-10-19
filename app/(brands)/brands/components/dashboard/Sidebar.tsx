@@ -21,6 +21,7 @@
  */
 
 import { Wordmark } from "../Wordmark";
+import { Emblem } from "../../../../_shared/Emblem";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -150,11 +151,9 @@ function Content({ collapsed, view, onView, brandName, onMobileClose }: Props) {
     >
       <div className={`mb-4 flex items-center ${collapsed ? "justify-center" : "justify-between px-2"}`}>
         {collapsed ? (
-          <span
-            aria-hidden
-            className="grid h-8 w-8 place-items-center rounded-control bg-brand text-micro font-medium text-white shadow-md"
-          >
-            H
+          /* The emblem alone where the rail is too narrow for the name. */
+          <span aria-hidden className="grid h-8 w-8 place-items-center text-ink">
+            <Emblem size={20} />
           </span>
         ) : (
           <Wordmark size="sm" />

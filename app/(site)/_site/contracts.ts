@@ -15,7 +15,7 @@ export interface SectionProps { audience: Audience }
 
 /* ── WP0 shell and ui ── */
 export interface AudienceSwitchProps { placement: SwitchPlacement; surface: "night" | "paper"; hidden?: boolean }
-export interface FieldProps { id: string; placement: "hero" | "close" }          // reads the URGENT audience
+export interface FieldProps { id: string; placement: "hero" | "close"; tone?: "night" | "paper" }   // reads the URGENT audience; tone: what it sits on
 export interface HorizonProps { variant: "hero" | "close"; ignite?: boolean; style?: MotionStyle; className?: string }
 export interface MoonProps { phase?: Phase; working?: boolean; size?: number; className?: string }
 export interface StarProps { size?: number; className?: string }                   // ui/Star.tsx, fill currentColor

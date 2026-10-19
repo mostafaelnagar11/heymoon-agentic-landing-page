@@ -18,11 +18,15 @@
  * sentence that got cut off.
  */
 
+import { Emblem } from "../../../_shared/Emblem";
+
 const SIZE = {
   sm: "text-[15px]",
   md: "text-[17px]",
   lg: "text-[19px]",
 } as const;
+/* Emblem side in px, the site's: above the cap height, so the round mark reads as tall as the H. */
+const EMBLEM = { sm: 14, md: 18, lg: 18 } as const;
 
 export function Wordmark({
   size = "md",
@@ -36,9 +40,13 @@ export function Wordmark({
       /* `ltr` because a brand name is not translated and not mirrored:
          in the Arabic build the mark still reads left to right. */
       dir="ltr"
-      className={`inline-block select-none whitespace-nowrap font-logo font-semibold leading-none tracking-[-0.03em] text-ink ${SIZE[size]} ${className}`}
+      className={`inline-flex select-none items-center gap-[0.42em] whitespace-nowrap font-logo font-semibold leading-none tracking-[-0.03em] text-ink ${SIZE[size]} ${className}`}
     >
-      HeyMoon<span className="text-brand">.AI</span>
+      {/* The emblem first, as on the site's logo (Mostafa, 20 Oct: the same logo everywhere). */}
+      <Emblem size={EMBLEM[size]} />
+      <span>
+        HeyMoon<span className="text-brand">.AI</span>
+      </span>
     </span>
   );
 }

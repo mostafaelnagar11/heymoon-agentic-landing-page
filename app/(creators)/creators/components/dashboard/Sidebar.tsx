@@ -21,6 +21,7 @@
 import Link from "next/link";
 import { CalendarBlank, House, Megaphone, Money, SidebarSimple, SignOut, User, type Icon } from "@phosphor-icons/react";
 import { Wordmark } from "../Wordmark";
+import { Emblem } from "../../../../_shared/Emblem";
 import { Avatar } from "../ui";
 import { resetAll, useActiveProfile, type PanelView } from "../../lib/store";
 import { useWaiting } from "../../lib/usePlans";
@@ -68,7 +69,7 @@ export function DashboardSidebar({ view, onView, collapsed = false, onToggle }: 
     <aside className={`hidden shrink-0 flex-col overflow-hidden border-e border-line bg-white py-5 transition-[width] duration-200 motion-reduce:transition-none md:flex ${collapsed ? "w-[72px] px-2" : "w-[232px] px-3"}`}>
       <div className={`flex ${collapsed ? "flex-col items-center gap-3" : "items-center justify-between ps-2"}`}>
         {collapsed ? (
-          <span aria-hidden className="grid h-8 w-8 place-items-center rounded-inner bg-main text-body font-semibold text-white">H</span>
+          <span aria-hidden className="grid h-8 w-8 place-items-center text-ink"><Emblem size={20} /></span>
         ) : (
           <Wordmark size="sm" />
         )}

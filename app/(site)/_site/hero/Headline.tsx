@@ -45,10 +45,15 @@ function LineSets({ a, stacked }: { a: Audience; stacked: boolean }) {
   );
 }
 
-export function Headline({ stacked = false, className = "" }: { stacked?: boolean; className?: string }) {
+export function Headline({ stacked = false, tone = "night", className = "" }: {
+  stacked?: boolean;
+  /** What it sits on: white type on the night hero, ink on the white one. The gradient line reads on both. */
+  tone?: "night" | "paper";
+  className?: string;
+}) {
   const { audience, switches } = useAudience();
   return (
-    <div className={`morph ${s.headline} dawn-fade text-center text-display-1 font-book text-white/[.96] ${className}`}>
+    <div className={`morph ${s.headline} dawn-fade text-center text-display-1 ${tone === "paper" ? "font-semibold text-ink" : "font-book text-white/[.96]"} ${className}`}>
       {ORDER.map((a) => {
         const active = a === audience;
         const state = switches === 0 ? (active ? "rise" : "idle") : active ? "in" : "out";

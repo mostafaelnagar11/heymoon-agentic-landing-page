@@ -84,7 +84,8 @@ export function MarketsPick({ read, chosen, onConfirm }: {
       </p>
       <div className="mt-3">
         <Btn size="sm" disabled={!picked.length} onClick={() => onConfirm(picked)}>
-          {picked.length ? `Run it in ${listOf(picked.map(marketName))}` : "Pick at least one market"}
+          {/* Two words: the pills above already say where (Mostafa, 20 Oct: "only Run it or confirm"). */}
+          {picked.length ? "Run it" : "Pick a market"}
         </Btn>
       </div>
     </Card>

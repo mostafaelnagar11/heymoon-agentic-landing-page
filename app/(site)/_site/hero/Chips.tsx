@@ -10,7 +10,7 @@ import { useAudience } from "../lib/audience";
 import { Check } from "../ui/icons";
 import s from "./hero.module.css";
 
-export function Chips({ className = "" }: { className?: string }) {
+export function Chips({ tone = "night", className = "" }: { tone?: "night" | "paper"; className?: string }) {
   const { audience, switches } = useAudience();
   const load = switches === 0;
   let w = 0;
@@ -26,10 +26,10 @@ export function Chips({ className = "" }: { className?: string }) {
         return (
           <li
             key={chip}
-            className={`flex items-center gap-1.5 text-micro text-white/56 ${load ? "motion-safe:animate-fade-up" : ""}`}
+            className={`flex items-center gap-1.5 text-micro ${tone === "paper" ? "text-ink/60" : "text-white/56"} ${load ? "motion-safe:animate-fade-up" : ""}`}
             style={load ? { animationDelay: `${420 + 35 * i}ms` } : undefined}
           >
-            <Check size={12} weight="bold" aria-hidden className={`${s.word} flex-none text-brand-300`} style={{ "--w": first } as CSSProperties} />
+            <Check size={12} weight="bold" aria-hidden className={`${s.word} flex-none ${tone === "paper" ? "text-brand" : "text-brand-300"}`} style={{ "--w": first } as CSSProperties} />
             {/* dir="auto": the words are inline-blocks, which bidi orders by the paragraph's direction; the
                 chip takes its own text's direction instead (final round, RTL smoke). */}
             <span dir="auto">
