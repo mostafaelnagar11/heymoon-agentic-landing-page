@@ -124,7 +124,7 @@ export const STAGES: Stage[] = [
   { key: "brief", label: "Brief approved", owner: "You", dueDays: 5 },
   { key: "matching", label: "Creators being matched", owner: "Moontech", dueDays: 8 },
   { key: "invited", label: "Creators invited", owner: "Moontech", dueDays: 9 },
-  { key: "live", label: "Live", owner: "Moontech", dueDays: 14 },
+  { key: "live", label: "Campaign live", owner: "Moontech", dueDays: 14 },
   { key: "sale", label: "First sale", owner: "Creators", dueDays: 17 },
 ];
 

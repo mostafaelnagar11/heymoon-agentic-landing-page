@@ -371,7 +371,7 @@ export const STR: Dict = {
   "lt.stage.brief": { en: "Brief approved", ar: "تمت الموافقة على الموجز" },
   "lt.stage.matching": { en: "Creators being matched", ar: "اختيار صنّاع المحتوى" },
   "lt.stage.invited": { en: "Creators invited", ar: "دعوة صنّاع المحتوى" },
-  "lt.stage.live": { en: "Live", ar: "انطلاق الحملة" },
+  "lt.stage.live": { en: "Campaign live", ar: "انطلاق الحملة" },
   "lt.stage.sale": { en: "First sale", ar: "أول عملية بيع" },
   "lt.owner.You": { en: "You", ar: "أنت" },
   "lt.owner.Moontech": { en: "Moontech", ar: "مون تك" },
