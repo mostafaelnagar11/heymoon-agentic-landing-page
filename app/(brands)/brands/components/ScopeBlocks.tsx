@@ -19,7 +19,6 @@ import {
 } from "@phosphor-icons/react";
 import type { BrandRead, Plan, ProductFocus } from "../lib/agent/types";
 import { marketName, PHASE1_BUDGET } from "../lib/agent/tools";
-import { guaranteeLine } from "../lib/agent/guarantee";
 import { fmtUSD } from "../lib/mock/campaigns";
 import { Btn, Card } from "./ui";
 
@@ -231,15 +230,15 @@ export function IncludesBlock({ plan, salesFirst = false }: {
         What your {fmtUSD(budget)} includes
       </p>
       <ul className="mt-3 space-y-2">
-        {salesFirst && row("The guarantee.", guaranteeLine(budget, target))}
-        {row("Your creators.", `The fees for the ${crew} creator${crew === 1 ? "" : "s"} in your warm-up crew, ${fmtUSD(plan.price.crewCost.value)} of it, paid as one sum.`)}
-        {row("The work.", "Matching the creators to your products and markets, vetting each one for brand and fraud risk, and writing their brief.")}
-        {row("Tracking.", "A code and a link for every creator, so each order they bring in is counted.")}
-        {!salesFirst && row("The guarantee.", guaranteeLine(budget, target))}
+        {/* One line each (19 Oct: "no one is reading this much"). */}
+        {salesFirst && row("The guarantee.", `${fmtUSD(target)} in sales, or the missed share back.`)}
+        {row("Your creators.", `${crew} creator${crew === 1 ? "" : "s"}' fees, ${fmtUSD(plan.price.crewCost.value)} in all.`)}
+        {row("The work.", "Matching, vetting and the brief.")}
+        {row("Tracking.", "A code per creator, so every order counts.")}
+        {!salesFirst && row("The guarantee.", `${fmtUSD(target)} in sales, or the missed share back.`)}
       </ul>
       <div className="mt-3 space-y-2.5">
-        {qa("Any other fees?", `No. VAT is the only addition, ${fmtUSD(plan.price.vat.value)}, and nothing after Phase 1 is charged unless you choose to continue.`)}
-        {qa("Can I choose my own creators?", "HeyMoon matches them to what you sell and where. You see who they are the moment Phase 1 starts, and no ad goes out until you approve it.")}
+        {qa("Any other fees?", `Only VAT, ${fmtUSD(plan.price.vat.value)}.`)}
       </div>
     </Card>
   );

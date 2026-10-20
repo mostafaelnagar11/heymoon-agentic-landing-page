@@ -28,8 +28,10 @@ import type { AdRecord } from "../../lib/agent/types";
 import { REVIEW_WINDOW_DAYS, draftDaysLeft } from "../../lib/mock/campaigns";
 import {
   setAdState, useAds, useLivePhase,
+  useCan,
 } from "../../lib/store";
 import { LiveAdGrid } from "../AdCards";
+import { MemberCall, RecLine } from "./Roles";
 import { ReviewDeck } from "./ReviewDeck";
 import { Claim } from "../Evidence";
 import { Avatar, Btn, Sheet } from "../ui";
@@ -92,6 +94,7 @@ export function AdsView() {
 
   const toggle = (id: string, on: boolean) => setSel((s) => (on ? [...s, id] : s.filter((x) => x !== id)));
   const approveSelected = () => { sel.forEach((id) => setAdState(id, "live")); setSel([]); };
+  const canApprove = useCan("approve");
 
   if (!phase) {
     return (
@@ -115,7 +118,7 @@ export function AdsView() {
       {/* The batch row. One line: what I would do, and the two presses
           that do it. The paragraph that used to explain the review
           window is now a chip on every card that has a clock on it. */}
-      {shelf === "waiting" && counts.waiting > 0 && !deck && (
+      {shelf === "waiting" && counts.waiting > 0 && !deck && canApprove && (
         <Surface className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
           <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand text-[11px] font-bold text-white">
             {counts.waiting}
@@ -220,6 +223,7 @@ function AdCard({
   onSelect?: (id: string, on: boolean) => void;
 }) {
   const [declining, setDeclining] = useState(false);
+  const canApprove = useCan("approve");
   const [reason, setReason] = useState("");
   const P = ICON[ad.platform];
   const v = VERDICT[ad.compliance.verdict];
@@ -229,7 +233,7 @@ function AdCard({
   return (
     <article className="flex min-w-0 flex-col overflow-hidden rounded-card border border-hairline bg-white shadow-card">
       <div className="flex gap-3 p-3">
-        {onSelect && (
+        {onSelect && canApprove && (
           <label className="flex shrink-0 items-start pt-1">
             <input
               type="checkbox"
@@ -307,8 +311,11 @@ function AdCard({
         </Detail>
       </div>
 
-      {ad.state === "waiting" ? (
-        <div className="mt-auto flex gap-2 border-t border-hairline p-3">
+      {ad.state === "waiting" && !canApprove ? (
+        <div className="mt-auto border-t border-hairline p-3"><MemberCall adId={ad.id} /></div>
+      ) : ad.state === "waiting" ? (
+        <div className="mt-auto flex flex-wrap gap-2 border-t border-hairline p-3">
+          <RecLine adId={ad.id} className="w-full" />
           <Btn variant="quiet" size="sm" className="flex-1" onClick={() => setDeclining(true)}>
             <ThumbsDown size={13} weight="fill" aria-hidden /> Decline
           </Btn>

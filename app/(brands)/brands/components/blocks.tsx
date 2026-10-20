@@ -15,7 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import type { ApprovalRequest, BrandRead, Eligibility, FundingRequest, Plan, PlanChange, ReadLayerKey, Report } from "../lib/agent/types";
 import { UNLOCK_AT, fmtUSD, phaseTitle } from "../lib/mock/campaigns";
-import { confirmFunding, cancelFunding, focusReadLayer, openPanel, usePhaseRequested, setAdState, setApprovalState, useAds, usePaid, useStore } from "../lib/store";
+import { confirmFunding, cancelFunding, focusReadLayer, openPanel, usePhaseRequested, setAdState, setApprovalState, useAds, useCan, usePaid, useStore } from "../lib/store";
 import { Btn, Card, Eyebrow, Pill } from "./ui";
 import { EvidenceRow, Figure } from "./Evidence";
 import { READ_ORDER, ReadValue, readValueTree, srcFor } from "./ReadValue";
@@ -28,6 +28,7 @@ import {
 import { PlanCard, ConfidenceMeter } from "./PlanCard";
 import { CreatorNames, CreatorSummary } from "./CreatorCard";
 import { ApprovalCard } from "./AdCards";
+import { OnlyAdmins } from "./dashboard/Roles";
 
 /* ------------------------------------------------------------------ */
 /* Attribution                                                         */
@@ -266,6 +267,7 @@ export function ApprovalBlock({ req }: { req: ApprovalRequest }) {
   const live = useStore((s) => s.approvals[req.id]) ?? req;
   const ads = useAds();
   const [sel, setSel] = useState<string[]>(live.adIds);
+  const canApprove = useCan("approve");
   const rows = ads.filter((a) => live.adIds.includes(a.id));
   const open = rows.filter((a) => a.state === "waiting");
 
@@ -320,17 +322,21 @@ export function ApprovalBlock({ req }: { req: ApprovalRequest }) {
         <Btn variant="quiet" size="sm" className="sm:flex-1" onClick={() => setSel(open.filter((a) => a.compliance.verdict !== "hold").map((a) => a.id))}>
           Select every draft without a hold
         </Btn>
-        <Btn
-          size="sm"
-          className="sm:flex-[1.4]"
-          disabled={!sel.length}
-          onClick={() => {
-            sel.forEach((id) => setAdState(id, "live"));
-            setApprovalState(live.id, "approved");
-          }}
-        >
-          Approve {sel.length} and publish
-        </Btn>
+        {canApprove ? (
+          <Btn
+            size="sm"
+            className="sm:flex-[1.4]"
+            disabled={!sel.length}
+            onClick={() => {
+              sel.forEach((id) => setAdState(id, "live"));
+              setApprovalState(live.id, "approved");
+            }}
+          >
+            Approve {sel.length} and publish
+          </Btn>
+        ) : (
+          <OnlyAdmins what="approve and publish" className="sm:flex-[1.4] sm:justify-center" />
+        )}
       </div>
       <p className="px-3 pb-3 text-[11px] leading-4 text-ink-faint">
         Approving publishes, and that is always your action. HeyMoon can rank these and recommend. That is all.
@@ -359,9 +365,7 @@ export function PlanBlock({ plan, onOpenCreators }: { plan: Plan; onOpenCreators
         >
           Change anything
         </button>
-        <span className="text-[11px] text-ink-faint">
-          or tell me what to change. Try “Kuwait only” or “women 25 to 40”.
-        </span>
+
       </div>
     </div>
   );
@@ -403,6 +407,9 @@ export function ConfidenceBlock({ plan }: { plan: Plan }) {
   return <ConfidenceMeter plan={plan} />;
 }
 
+/** A brief line's first sentence. The rest is the agent's evidence, which belongs behind the line, not in it. */
+export const briefLine = (l: string) => l.split(/(?<=[.!?])\s+/)[0].replace(/\.$/, "");
+
 export function BriefBlock({ plan }: { plan: Plan }) {
   const b = plan.brief.value;
   return (
@@ -412,11 +419,11 @@ export function BriefBlock({ plan }: { plan: Plan }) {
       <div className="mt-3 space-y-2.5">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-good-deep">Must</p>
-          <ul className="mt-1 space-y-1">{b.mustSay.value.map((l, i) => <li key={i} className="text-meta text-ink-soft">· {l}</li>)}</ul>
+          <ul className="mt-1 space-y-1">{b.mustSay.value.map((l, i) => <li key={i} className="text-meta text-ink-soft">· {briefLine(l)}</li>)}</ul>
         </div>
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-danger">Must not</p>
-          <ul className="mt-1 space-y-1">{b.mustNotSay.value.map((l, i) => <li key={i} className="text-meta text-ink-soft">· {l}</li>)}</ul>
+          <ul className="mt-1 space-y-1">{b.mustNotSay.value.map((l, i) => <li key={i} className="text-meta text-ink-soft">· {briefLine(l)}</li>)}</ul>
         </div>
       </div>
     </Card>
@@ -835,7 +842,9 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
             figure for every brand, and the two phases behind it are what
             it earns rather than what it commits you to. */}
         <p className={`mt-1.5 text-ink-soft ${compact ? "text-meta leading-5" : "text-body leading-6"}`}>
-          {paid
+          {compact
+            ? paid ? "Phase 1 has started. The others open as it reaches 80%." : "You start Phase 1. The others open as it reaches 80%."
+            : paid
             ? `Phase 1 has started, at the ${fmtUSD(PHASE1_BUDGET)} it costs every brand. Phases 2 and 3 are what it leads to, and you decide on each one only when it is offered.`
             : `Start at ${fmtUSD(PHASE1_BUDGET)}. Phases 2 and 3 are what it leads to. The warm-up is ${fmtUSD(PHASE1_BUDGET)} for every brand and whichever of the three plans you pick, so there is no budget to agree before you begin, and nothing beyond Phase 1 is charged or committed.`}
         </p>
@@ -909,7 +918,7 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
         })}
       </ol>
 
-      <div className={`border-t border-hairline ${headPad}`}>
+      {!compact && <div className={`border-t border-hairline ${headPad}`}>
         {/* No three-phase totals here. Summing budgets the brand is not
             being charged for, against guarantees that are not yet
             priced, put the biggest pair of numbers on the card under
@@ -919,7 +928,7 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
           Only Phase 1 is due today. Each phase after it is offered on results, and you decide then. Every phase carries
           the same guarantee: fall short and the same share of that phase&apos;s budget comes back to you.
         </p>
-      </div>
+      </div>}
 
       {/* Stood down once the payment card is on screen below. The
           brand reached it by pressing this, so leaving it live offers
@@ -930,10 +939,12 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
           <Btn className="w-full sm:w-auto" onClick={onStart}>
             Start Phase 1 for {fmtUSD(plan.price.total.value)}
           </Btn>
-          <p className="mt-2 text-[11px] leading-4 text-ink-faint">
-            You are committing to Phase 1 only. Nothing after it is charged, promised or scheduled, and you decide
-            phase by phase whether to continue.
-          </p>
+          {!compact && (
+            <p className="mt-2 text-[11px] leading-4 text-ink-faint">
+              You are committing to Phase 1 only. Nothing after it is charged, promised or scheduled, and you decide
+              phase by phase whether to continue.
+            </p>
+          )}
         </div>
       )}
     </Card>

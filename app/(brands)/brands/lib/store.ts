@@ -234,6 +234,8 @@ export interface Campaign {
   /** Between paying and the first ad going live: the launch checklist (brand flows, P2). Absent on campaigns that
       were running before the checklist existed, and on the running demo. */
   launch?: Launch;
+  /** Changes to the brief a member suggested, for the owner or an admin to add or dismiss. */
+  suggestions?: { by: string; text: string; at: number }[];
 }
 
 /* The cold start (brand flows, P2, 19 Oct review: "like Stripe's onboarding"). Phase 1 is paid and nothing is
@@ -339,6 +341,10 @@ export interface State {
   sent: Record<string, { to: string; at: number }>;
   /* Drafts made for a campaign after the demo's fixtures: the first drafts of a launch (brand flows, P2 step 7). */
   extraAds: AdRecord[];
+  /* What a member recommends on a draft they can't approve themselves, by ad id. */
+  adRecs: Record<string, { by: string; call: "approve" | "recut"; at: number }>;
+  /* The owner or an admin seeing the dashboard as another role would, to check what a teammate can do. Not saved. */
+  previewRole: TeamRole | null;
   /* What the brand tells HeyMoon about itself, as opposed to what
      HeyMoon read off the shop. The read is evidence and cannot be
      typed over; this is the paperwork a campaign needs to be invoiced,
@@ -393,6 +399,8 @@ export interface BrandMember {
   invitedAt: number;
   /** Set when they first sign in with the invited address. */
   joinedAt?: number;
+  /** What they may do (TeamRole). Absent on people invited before roles existed: they are members. */
+  role?: "admin" | "member";
 }
 export interface AccessRequest {
   firstName: string;
@@ -408,6 +416,26 @@ export interface BrandAccount {
   requests: AccessRequest[];
 }
 export type BrandAccess = "unclaimed" | "owner" | "member" | "invited" | "outsider";
+
+/* Who may do what on a brand (Mostafa, 19 Oct). Three roles, cut along the actions that matter in this product:
+   moving money, publishing, and what the creators are told. The owner and admins do all of it; an admin can also
+   pay and start phases. A member sees everything and suggests, so an agency or a junior can work in it without
+   being able to publish or spend. Only the owner can hand the brand to someone else. */
+export type TeamRole = "owner" | "admin" | "member";
+export type TeamAction = "pay" | "approve" | "brief" | "team" | "transfer";
+export const CAN: Record<TeamAction, TeamRole[]> = {
+  pay: ["owner", "admin"],
+  approve: ["owner", "admin"],
+  brief: ["owner", "admin"],
+  team: ["owner", "admin"],
+  transfer: ["owner"],
+};
+export const ROLE_LABEL: Record<TeamRole, string> = { owner: "Owner", admin: "Admin", member: "Member" };
+export const ROLE_NOTE: Record<TeamRole, string> = {
+  owner: "Everything, and can hand the brand to someone else",
+  admin: "Pays and starts phases, approves drafts, changes the brief, manages the team",
+  member: "Sees everything and suggests. Can't pay, publish or change the brief",
+};
 
 /* Who HeyMoon is talking to (brand team, 15 Oct). Every one of them hears about the guarantee first, because no one
    else guarantees an influencer campaign; e-commerce managers and owners buy on sales and decide fastest, so for them
@@ -455,7 +483,7 @@ const KEPT = [
   "threads", "activeThreadId",
   "funding", "approvals",
   "ads", "declineNotes", "creatorSignals", "dismissedInbox",
-  "activity", "account", "profile", "role", "sent", "extraAds",
+  "activity", "account", "profile", "role", "sent", "extraAds", "adRecs",
 ] as const;
 /* The brand accounts, apart from the work: see State.brands. */
 const BRANDS_KEY = "mtab_brands_v1";
@@ -494,6 +522,8 @@ function initial(): State {
     role: null,
     sent: {},
     extraAds: [],
+    adRecs: {},
+    previewRole: null,
     profile: { industry: "", country: "", vat: "", tradeLicence: "", street: "", city: "", notifications: true },
   };
 }
@@ -971,12 +1001,63 @@ export const claimBrand = (host: string, brandName: string, a: Account, at: numb
         }
   );
 
-export const inviteMember = (host: string, email: string, at: number) =>
+export const inviteMember = (host: string, email: string, at: number, role: "admin" | "member" = "member") =>
   patchBrand(host, (b) =>
     b.members.some((m) => sameEmail(m.email, email))
       ? b
-      : { ...b, members: [...b.members, { email: email.trim().toLowerCase(), invitedAt: at }], requests: b.requests.filter((r) => !sameEmail(r.email, email)) }
+      : { ...b, members: [...b.members, { email: email.trim().toLowerCase(), invitedAt: at, role }], requests: b.requests.filter((r) => !sameEmail(r.email, email)) }
   );
+
+/** Where this address stands as a role. Before anyone has paid there is no owner, and whoever pays becomes it, so the
+    person building the campaign may do everything. Someone not on the team has no role. */
+export function teamRoleFor(host: string, email: string, brands: Record<string, BrandAccount> = state.brands): TeamRole | null {
+  const b = brands[host];
+  if (!b) return "owner";
+  if (sameEmail(b.owner.email, email)) return "owner";
+  const m = b.members.find((x) => sameEmail(x.email, email));
+  return m ? m.role ?? "member" : null;
+}
+
+export const setMemberRole = (host: string, email: string, role: "admin" | "member") =>
+  patchBrand(host, (b) => ({ ...b, members: b.members.map((m) => (sameEmail(m.email, email) ? { ...m, role } : m)) }));
+
+/** The invite sent again, dated now. */
+export const resendInvite = (host: string, email: string, at: number) =>
+  patchBrand(host, (b) => ({ ...b, members: b.members.map((m) => (sameEmail(m.email, email) ? { ...m, invitedAt: at } : m)) }));
+
+/** The owner hands the brand to someone already on the team. They stay on it as an admin. */
+export const transferOwnership = (host: string, email: string, at: number) =>
+  patchBrand(host, (b) => {
+    const next = b.members.find((m) => sameEmail(m.email, email) && m.joinedAt);
+    if (!next) return b;
+    const was = b.owner;
+    return {
+      ...b,
+      owner: { firstName: next.firstName ?? "", lastName: next.lastName ?? "", email: next.email, since: at },
+      members: [
+        ...b.members.filter((m) => !sameEmail(m.email, email)),
+        { email: was.email, firstName: was.firstName, lastName: was.lastName, invitedAt: was.since, joinedAt: was.since, role: "admin" as const },
+      ],
+    };
+  });
+
+export const setPreviewRole = (r: TeamRole | null) => set({ previewRole: r });
+
+/** A member's call on a draft, for whoever approves. */
+export const recommendAd = (adId: string, by: string, call: "approve" | "recut", at: number) =>
+  set((s) => ({ adRecs: { ...s.adRecs, [adId]: { by, call, at } } }));
+
+/** A member's suggestion for the brief, and the owner or an admin taking it or not. */
+export const suggestBrief = (campaignId: string, by: string, text: string, at: number) =>
+  set((s) => {
+    const c = s.campaigns[campaignId];
+    return c ? patchCampaignIn(s, campaignId, { suggestions: [...(c.suggestions ?? []), { by, text, at }] }) : {};
+  });
+export const dropSuggestion = (campaignId: string, at: number) =>
+  set((s) => {
+    const c = s.campaigns[campaignId];
+    return c ? patchCampaignIn(s, campaignId, { suggestions: (c.suggestions ?? []).filter((x) => x.at !== at) }) : {};
+  });
 
 export const removeMember = (host: string, email: string) =>
   patchBrand(host, (b) => ({ ...b, members: b.members.filter((m) => !sameEmail(m.email, email)) }));
@@ -993,12 +1074,12 @@ export const requestAccess = (host: string, who: { firstName: string; lastName: 
   patchBrand(host, (b) => ({ ...b, requests: [...b.requests.filter((r) => !sameEmail(r.email, who.email)), { ...who, at }] }));
 
 /** Approving a request lets them straight in: they already proved the address with a code when they asked. */
-export const answerRequest = (host: string, email: string, approve: boolean, at: number) =>
+export const answerRequest = (host: string, email: string, approve: boolean, at: number, role: "admin" | "member" = "member") =>
   patchBrand(host, (b) => {
     const r = b.requests.find((x) => sameEmail(x.email, email));
     const requests = b.requests.filter((x) => !sameEmail(x.email, email));
     if (!approve || !r) return { ...b, requests };
-    return { ...b, requests, members: [...b.members, { email: r.email, firstName: r.firstName, lastName: r.lastName, invitedAt: at, joinedAt: at }] };
+    return { ...b, requests, members: [...b.members, { email: r.email, firstName: r.firstName, lastName: r.lastName, invitedAt: at, joinedAt: at, role }] };
   });
 
 export const useBrandAccount = (host?: string | null) => useStore((s) => (host ? s.brands[host] ?? null : null));
@@ -1245,3 +1326,25 @@ export const setAccountDetails = (patch: Partial<Omit<Account, "verifiedAt">>) =
 export const useLocale = () => useStore((s) => s.locale);
 export const useAutonomy = () => useStore((s) => s.autonomy);
 export const useActivity = () => useStore((s) => s.activity);
+
+/* ---- Roles ---- */
+
+/** This person's role on the brand on screen, and the one the dashboard acts as: the same, unless the owner or an
+    admin is previewing another. `host` defaults to the active campaign's store. */
+export const useTeamRole = (host?: string | null) => {
+  const h = useStore((s) => host ?? (s.activeCampaignId ? s.campaigns[s.activeCampaignId]?.url ?? null : null));
+  /* Not signed in yet, nobody can have taken the brand from them in this browser: the payment gate checks again. */
+  const real = useStore((s): TeamRole | null => (h && s.account ? teamRoleFor(h, s.account.email, s.brands) : h ? "owner" : null));
+  const preview = useStore((s) => s.previewRole);
+  const owner = useStore((s) => (h ? s.brands[h]?.owner ?? null : null));
+  const canPreview = real === "owner" || real === "admin";
+  return { real, role: canPreview && preview ? preview : real, owner };
+};
+
+export const useCan = (action: TeamAction, host?: string | null) => {
+  const { role } = useTeamRole(host);
+  return !!role && CAN[action].includes(role);
+};
+
+export const useAdRecs = () => useStore((s) => s.adRecs);
+export const usePreviewRole = () => useStore((s) => s.previewRole);

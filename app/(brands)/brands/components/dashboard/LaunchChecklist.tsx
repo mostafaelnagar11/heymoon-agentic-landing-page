@@ -24,24 +24,23 @@ import {
   ShieldCheck, Sparkle, UserPlus, UsersThree,
 } from "@phosphor-icons/react";
 import {
-  PASS_REASONS, clearCreatorSignal, connectStore, deliverDrafts, goLive, inviteMember, passCreator, patchLaunch,
-  putPlan, setAdState, trackingCode, useAccount, useActiveCampaign, useAds, useBrandAccount, useStore,
-  type Campaign, type Launch,
+  PASS_REASONS, clearCreatorSignal, connectStore, deliverDrafts, dropSuggestion, goLive, inviteMember, passCreator,
+  patchLaunch, putPlan, setAdState, suggestBrief, trackingCode, useAccount, useActiveCampaign, useAds,
+  useBrandAccount, useCan, useStore, type Campaign, type Launch,
 } from "../../lib/store";
-import { marketName, poolFor, tools } from "../../lib/agent/tools";
+import { MemberCall, OnlyAdmins, RecLine } from "./Roles";
+import { poolFor, tools } from "../../lib/agent/tools";
 import { getRead } from "../../lib/agent/registry";
 import { creatorById } from "../../lib/mock/creators";
 import { fmtUSD } from "../../lib/mock/campaigns";
 import { isPersonal, looksLikeEmail } from "../../lib/email";
 import type { AdRecord, Plan } from "../../lib/agent/types";
-import { IntegrationBlock } from "../blocks";
+import { IntegrationBlock, briefLine } from "../blocks";
 import { Avatar, Btn } from "../ui";
 import { useHeyMoon } from "./HeyMoon";
 
 const PLATFORM: Record<string, string> = { salla: "Salla", zid: "Zid", shopify: "Shopify", magento: "Magento" };
 
-const listOf = (parts: string[]) =>
-  parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 
 const compact = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(n));
 
@@ -135,7 +134,7 @@ function Checklist({ camp, launch, plan }: { camp: Campaign; launch: Launch; pla
         ? launch.swapping?.length
           ? `${crew.length - launch.swapping.length} kept. MoonMatch is finding ${launch.swapping.length === 1 ? "a replacement" : `${launch.swapping.length} replacements`}.`
           : `${crew.length} creators kept.`
-        : `${crew.length} creators matched to ${listOf(plan.markets.value.map(marketName))}. Keep each one, or swap.`,
+        : `${crew.length} creators matched. Keep or swap each one.`,
       done: launch.creatorsKept,
       body: <Creators camp={camp} plan={plan} launch={launch} />,
     },
@@ -294,6 +293,8 @@ function Creators({ camp, plan, launch }: { camp: Campaign; plan: Plan; launch: 
   const crew = plan.creators.value;
   const kept = launch.creatorsKept;
   const swapping = launch.swapping ?? [];
+  /* Who is on the crew is part of the plan, so it is the owner's and admins' to change (store.ts, CAN). */
+  const canEdit = useCan("brief");
 
   /* MoonMatch's next best: the first creator in the matched pool who is not on the crew and fits the fee the swap
      frees, tried through the same edit the conversation uses so it obeys the same rules. When nobody fits yet, the
@@ -340,7 +341,7 @@ function Creators({ camp, plan, launch }: { camp: Campaign; plan: Plan; launch: 
                     {out ? "Being replaced" : `${c.handle} · ${compact(c.followers)} · ${Math.round(c.gulfShare)}% in the Gulf`}
                   </span>
                 </span>
-                {out ? (
+                {!canEdit ? null : out ? (
                   <button type="button" onClick={() => undo(c.id)} className="shrink-0 rounded-pill px-2.5 py-1.5 text-meta font-semibold text-brand hover:bg-brand/[0.05]">
                     Undo
                   </button>
@@ -376,11 +377,12 @@ function Creators({ camp, plan, launch }: { camp: Campaign; plan: Plan; launch: 
         })}
       </ul>
       {note && <p role="status" className="text-meta text-ink-soft">{note}</p>}
-      {!kept && (
+      {!kept && canEdit && (
         <Btn size="sm" onClick={() => patchLaunch(camp.id, { creatorsKept: true })}>
           {swapping.length ? `Keep the other ${crew.length - swapping.length}` : `Keep all ${crew.length}`}
         </Btn>
       )}
+      {!kept && !canEdit && <OnlyAdmins what="keep or swap creators" />}
     </div>
   );
 }
@@ -391,6 +393,26 @@ function Brief({ camp, plan, approved }: { camp: Campaign; plan: Plan; approved:
   const b = plan.brief.value;
   const [text, setText] = useState("");
   const [note, setNote] = useState<string | null>(null);
+  const canEdit = useCan("brief");
+  const account = useAccount();
+  const suggestions = camp.suggestions ?? [];
+
+  /* A member's change is a suggestion the owner or an admin adds, or not. */
+  const suggest = (e: FormEvent) => {
+    e.preventDefault();
+    const v = text.trim();
+    if (!v) return;
+    suggestBrief(camp.id, account?.firstName ?? "A member", v, Date.now());
+    setText("");
+    setNote("Suggested. The owner or an admin decides.");
+  };
+  const take = (sg: { text: string; at: number }) => {
+    const { plan: next } = tools.edit_plan({
+      plan, patch: { brief: { mustSay: [...b.mustSay.value, sg.text] } }, because: "because a teammate suggested it", by: "brand",
+    });
+    putPlan(next);
+    dropSuggestion(camp.id, sg.at);
+  };
 
   /* A change in words lands as a line every creator must follow. The brief is the brand's to word. */
   const change = (e: FormEvent) => {
@@ -412,16 +434,48 @@ function Brief({ camp, plan, approved }: { camp: Campaign; plan: Plan; approved:
         <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-good-deep">Must</p>
-            <ul className="mt-1 space-y-1">{b.mustSay.value.map((l, i) => <li key={i} className="text-meta text-ink-soft">· {l}</li>)}</ul>
+            <ul className="mt-1 space-y-1">{b.mustSay.value.map((l, i) => <li key={i} className="text-meta text-ink-soft">· {briefLine(l)}</li>)}</ul>
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-danger">Must not</p>
-            <ul className="mt-1 space-y-1">{b.mustNotSay.value.map((l, i) => <li key={i} className="text-meta text-ink-soft">· {l}</li>)}</ul>
+            <ul className="mt-1 space-y-1">{b.mustNotSay.value.map((l, i) => <li key={i} className="text-meta text-ink-soft">· {briefLine(l)}</li>)}</ul>
           </div>
         </div>
         <p className="mt-2.5 text-meta text-ink-faint">{b.formats.value.join(", ")}</p>
       </div>
-      {!approved && (
+      {canEdit && suggestions.length > 0 && (
+        <ul className="space-y-1.5">
+          {suggestions.map((sg) => (
+            <li key={sg.at} className="flex flex-wrap items-center gap-2 rounded-control bg-lilac px-3 py-2 text-meta">
+              <span className="min-w-0 flex-1 text-ink"><span className="font-semibold">{sg.by} suggests:</span> {sg.text}</span>
+              <button type="button" onClick={() => take(sg)} className="font-semibold text-brand hover:underline">Add it</button>
+              <button type="button" onClick={() => dropSuggestion(camp.id, sg.at)} className="font-semibold text-ink-faint hover:text-ink">Dismiss</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!canEdit && (
+        <>
+          {suggestions.length > 0 && (
+            <ul className="space-y-1">
+              {suggestions.map((sg) => <li key={sg.at} className="text-meta text-ink-soft">· {sg.by} suggested: {sg.text}</li>)}
+            </ul>
+          )}
+          <form onSubmit={suggest} className="flex gap-2">
+            <label htmlFor={`suggest-${camp.id}`} className="sr-only">Suggest a change to the brief</label>
+            <input
+              id={`suggest-${camp.id}`}
+              value={text}
+              onChange={(e) => { setText(e.target.value); setNote(null); }}
+              placeholder="Suggest a change, like “show the tote in daylight”"
+              className="h-9 min-w-0 flex-1 rounded-pill border border-hairline bg-white px-3.5 text-meta text-ink outline-none focus:border-brand/50"
+            />
+            <Btn size="sm" variant="quiet" type="submit" disabled={!text.trim()}>Suggest</Btn>
+          </form>
+          {note ? <p role="status" className="text-meta text-ink-soft">{note}</p> : <OnlyAdmins what="change or approve the brief" />}
+        </>
+      )}
+      {!approved && canEdit && (
         <>
           <form onSubmit={change} className="flex gap-2">
             <label htmlFor={`brief-${camp.id}`} className="sr-only">Change the brief</label>
@@ -445,6 +499,7 @@ function Brief({ camp, plan, approved }: { camp: Campaign; plan: Plan; approved:
 /* ── 5 · Enterprise ───────────────────────────────────────────────── */
 
 function Enterprise({ camp, launch, owner }: { camp: Campaign; launch: Launch; owner: string }) {
+  const canSign = useCan("approve");
   const items: { key: keyof Launch["enterpriseSteps"]; label: string }[] = [
     { key: "legal", label: "Legal has reviewed the brief" },
     { key: "products", label: "The approved product list is confirmed" },
@@ -459,6 +514,7 @@ function Enterprise({ camp, launch, owner }: { camp: Campaign; launch: Launch; o
             <button
               type="button"
               aria-pressed={on}
+              disabled={!canSign}
               onClick={() => patchLaunch(camp.id, { enterpriseSteps: { ...launch.enterpriseSteps, [it.key]: !on } })}
               className="flex w-full items-center gap-2.5 rounded-control border border-hairline px-3 py-2.5 text-start text-body text-ink transition hover:bg-wash"
             >
@@ -470,6 +526,7 @@ function Enterprise({ camp, launch, owner }: { camp: Campaign; launch: Launch; o
           </li>
         );
       })}
+      {!canSign && <li><OnlyAdmins what="sign these off" className="pt-1" /></li>}
     </ul>
   );
 }
@@ -478,6 +535,7 @@ function Enterprise({ camp, launch, owner }: { camp: Campaign; launch: Launch; o
 
 function Team({ camp }: { camp: Campaign }) {
   const brand = useBrandAccount(camp.url);
+  const canInvite = useCan("team");
   const [email, setEmail] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
@@ -503,7 +561,8 @@ function Team({ camp }: { camp: Campaign }) {
           ))}
         </ul>
       )}
-      <form onSubmit={invite} className="flex flex-wrap gap-2">
+      {!canInvite && <OnlyAdmins what="invite people" />}
+      {canInvite && <form onSubmit={invite} className="flex flex-wrap gap-2">
         <label htmlFor={`invite-${camp.id}`} className="sr-only">Work email</label>
         <input
           id={`invite-${camp.id}`}
@@ -517,7 +576,7 @@ function Team({ camp }: { camp: Campaign }) {
         {!brand?.members.length && (
           <Btn size="sm" variant="ghost" type="button" onClick={() => patchLaunch(camp.id, { teamDone: true })}>Skip</Btn>
         )}
-      </form>
+      </form>}
       {err && <p role="alert" className="text-meta text-danger">{err}</p>}
     </div>
   );
@@ -534,6 +593,7 @@ const VERDICT: Record<AdRecord["compliance"]["verdict"], { label: string; tone: 
 function Drafts({ camp, plan, drafts, arrived, filming, onLive }: {
   camp: Campaign; plan: Plan; drafts: AdRecord[]; arrived: boolean; filming: number; onLive: (ad: AdRecord) => void;
 }) {
+  const canApprove = useCan("approve");
   if (!arrived) {
     return (
       <div className="flex flex-wrap items-center gap-3 rounded-control border border-dashed border-black/15 px-3.5 py-3">
@@ -554,6 +614,7 @@ function Drafts({ camp, plan, drafts, arrived, filming, onLive }: {
   }
 
   const approve = (ad: AdRecord) => {
+    if (!canApprove) return;
     setAdState(ad.id, "approved");
     goLive(camp.id, ad.id, Date.now());
     onLive(ad);
@@ -572,9 +633,12 @@ function Drafts({ camp, plan, drafts, arrived, filming, onLive }: {
               <p className="text-meta font-semibold text-ink">{ad.creatorName} · {ad.format}</p>
               <p className={`text-tiny font-semibold ${v.tone}`}>{v.label}</p>
               <p className="line-clamp-3 text-meta leading-5 text-ink-soft">{ad.compliance.reasoning.value}</p>
+              {canApprove && <RecLine adId={ad.id} />}
               <div className="mt-auto flex gap-2 pt-1.5">
                 {done ? (
                   <p className="text-meta font-semibold text-ink-faint">{ad.state === "declined" ? "Re-cut asked" : "Approved"}</p>
+                ) : !canApprove ? (
+                  <MemberCall adId={ad.id} />
                 ) : (
                   <>
                     <Btn size="sm" className="flex-1" onClick={() => approve(ad)}>Approve</Btn>

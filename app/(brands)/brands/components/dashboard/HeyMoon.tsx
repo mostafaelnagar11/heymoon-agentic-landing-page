@@ -27,7 +27,7 @@ import { ArrowUp, Check, Sparkle, X } from "@phosphor-icons/react";
 import { dashboardChips, interpretDashboard, type DashboardView } from "../../lib/agent/dashboard";
 import type { MoveAction } from "../../lib/agent/moves";
 import {
-  logActivity, openPhase, putApproval, setAdState, undoActivity, useActivity, useAds, useLivePhase,
+  logActivity, openPhase, putApproval, setAdState, undoActivity, useActivity, useAds, useCan, useLivePhase,
 } from "../../lib/store";
 import { fmtUSD } from "../../lib/mock/campaigns";
 import { useGo } from "../../lib/surface";
@@ -126,7 +126,13 @@ export function HeyMoonProvider({ children }: { children: ReactNode }) {
     }
   }, [phase, ads, undoable, go, show, approve]);
 
+  const canApprove = useCan("approve");
   const run = useCallback((a: MoveAction) => {
+    /* Approving, re-cutting and moving budget are the owner's and admins' (store.ts, CAN). */
+    if (!canApprove && (a.do === "approve-cleared" || a.do === "recut" || a.do === "rebalance" || a.do === "undo")) {
+      setNote("Only the owner or an admin can do that");
+      return;
+    }
     switch (a.do) {
       case "approve-cleared":
         approve(
@@ -165,7 +171,7 @@ export function HeyMoonProvider({ children }: { children: ReactNode }) {
       case "why":
         show({ q: a.q, say: a.say });
     }
-  }, [approve, go, show]);
+  }, [approve, go, show, canApprove]);
 
   const chips = dashboardChips(phase, ads, !!undoable);
   const value = useMemo(() => ({ open, setOpen, exchanges, ask, show, run, chips }), [open, exchanges, ask, show, run, chips]);

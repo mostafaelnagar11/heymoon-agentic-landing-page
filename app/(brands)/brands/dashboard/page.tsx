@@ -36,6 +36,7 @@ import { DashboardTopbar } from "../components/dashboard/Topbar";
 import { HeyMoonPanel, HeyMoonProvider, useHeyMoon } from "../components/dashboard/HeyMoon";
 import { ConnectAlert } from "../components/dashboard/ConnectAlert";
 import { LaunchChecklist } from "../components/dashboard/LaunchChecklist";
+import { PreviewBanner } from "../components/dashboard/Roles";
 import {
   campaignLabel, isLaunching, setDashboardView, showCampaignList, useActiveCampaign, useAds, useDashboardView,
   useCampaigns, useDrill,
@@ -223,6 +224,7 @@ export default function DashboardPage() {
                 once for the account, so the ask does not belong to the
                 page that happens to be open. */}
             <ConnectAlert />
+            <PreviewBanner />
             {/* Settings is the account, not the work, so it is the one
                 view that does not need a campaign or a payment behind
                 it. Both keys land here: the rail sends `settings`, and

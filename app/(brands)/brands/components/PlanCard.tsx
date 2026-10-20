@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CaretRight, Lightning, PencilSimple } from "@phosphor-icons/react";
 import type { Plan } from "../lib/agent/types";
-import { UNLOCK_AT, fmtUSD } from "../lib/mock/campaigns";
+import { fmtUSD } from "../lib/mock/campaigns";
 import { PHASE1_ROAS, STRATEGY_META, marketName } from "../lib/agent/tools";
 import { getRead } from "../lib/agent/registry";
 import { roundBudget } from "../lib/agent/model";
@@ -119,17 +119,19 @@ export function PlanCard({
             <p className="mt-1 text-[11px] leading-4 tabular-nums text-ink-faint">{multiple}x</p>
           </div>
         </div>
-        <p className="border-t border-hairline bg-wash px-3.5 py-2 text-[11px] leading-4 text-ink-soft">
-          {guaranteeLine(budget, target)}
-        </p>
+        {/* The refund rule was explained before the plan; in the conversation the card doesn't repeat it. */}
+        {!dense && (
+          <p className="border-t border-hairline bg-wash px-3.5 py-2 text-[11px] leading-4 text-ink-soft">
+            {guaranteeLine(budget, target)}
+          </p>
+        )}
       </div>
 
       <div className="mt-4">
         <RevenueRuler pct={0} srLabel="Phase not started." />
         <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-4 text-ink-faint">
           <Lightning size={11} weight="fill" className="mt-0.5 shrink-0 text-brand" aria-hidden />
-          Phase 2 is offered at {fmtUSD(plan.price.unlockAt.value)}, which is {Math.round(UNLOCK_AT * 100)}% of this
-          phase&apos;s target.
+          Phase 2 opens at {fmtUSD(plan.price.unlockAt.value)} in sales
         </p>
       </div>
 

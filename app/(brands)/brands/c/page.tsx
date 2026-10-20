@@ -45,7 +45,7 @@ import {
   ROLES, accessFor, claimBrand, requestAccess, salesFirst, setRole, useRole,
   push, putApproval, putCampaign, putFunding, putPlan, putRead, threadIsEmpty,
   useActivePlan, useAds, useCampaigns, useActiveThreadId, useLivePhase, usePaid, usePhaseRequested,
-  activeCampaignLive, isLaunching, markSent, startConversation, useActiveCampaign, useStore, type PanelView,
+  activeCampaignLive, isLaunching, markSent, startConversation, teamRoleFor, useActiveCampaign, useStore, type PanelView,
 } from "../lib/store";
 import { fmtUSD } from "../lib/mock/campaigns";
 import { getRead, readIdFor } from "../lib/agent/registry";
@@ -64,7 +64,6 @@ import {
   RejectedBlock, ReportBlock, TaskRoster, countWord, rosterTitle,
 } from "../components/blocks";
 import { PlanCard } from "../components/PlanCard";
-import { shortfallLine } from "../lib/agent/guarantee";
 import {
   BriefChoiceBlock, EmailSentBlock, IncludesBlock, MarketsPick, ProductsPick, focusText, type BriefSource,
 } from "../components/ScopeBlocks";
@@ -168,7 +167,8 @@ const PANEL_INTENT: { re: RegExp; view: PanelView; say: string }[] = [
 /** What the agent is waiting on (see `wait` below). */
 type Wait =
   | null | "store" | "other-store" | "goal" | "focus" | "launch-note" | "products" | "phase1"
-  | "brief-choice" | "brief-1" | "brief-2" | "brief-3" | "email" | "email-them";
+  | "brief-choice" | "brief-1" | "brief-2" | "brief-3" | "email" | "email-them"
+  | "reveal-plan" | "reveal-brief" | "brief-edit";
 
 /** What the brand settles before the plan is built (brand flows, P0). */
 type Scope = { markets?: string[]; focus?: ProductFocus; brief?: BriefSource };
@@ -501,6 +501,13 @@ function ChatInner() {
     if (!account) { setSignIn(true); return; }
     /* Signed in, but to a store somebody else already owns: only its owner can add people (brand team, 15 Oct). */
     if (accessFor(getRead(plan.readId).url, account.email, brands) === "outsider") { askForAccess(); return; }
+    /* A member can't move money (store.ts, CAN): they're told who can. */
+    if (teamRoleFor(getRead(plan.readId).url, account.email, brands) === "member") {
+      const b = brands[getRead(plan.readId).url];
+      say(`Only the owner or an admin can start a phase${b ? `, like ${b.owner.firstName}` : ""}. Nothing was charged.`);
+      ask("", ["Email the plan", "Change something"]);
+      return;
+    }
     showFunding();
   };
 
@@ -528,6 +535,23 @@ function ChatInner() {
        introduces it and gets out of the way. */
     say("Here's what you're agreeing to.");
     push({ kind: "funding", requestId: req.id });
+  };
+
+  /** After the plan: the brief they wrote, if they wrote one, then the decision. */
+  const revealBrief = () => {
+    const br = scopeRef.current.brief;
+    if (br && br.kind !== "agent") {
+      say("And the brief your creators get.");
+      push({ kind: "brief-card" });
+      ask("", ["Brief looks good", "Change the brief"]);
+      setWait("reveal-brief");
+      return;
+    }
+    revealReady();
+  };
+  const revealReady = () => {
+    setWait(null);
+    ask("Ready to start Phase 1?", READY_CHIPS);
   };
 
   /** Everything is settled: build the plan. */
@@ -622,37 +646,15 @@ function ChatInner() {
            torn-down first run of a development double-mount never gets
            here at all — useStream only reports the run that is current. */
         if (!claimOnce(`build-done:${read.id}`)) return;
+        /* The plan arrives one step at a time, each waiting on the brand (19 Oct: "divided into messages and steps …
+           no one is reading this much"). First the plan, then the brief if they wrote one, then the decision. The
+           three phases and what the $1,000 includes are a chip away, not printed by default: Phase 1 was explained
+           before the build. */
         const crew = v.creators.value.length;
-        const creatorsWord = `${countWord(crew)} creator${crew === 1 ? "" : "s"}`;
-        push({
-          kind: "say",
-          text:
-            /* E-commerce managers and owners buy on sales (brand team, 15 Oct), so for them the sentence opens on
-               the sales and the creators come after. */
-            (salesFirst(roleRef.current)
-              ? `Done. Phase 1 guarantees ${fmtUSD(v.price.revenueTarget.value)} in sales for ${fmtUSD(v.budget.value)}, from ${creatorsWord}.\n\n`
-              : `Done. Phase 1 is ${fmtUSD(v.budget.value)} for ${creatorsWord}, ` +
-                `with ${fmtUSD(v.price.revenueTarget.value)} in sales guaranteed.\n\n`) +
-            `And the part most brands do not believe until they read it: ${shortfallLine(v.budget.value, v.price.revenueTarget.value).replace(/^Fall/, "fall")}`,
-        });
+        say(`Done. ${fmtUSD(v.budget.value)} in, ${fmtUSD(v.price.revenueTarget.value)} in sales guaranteed, from ${countWord(crew)} creator${crew === 1 ? "" : "s"}.`);
         push({ kind: "plan-card" });
-        if (br && br.kind !== "agent") push({ kind: "brief-card" });
-        if (v.ladder.value.length) push({ kind: "ladder" });
-        /* What the $1,000 buys, before the brand is asked to pay it (brand team, 15 Oct). */
-        push({ kind: "includes" });
-        /* The plan opens beside the conversation the moment there is one.
-           It is the artifact this whole exchange is about — the three
-           plans, the crew and the brief all live there — so it should be
-           in front of the brand rather than one request away.
-
-           Only where there is room beside the conversation. On a phone
-           the panel covers the chat, and a brand who has just watched a
-           plan being built should not lose the thread that built it. */
-        if (typeof window !== "undefined" && window.innerWidth >= 768) openPanel("plan");
-        /* Three ways out, all equally plain (brand flows, P0 "ready?"): start, keep talking, or leave with the plan
-           saved. The old line ("It isn't sized to your store, and it isn't negotiated") answered a question nobody
-           had asked yet, at the moment the brand was deciding. */
-        ask("That's the plan. Start Phase 1 when you're ready, or ask me anything first.", READY_CHIPS);
+        ask("Look right?", ["Looks right", "Change something"]);
+        setWait("reveal-plan");
       }
     );
   };
@@ -759,12 +761,11 @@ function ChatInner() {
     const [b1, b2, b3] = PHASE_BUDGETS;
     const [, m2, m3] = PHASE_MULTIPLES;
     say(
-      `Before I build it, here's how it works.\n\n` +
-      `You start with Phase 1: ${fmtUSD(b1)} of creators, with ${fmtUSD(b1)} in sales guaranteed. It's small on purpose, ` +
-      `so you see them sell on your real orders before you spend more.\n\n` +
-      `When it reaches 80%, Phase 2 opens: ${fmtUSD(b2)} at ${m2}x. Then Phase 3: ${fmtUSD(b3)} at ${m3}x. ` +
-      `That's ${k(t.budget)} bringing back ${k(t.revenue)} in guaranteed sales.\n\n` +
-      `And the best part? If a phase falls short, you get back the same share of what you paid for it.`
+      `How it works, before I build it:\n\n` +
+      `• Phase 1: ${fmtUSD(b1)}, with ${fmtUSD(b1)} in sales guaranteed.\n` +
+      `• At 80%, Phase 2 opens: ${fmtUSD(b2)} at ${m2}x. Then Phase 3: ${fmtUSD(b3)} at ${m3}x.\n` +
+      `• Fall short, and you get back the same share of what you paid.\n\n` +
+      `${k(t.budget)} in, ${k(t.revenue)} in guaranteed sales.`
     );
     setAsking({ q: "", options: PHASE1_CHIPS });
     setWait("phase1");
@@ -1050,6 +1051,21 @@ function ChatInner() {
       if (/skip|draft it|you write|from (my|the) store/.test(lower)) { setScope({ ...scopeRef.current, brief: { kind: "agent" } }); if (r0) buildNow(r0); return; }
       if (/upload|yes|have (one|a brief)/.test(lower)) { ask("Use Upload it on the card above, and pick the file.", []); return; }
     }
+    if (wait === "reveal-plan" && /^(looks right|looks good|yes|yep|good|great|perfect|fine|ok|okay)\b/.test(lower)) { revealBrief(); return; }
+    if (wait === "reveal-brief") {
+      if (/^(brief looks good|looks good|yes|good|fine|ok|okay)\b/.test(lower)) { revealReady(); return; }
+      if (/^change the brief$/.test(lower)) { ask("What should change?", []); setWait("brief-edit"); return; }
+    }
+    if (wait === "brief-edit" && plan) {
+      const { plan: next } = tools.edit_plan({
+        plan, patch: { brief: { mustSay: [...plan.brief.value.mustSay.value, v] } }, because: "because you changed the brief", by: "brand",
+      });
+      putPlan(next);
+      say("Added.");
+      push({ kind: "brief-card" });
+      revealReady();
+      return;
+    }
     if (wait === "brief-1") {
       briefDraft.current.feel = v;
       ask("What must every creator say or show?", []);
@@ -1242,7 +1258,7 @@ function ChatInner() {
        didn't catch that", which is the one answer a chip we wrote must
        never get. Answered here, with the things that actually move. */
     if (plan && !paid && /^change something$/.test(lower)) {
-      ask("Markets, audience, creators and the guarantee all move. Tell me what to change.", PRE_CHIPS);
+      ask("What should change?", ["Kuwait only", "Women 25 to 45", "Change the brief", "See all three phases"]);
       return;
     }
     if (plan && !paid && /^change the markets/.test(lower)) {
@@ -1516,7 +1532,7 @@ function ChatInner() {
            marks Phase 1 as started and offers nothing to press — a second
            Start would read as a second payment. */
         return plan ? (
-          <BlockRow key={item.id}><LadderBlock plan={plan} onStart={paid ? undefined : openFunding} paid={paid} /></BlockRow>
+          <BlockRow key={item.id}><LadderBlock plan={plan} compact onStart={paid ? undefined : openFunding} paid={paid} /></BlockRow>
         ) : null;
       case "checklist":
         return <BlockRow key={item.id}><ChecklistBlock /></BlockRow>;

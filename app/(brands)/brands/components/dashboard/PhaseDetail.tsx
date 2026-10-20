@@ -17,7 +17,8 @@ import { ArrowRight, CheckCircle, CreditCard, LockSimple } from "@phosphor-icons
 import {
   fmtUSD, pace, phaseTitle, UNLOCK_AT, vatOn, withVat, type Phase,
 } from "../../lib/mock/campaigns";
-import { queuePhase, useAds, type Campaign } from "../../lib/store";
+import { queuePhase, useAds, useCan, type Campaign } from "../../lib/store";
+import { OnlyAdmins } from "./Roles";
 import { useGo } from "../../lib/surface";
 import { RevenueChart } from "./RevenueChart";
 import { DataRow, Section, Surface, Tile } from "./kit";
@@ -150,6 +151,7 @@ function StartPhase({ campaign, phase }: { campaign: Campaign; phase: Phase }) {
   const prevName = prev ? phaseTitle(prev.phaseNo).split(" · ")[0] : "the phase before";
   const vat = withVat(phase.budget) - phase.budget;
   const paid = phase.status === "queued";
+  const canPay = useCan("pay");
   return (
     <Surface className="p-5">
       <p className="flex items-center gap-2 text-body font-semibold text-ink">
@@ -168,7 +170,8 @@ function StartPhase({ campaign, phase }: { campaign: Campaign; phase: Phase }) {
         <Tile label="Guarantee" value={`${phase.guaranteedRoas}x`} />
         <Tile tone="hero" label="Sales guaranteed" value={fmtUSD(Math.round(phase.budget * phase.guaranteedRoas))} />
       </div>
-      {!paid && (
+      {!paid && !canPay && <OnlyAdmins what="pay and start phases" className="mt-4" />}
+      {!paid && canPay && (
         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-control border border-hairline bg-rail px-4 py-3">
           <CreditCard size={16} weight="fill" aria-hidden className="text-ink-faint" />
           <p className="min-w-0 flex-1 text-meta text-ink-soft">

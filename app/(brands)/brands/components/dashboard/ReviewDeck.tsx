@@ -14,7 +14,8 @@ import type { AdRecord } from "../../lib/agent/types";
 import type { Phase } from "../../lib/mock/campaigns";
 import { fmtUSD } from "../../lib/mock/campaigns";
 import { draftEstimate, draftNote } from "../../lib/agent/moves";
-import { setAdState, useAds } from "../../lib/store";
+import { setAdState, useAds, useCan } from "../../lib/store";
+import { MemberCall, RecLine } from "./Roles";
 import { Avatar, Btn } from "../ui";
 
 const CALL = {
@@ -36,9 +37,11 @@ export function ReviewDeck({ drafts, phase }: { drafts: AdRecord[]; phase: Phase
     setNote(ad && ad.compliance.verdict === "hold" ? draftNote(ad) : null);
   }, [ad?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const approve = () => { if (ad) setAdState(ad.id, "live"); };
+  /* A member reviews and recommends; approving and asking for changes are the owner's and admins' (store.ts, CAN). */
+  const canApprove = useCan("approve");
+  const approve = () => { if (ad && canApprove) setAdState(ad.id, "live"); };
   const recut = () => {
-    if (!ad) return;
+    if (!ad || !canApprove) return;
     if (note === null) { setNote(draftNote(ad)); return; }
     if (note.trim()) setAdState(ad.id, "declined", note.trim());
   };
@@ -80,7 +83,7 @@ export function ReviewDeck({ drafts, phase }: { drafts: AdRecord[]; phase: Phase
         <div className="h-1.5 min-w-[120px] flex-1 overflow-hidden rounded-pill bg-white">
           <div className="h-full rounded-pill bg-brand transition-all" style={{ width: `${((at + 1) / drafts.length) * 100}%` }} />
         </div>
-        {cleared.length > 0 && (
+        {cleared.length > 0 && canApprove && (
           <Btn size="sm" variant="quiet" onClick={() => cleared.forEach((a) => setAdState(a.id, "live"))}>
             Approve the {cleared.length} on brief
           </Btn>
@@ -115,6 +118,7 @@ export function ReviewDeck({ drafts, phase }: { drafts: AdRecord[]; phase: Phase
             <span className={`rounded-pill px-3 py-1 text-meta font-semibold ${call.skin}`}>{call.word}</span>
             <span className="text-[11px] text-ink-faint">checked against your brief</span>
           </div>
+          {canApprove && <RecLine adId={ad.id} className="mt-2.5" />}
 
           <ul className="mt-3 space-y-2">
             {ad.compliance.checks.map((c) => (
@@ -135,7 +139,7 @@ export function ReviewDeck({ drafts, phase }: { drafts: AdRecord[]; phase: Phase
           )}
 
           {/* The note to the creator: written by HeyMoon for a hold, blank for a change the brand wants. */}
-          {note !== null && (
+          {note !== null && canApprove && (
             <div className="mt-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-main">
                 {hold ? "Note to the creator, drafted for you" : "What should change?"}
@@ -151,7 +155,9 @@ export function ReviewDeck({ drafts, phase }: { drafts: AdRecord[]; phase: Phase
           )}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            {hold ? (
+            {!canApprove ? (
+              <MemberCall adId={ad.id} />
+            ) : hold ? (
               <>
                 <Btn size="sm" onClick={recut} disabled={!note?.trim()}>Send note <kbd className="ms-1 text-[10px] opacity-70">R</kbd></Btn>
                 <Btn size="sm" variant="ghost" onClick={approve}>Approve anyway</Btn>

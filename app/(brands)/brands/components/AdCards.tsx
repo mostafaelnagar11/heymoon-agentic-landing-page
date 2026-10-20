@@ -17,7 +17,8 @@ import {
 } from "@phosphor-icons/react";
 import type { AdRecord } from "../lib/agent/types";
 import { draftDaysLeft, fmtCount, fmtUSD } from "../lib/mock/campaigns";
-import { setAdState } from "../lib/store";
+import { setAdState, useCan } from "../lib/store";
+import { MemberCall, RecLine } from "./dashboard/Roles";
 import { Avatar, Btn, Card, Pill, Sheet } from "./ui";
 import { Claim, Figure } from "./Evidence";
 
@@ -37,6 +38,7 @@ export function ApprovalCard({
   onSelect?: (id: string, on: boolean) => void;
   compact?: boolean;
 }) {
+  const canApprove = useCan("approve");
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
   const P = ICON[ad.platform];
@@ -46,7 +48,7 @@ export function ApprovalCard({
   return (
     <Card className="overflow-hidden">
       <div className="flex gap-3 p-3">
-        {onSelect && (
+        {onSelect && canApprove && (
           <label className="flex shrink-0 items-start pt-1">
             <input
               type="checkbox"
@@ -112,8 +114,11 @@ export function ApprovalCard({
         )}
       </div>
 
-      {ad.state === "waiting" ? (
-        <div className="flex gap-2 border-t border-hairline p-3">
+      {ad.state === "waiting" && !canApprove ? (
+        <div className="border-t border-hairline p-3"><MemberCall adId={ad.id} /></div>
+      ) : ad.state === "waiting" ? (
+        <div className="flex flex-wrap gap-2 border-t border-hairline p-3">
+          <RecLine adId={ad.id} className="w-full" />
           <Btn variant="quiet" size="sm" className="flex-1" onClick={() => setDeclining(true)}>
             <ThumbsDown size={13} weight="fill" aria-hidden /> Decline
           </Btn>
