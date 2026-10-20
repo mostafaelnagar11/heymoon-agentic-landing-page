@@ -16,7 +16,7 @@ import { ArrowRight, Check, CircleNotch } from "@phosphor-icons/react";
 import {
   advanceLaunch, launchStages, nextBrandStep, recordFirstSale, useActiveCampaign, type Campaign,
 } from "../../lib/store";
-import { LIVE_BY_DAYS, plusDays, type StageKey, type StageOwner } from "../../lib/agent/connect";
+import { LAUNCH_BY_DAYS, PHASE_START_DAYS, plusDays, type StageKey, type StageOwner } from "../../lib/agent/connect";
 import { dayIn, useT } from "../../lib/i18n";
 
 const OWNER_TONE: Record<StageOwner, string> = {
@@ -27,7 +27,8 @@ const OWNER_TONE: Record<StageOwner, string> = {
 
 const NOTE: Partial<Record<StageKey, string>> = {
   matching: "lt.note.matching",
-  invited: "lt.note.invited",
+  launched: "lt.note.launched",
+  phase: "lt.note.phase",
   sale: "lt.note.sale",
 };
 
@@ -46,11 +47,16 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
   const rows = launchStages(camp);
   const currentAt = rows.findIndex((r) => r.doneAt === null);
   const brandStep = nextBrandStep(camp);
-  const liveBy = plusDays(l.paidAt, LIVE_BY_DAYS);
+  const launchBy = plusDays(l.paidAt, LAUNCH_BY_DAYS);
   const team = !!l.legacyAt;
   const doneCount = rows.filter((r) => r.doneAt !== null).length;
 
-  const heading = brandStep ? t(`lt.next.${brandStep}`) : !l.liveAt ? t("lt.preparing") : t("lt.live");
+  /* PRD v0.2 v3: launched (wave 1 sent, day 0), then the phase starts (day 6), then the first sale. */
+  const heading = brandStep ? t(`lt.next.${brandStep}`) : !l.launchedAt ? t("lt.preparing") : !l.phaseStartedAt ? t("lt.launched") : t("lt.phaseOn");
+  const sub =
+    !l.launchedAt ? tf("lt.launchBy", { date: day(launchBy) })
+    : !l.phaseStartedAt ? tf("lt.launchedOn", { date: day(l.launchedAt), phase: day(plusDays(l.launchedAt, PHASE_START_DAYS)) })
+    : tf("lt.phaseSince", { date: day(l.phaseStartedAt) });
 
   return (
     <div className={compact ? "" : "space-y-5"}>
@@ -60,7 +66,7 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
             <p className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-brand-500">{t("lt.title")}</p>
             <h2 className="mt-1.5 text-greet font-semibold text-ink sm:text-section">{heading}</h2>
             <p className="mt-1 text-body text-ink-soft">
-              {l.liveAt ? tf("lt.liveSince", { date: day(l.liveAt) }) : tf("lt.liveBy", { date: day(liveBy) })}
+              {sub}
               {!camp.connectedStore && !team ? t("lt.refund") : ""}
             </p>
           </div>
@@ -76,7 +82,7 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
       <div className="overflow-hidden rounded-card border border-hairline bg-white shadow-card">
         {compact && (
           <p className="border-b border-hairline px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.14em] text-ink-faint">
-            {l.liveAt ? tf("lt.compactLive", { date: day(l.liveAt) }) : tf("lt.compact", { date: day(liveBy) })}
+            {l.launchedAt ? tf("lt.compactLaunched", { date: day(l.launchedAt) }) : tf("lt.compact", { date: day(launchBy) })}
           </p>
         )}
         <div role="progressbar" aria-label="Launch" aria-valuemin={0} aria-valuemax={rows.length} aria-valuenow={doneCount} className="flex gap-1 px-4 pt-3">
@@ -94,7 +100,7 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
             const status = done
               ? tf("lt.done", { date: day(r.doneAt!) })
               : now ? (owner === "You" ? t("lt.waiting") : t("lt.inProgress"))
-              : tf("lt.by", { date: day(plusDays(l.paidAt, r.stage.dueDays)) });
+              : tf("lt.by", { date: day(r.dueAt) });
             return (
               <li key={r.stage.key} className={`flex items-center gap-3 ${compact ? "px-4 py-2.5" : "px-4 py-3 sm:px-5"} ${now ? "bg-brand/[0.025]" : ""}`}>
                 <span
@@ -120,7 +126,7 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
       {/* Moontech's stages are NASA and launchCampaign in the product. The prototype steps them by hand, and says so. */}
       {!compact && !brandStep && !l.firstSaleAt && (
         <div className="flex flex-wrap gap-2">
-          {!l.liveAt ? (
+          {!l.phaseStartedAt ? (
             <button
               type="button"
               onClick={() => advanceLaunch(camp.id, Date.now())}

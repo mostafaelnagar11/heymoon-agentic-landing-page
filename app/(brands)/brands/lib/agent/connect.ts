@@ -26,7 +26,8 @@ export interface PlatformInfo {
   ar: { name: string; cta: string; how: string };
 }
 
-/* Shopify's app is still in review (DB-3 ruling, MDAAI-181), so Shopify stores take the team route until it passes. */
+/* Shopify is an App Store install, but until the app is listed (review waits on the DB-3 ruling, MDAAI-181) staff mark
+   Shopify stores as legacy integrations: the team route. */
 const SHOPIFY_IN_REVIEW = true;
 
 export const PLATFORMS: Record<PlatformKey, PlatformInfo> = {
@@ -40,8 +41,8 @@ export const PLATFORMS: Record<PlatformKey, PlatformInfo> = {
   },
   shopify: SHOPIFY_IN_REVIEW
     ? {
-        key: "shopify", name: "Shopify", route: "legacy", cta: "Have the team connect it", how: "Our Shopify app is still in review, so the Moontech team connects it with you.",
-        ar: { name: "Shopify", cta: "اطلب من الفريق ربطه", how: "تطبيقنا على Shopify ما زال قيد المراجعة، لذا يربطه فريق مون تك معك." },
+        key: "shopify", name: "Shopify", route: "legacy", cta: "Have the team connect it", how: "Our Shopify app isn't listed yet, so the Moontech team sets your store up with you.",
+        ar: { name: "Shopify", cta: "اطلب من الفريق ربطه", how: "تطبيقنا على Shopify لم يُدرج بعد، لذا يجهّز فريق مون تك متجرك معك." },
       }
     : {
         key: "shopify", name: "Shopify", route: "app", cta: "Install on Shopify", how: "Install the HeyMoon app on Shopify.",
@@ -114,24 +115,30 @@ export const couponLine = (c: Pick<CouponRules, "discount" | "limits" | "minOrde
 
 /* ── The launch tracker (H5) ── */
 
-export type StageKey = "store" | "discount" | "check" | "brief" | "matching" | "invited" | "live" | "sale";
+export type StageKey = "store" | "discount" | "check" | "brief" | "matching" | "launched" | "phase" | "sale";
 export type StageOwner = "You" | "Moontech" | "Creators";
 export interface Stage { key: StageKey; label: string; owner: StageOwner; dueDays: number }
 
-/** In order. `dueDays` is the expected day after payment. Live is due on the 14-day promise itself (LIVE_BY_DAYS), so
-    the tracker never shows two dates for the same thing. */
+/** In order (PRD v0.2, version 3, H5). `dueDays` is the expected day after payment. Launched means launchCampaign ran:
+    the campaign is active and wave 1 is sent (day 0). It is due on the 14-day promise itself (LAUNCH_BY_DAYS), so the
+    tracker never shows two dates for the same thing. The phase starts on day 6 after the launch, and the first sale is
+    expected within 7 days of that; launchStages dates both from the actual launch once there is one. */
 export const STAGES: Stage[] = [
   { key: "store", label: "Store connected", owner: "You", dueDays: 3 },
   { key: "discount", label: "Discount set", owner: "You", dueDays: 3 },
   { key: "check", label: "Store checked", owner: "You", dueDays: 3 },
   { key: "brief", label: "Brief approved", owner: "You", dueDays: 5 },
   { key: "matching", label: "Creators being matched", owner: "Moontech", dueDays: 8 },
-  { key: "invited", label: "Creators invited", owner: "Moontech", dueDays: 9 },
-  { key: "live", label: "Campaign live", owner: "Moontech", dueDays: 14 },
-  { key: "sale", label: "First sale", owner: "Creators", dueDays: 17 },
+  { key: "launched", label: "Launched (wave 1 sent)", owner: "Moontech", dueDays: 14 },
+  { key: "phase", label: "Phase started (day 6)", owner: "Moontech", dueDays: 20 },
+  { key: "sale", label: "First sale", owner: "Creators", dueDays: 27 },
 ];
 
-export const LIVE_BY_DAYS = 14;
+export const LAUNCH_BY_DAYS = 14;
+/** Wave 1 goes out on day 0; the phase starts on day 6. */
+export const PHASE_START_DAYS = 6;
+/** The first sale is expected within 7 days of the phase starting (the PRD's outcome target). */
+export const FIRST_SALE_DAYS = 7;
 const DAY = 86_400_000;
 export const plusDays = (t: number, d: number) => t + d * DAY;
 export const dayLabel = (t: number) => new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" });

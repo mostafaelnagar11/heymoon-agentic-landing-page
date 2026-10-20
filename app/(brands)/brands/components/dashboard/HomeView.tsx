@@ -79,7 +79,8 @@ function StatusBadge({ status }: { status: PhaseStatus }) {
   if (status === "live") return (
     <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-brand/20 bg-brand/[0.07] px-2.5 py-1 text-[11px] font-semibold text-brand">
       <span aria-hidden className="h-1.5 w-1.5 animate-live rounded-pill bg-brand" />
-      Live
+      {/* Orbit's phase status (PRD v0.2 v3): the campaign is launched, the phase is running. Ads stay "live". */}
+      Running
     </span>
   );
   if (status === "ready") return (

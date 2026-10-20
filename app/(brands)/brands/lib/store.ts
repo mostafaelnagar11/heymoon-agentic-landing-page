@@ -23,7 +23,7 @@ import type {
 import { rememberRead } from "./agent/registry";
 import { hash } from "./agent/rng";
 import { ADS, PHASES, type Phase } from "./mock/campaigns";
-import { STAGES, type CouponRules, type Stage, type StageKey } from "./agent/connect";
+import { FIRST_SALE_DAYS, LAUNCH_BY_DAYS, PHASE_START_DAYS, STAGES, plusDays, type CouponRules, type Stage, type StageKey } from "./agent/connect";
 
 /* ------------------------------------------------------------------ */
 /* Thread blocks                                                       */
@@ -262,8 +262,10 @@ export interface Launch {
   /** Guidelines or past UGC the brand added to the brief (MNMP-1). */
   briefFiles: string[];
   matchedAt: number | null;
-  invitedAt: number | null;
-  liveAt: number | null;
+  /** launchCampaign ran: the campaign is active and wave 1 is sent (day 0). "Launched" in the PRD's north star. */
+  launchedAt: number | null;
+  /** Phase 1 started, day 6 after the launch. */
+  phaseStartedAt: number | null;
   firstSaleAt: number | null;
 }
 
@@ -272,7 +274,7 @@ export const isLaunching = (c: Campaign | null | undefined) => !!c?.paid && !!c.
 
 /** Where each tracker stage stands (H5): when its fact was recorded, or null while it is open. On the team route the
     team sets the code and runs the check with the brand, so those two wait on Moontech rather than on the brand. */
-export function launchStages(c: Campaign): { stage: Stage; doneAt: number | null }[] {
+export function launchStages(c: Campaign): { stage: Stage; doneAt: number | null; dueAt: number }[] {
   const l = c.launch;
   if (!l) return [];
   const at: Record<StageKey, number | null> = {
@@ -284,11 +286,16 @@ export function launchStages(c: Campaign): { stage: Stage; doneAt: number | null
     check: l.checkPassedAt,
     brief: l.briefApprovedAt,
     matching: l.matchedAt,
-    invited: l.invitedAt,
-    live: l.liveAt,
+    launched: l.launchedAt,
+    phase: l.phaseStartedAt,
     sale: l.firstSaleAt,
   };
-  return STAGES.map((stage) => ({ stage, doneAt: at[stage.key] }));
+  /* The phase starts six days after the actual launch, and the first sale is due a week after the actual start. */
+  const launchDue = plusDays(l.paidAt, LAUNCH_BY_DAYS);
+  const phaseDue = plusDays(l.launchedAt ?? launchDue, PHASE_START_DAYS);
+  const saleDue = plusDays(l.phaseStartedAt ?? phaseDue, FIRST_SALE_DAYS);
+  const due = (s: Stage) => (s.key === "launched" ? launchDue : s.key === "phase" ? phaseDue : s.key === "sale" ? saleDue : plusDays(l.paidAt, s.dueDays));
+  return STAGES.map((stage) => ({ stage, doneAt: at[stage.key], dueAt: due(stage) }));
 }
 
 /** The brand's next step after paying, or null once the brief is approved (their part is done). */
@@ -935,7 +942,7 @@ export const markPaid = (at: number = Date.now()) =>
     const launch: Launch | undefined = fresh
       ? {
           paidAt: at, legacyAt: null, coupon: null, checkAttempts: 0, checkPassedAt: null, checkToTeamAt: null,
-          briefApprovedAt: null, briefFiles: [], matchedAt: null, invitedAt: null, liveAt: null, firstSaleAt: null,
+          briefApprovedAt: null, briefFiles: [], matchedAt: null, launchedAt: null, phaseStartedAt: null, firstSaleAt: null,
         }
       : c.launch;
     return { campaigns: { ...s.campaigns, [id]: { ...c, paid: true, ...(launch ? { launch } : {}) } } };
@@ -966,8 +973,9 @@ export const recordCheck = (campaignId: string, passed: boolean, at: number) =>
 
 /** Moontech's next stage. First anything the team owes on the launch conditions (C13): on the team route it sets the
     code and passes the store check with the brand; after two failed checks it passes the check by hand. Then 7 and 8:
-    the list is ready, the creators are invited, the campaign is live, which starts Phase 1. In the product these are
-    NASA and launchCampaign, which refuses while any condition is missing; the prototype steps them by hand. */
+    the list is ready, launchCampaign makes the campaign active and sends wave 1 (day 0), and Phase 1 starts (day 6).
+    In the product these are NASA and launchCampaign, which refuses while any condition is missing; the prototype steps
+    them by hand. */
 export const advanceLaunch = (campaignId: string, at: number) =>
   set((s) => {
     const c = s.campaigns[campaignId];
@@ -979,11 +987,11 @@ export const advanceLaunch = (campaignId: string, at: number) =>
     }
     if (!l.checkPassedAt) return patchCampaignIn(s, campaignId, { launch: { ...l, checkPassedAt: at } });
     if (!l.matchedAt) return patchCampaignIn(s, campaignId, { launch: { ...l, matchedAt: at } });
-    if (!l.invitedAt) return patchCampaignIn(s, campaignId, { launch: { ...l, invitedAt: at } });
-    if (!l.liveAt) {
+    if (!l.launchedAt) return patchCampaignIn(s, campaignId, { launch: { ...l, launchedAt: at } });
+    if (!l.phaseStartedAt) {
       const today = new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
       const phases = c.phases.map((p, i) => (i === 0 ? { ...p, status: "live" as const, dayOfPhase: 1, start: today } : p));
-      return patchCampaignIn(s, campaignId, { phases, launch: { ...l, liveAt: at } });
+      return patchCampaignIn(s, campaignId, { phases, launch: { ...l, phaseStartedAt: at } });
     }
     return {};
   });
@@ -993,7 +1001,7 @@ export const recordFirstSale = (campaignId: string, amount: number, at: number) 
   set((s) => {
     const c = s.campaigns[campaignId];
     const l = c?.launch;
-    if (!c || !l?.liveAt || l.firstSaleAt) return {};
+    if (!c || !l?.phaseStartedAt || l.firstSaleAt) return {};
     const phases = c.phases.map((p, i) => (i === 0 ? { ...p, rev: p.rev + amount } : p));
     return patchCampaignIn(s, campaignId, { phases, launch: { ...l, firstSaleAt: at } });
   });

@@ -69,7 +69,7 @@ import { PlanCard } from "../components/PlanCard";
 import { BriefReviewBlock, ConnectBlock, DiscountBlock, StoreCheckBlock } from "../components/chat/MoonConnect";
 import { LaunchTracker } from "../components/dashboard/LaunchTracker";
 import {
-  LIVE_BY_DAYS, PLATFORMS, platformFor, plusDays, type CouponRules, type PlatformKey,
+  LAUNCH_BY_DAYS, PHASE_START_DAYS, PLATFORMS, platformFor, plusDays, type CouponRules, type PlatformKey,
 } from "../lib/agent/connect";
 import { applyBriefChange } from "../lib/agent/briefChange";
 import {
@@ -443,7 +443,7 @@ function ChatInner() {
         resumeLaunch(camp0);
         return;
       }
-      push({ kind: "say", text: `Your campaign for ${existing.brandName}. Phase 1 is live and paid.` });
+      push({ kind: "say", text: `Your campaign for ${existing.brandName}. Phase 1 is paid and running.` });
       push({ kind: "plan-card" });
       setAsking({ q: "", options: postChips });
     } else {
@@ -907,7 +907,8 @@ function ChatInner() {
     if (!c?.launch) return;
     patchLaunch(c.id, { briefApprovedAt: Date.now(), briefApprovedBy: account ? `${account.firstName} ${account.lastName}`.trim() : null });
     setWait(null);
-    say(tf("post.approved", { date: dayIn(plusDays(c.launch.paidAt, LIVE_BY_DAYS), locale) }));
+    /* The team route promises no date (O7): the team sets the store up first. */
+    say(c.launch.legacyAt ? t("post.approvedTeam") : tf("post.approved", { date: dayIn(plusDays(c.launch.paidAt, LAUNCH_BY_DAYS), locale) }));
     push({ kind: "tracker" });
     setAsking({ q: "", options: ["Go to the dashboard", "What happens next?"] });
   };
@@ -1047,9 +1048,15 @@ function ChatInner() {
   const whatNext = () => {
     if (!paid)
       return "You pay for Phase 1. Then, here: connect your store, set the discount, a quick store check, and the brief. Moontech matches the creators and launches, within 14 days of paying.";
-    if (launching)
-      return nextBrandStep(activeCampaignLive()) ? t("post.nextYours") : t("post.nextMoontech");
-    return "Phase 1 is live. Every order through a creator's code counts toward the guarantee.";
+    if (launching) {
+      const c = activeCampaignLive();
+      const l = c?.launch;
+      if (nextBrandStep(c)) return t("post.nextYours");
+      if (l?.phaseStartedAt) return t("post.nextPhase");
+      if (l?.launchedAt) return tf("post.nextLaunched", { date: dayIn(plusDays(l.launchedAt, PHASE_START_DAYS), locale) });
+      return t("post.nextMoontech");
+    }
+    return "Phase 1 is running. Every order through a creator's code counts toward the guarantee.";
   };
 
   const runReport = () => {
@@ -1476,7 +1483,7 @@ function ChatInner() {
        one date the brand was promised. */
     if (!out.say && launching && camp?.launch) {
       if (/\b(when|how long|how soon|timeline|go live|live)\b/.test(lower)) {
-        say(tf("post.when", { date: dayIn(plusDays(camp.launch.paidAt, LIVE_BY_DAYS), locale) }));
+        say(camp.launch.legacyAt && !camp.launch.launchedAt ? t("post.whenTeam") : tf("post.when", { date: dayIn(plusDays(camp.launch.paidAt, LAUNCH_BY_DAYS), locale) }));
       } else {
         say(nextBrandStep(camp) ? t("post.fallbackSetup") : t("post.fallbackWaiting"));
       }
@@ -1486,7 +1493,8 @@ function ChatInner() {
     say(
       out.say ||
       (paid
-        ? "I didn't catch that. I can change the brief or the audience, pull a report, or open your campaign in the panel."
+        /* After paying only the budget changes, and a paid phase never does (C3): the audience isn't on offer. */
+        ? "I didn't catch that. I can change the brief, pull a report, or open your campaign in the panel."
         : "I didn't catch that. Markets, audience, creators, the brief and the guarantee all move, so say it in plain words.")
     );
   };

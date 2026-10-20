@@ -55,11 +55,13 @@ export function firstAnswer(text: string): string {
     return `Every phase guarantees sales: ${m1}x, then ${m2}x, then ${m3}x what you pay for it. ` +
       `If a phase falls short, you get back the same share of what you paid.`;
   if (/creator|influencer|who (will|would)|choose|pick/.test(t))
-    return `Creators whose audience lives in your markets and buys what you sell, matched by HeyMoon. ` +
-      `You see what kind before you pay, their names once you start, and you can swap any of them.`;
+    /* The brand doesn't choose creators (PRD v0.2): MoonMatch builds the list and staff review it. */
+    return `Creators whose audience lives in your markets and buys what you sell, matched by HeyMoon and reviewed by ` +
+      `the Moontech team. You see what kind before you pay, and their progress once you start.`;
   if (/how long|when|fast|time|days|weeks/.test(t))
     return `The plan takes about fifteen seconds once I've read your store. ` +
-      `After you start, the first drafts arrive within 48 hours and nothing goes live until you approve it.`;
+      `After you pay, Moontech launches within 14 days: wave 1 goes to your creators, and the phase starts six days ` +
+      `later. Content isn't approved before it goes live; you set the direction in the brief.`;
   return `HeyMoon reads your store, builds a creator campaign around what you sell, and guarantees the sales. ` +
     `You start with ${fmtUSD(b1)}, and if it sells less than that, you get the missed share back.`;
 }

@@ -61,7 +61,7 @@ export function CatchUp() {
   const activity = useActivity();
   const phase = useLivePhase();
   const ready = useReadyPhase();
-  const liveAt = useActiveCampaign()?.launch?.liveAt ?? null;
+  const liveAt = useActiveCampaign()?.launch?.launchedAt ?? null;
   const since = useSince(liveAt);
 
   /* The sales this brand saw last time, read once before this visit overwrites them. */

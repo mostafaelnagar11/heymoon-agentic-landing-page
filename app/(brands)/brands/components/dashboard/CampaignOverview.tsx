@@ -46,7 +46,7 @@ export function CampaignHeader({ campaign }: { campaign: Campaign }) {
   const since = campaign.phases[0]?.start;
 
   const status = live
-    ? { text: `${short(live)} live · day ${live.dayOfPhase} of ${live.plannedDays}`, skin: "bg-good/10 text-good-deep", dot: true }
+    ? { text: `${short(live)} running · day ${live.dayOfPhase} of ${live.plannedDays}`, skin: "bg-good/10 text-good-deep", dot: true }
     : ready
       ? { text: `${short(ready)} ready to start`, skin: "bg-amber-soft text-amber", dot: false }
       : campaign.paid
@@ -106,7 +106,7 @@ export function PhaseStepper({ phases }: { phases: Phase[] }) {
           : "";
         const badge =
           p.status === "ended" ? { t: "Done", c: "bg-good/10 text-good-deep" }
-          : p.status === "live" ? { t: "Live", c: "bg-brand/10 text-brand" }
+          : p.status === "live" ? { t: "Running", c: "bg-brand/10 text-brand" }
           : p.status === "ready" ? { t: "Ready", c: "bg-amber-soft text-amber" }
           : p.status === "queued" ? { t: "Paid · next", c: "bg-good/10 text-good-deep" }
           : { t: "Locked", c: "bg-wash text-ink-faint" };

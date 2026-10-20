@@ -1125,10 +1125,10 @@ export function IntegrationBlock({ onConnect, compact = false }: {
         </p>
         <p className="mt-1.5 text-meta leading-5 text-ink-soft">
           {phone
-            ? `${lead} will call you on ${phone} within the hour. The engineer already has your ${system} details, so the call is about the connection plan rather than about questions.`
-            : `${lead} will email you on ${form.email.trim()} within one working day with a specific plan for connecting ${system}.`}{" "}
-          Your phase is paid and your creators are being briefed. The campaign goes live the moment the connection is
-          in place.
+            ? `Your request is with ${lead}, with your ${system} details and ${phone} to reach you on.`
+            : `Your request is with ${lead}, with your ${system} details and ${form.email.trim()} to reach you on.`}{" "}
+          {/* No date, follow-up or reply is promised for a store HeyMoon can't connect (PRD v0.2 v3, O7). */}
+          Your phase is paid. The campaign launches once the connection is in place.
         </p>
       </Card>
     );
