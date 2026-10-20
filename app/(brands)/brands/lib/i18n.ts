@@ -388,6 +388,7 @@ export const STR: Dict = {
   "lt.inProgress": { en: "In progress", ar: "جارٍ" },
   "lt.by": { en: "By {date}", ar: "قبل {date}" },
   "lt.demoNext": { en: "Demo: Moontech's next step", ar: "تجربة: خطوة مون تك التالية" },
+  "mc.demoFail": { en: "Demo: the check fails", ar: "تجربة: فشل الاختبار" },
   "lt.demoSale": { en: "Demo: the first sale", ar: "تجربة: أول عملية بيع" },
 
   "dash.title": { en: "Dashboard", ar: "لوحة التحكم" },

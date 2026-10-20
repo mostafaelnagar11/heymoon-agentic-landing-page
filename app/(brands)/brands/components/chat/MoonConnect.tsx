@@ -322,6 +322,7 @@ export function StoreCheckBlock({ camp, onResult, onNotNow }: {
   const name = pname(platform, locale);
   const zid = platform === "zid";
   const [step, setStep] = useState<number | null>(null);
+  const [fail, setFail] = useState(false);
   const code = useRef(`HM-TEST-${(camp.id.length * 977) % 9000 + 1000}`).current;
   const steps = [
     tf("mc.check.code", { code }),
@@ -335,6 +336,8 @@ export function StoreCheckBlock({ camp, onResult, onNotNow }: {
   /* On Zid the brand cancels the test order on Zid; Orbit sees the cancellation, so that step simply takes longer. */
   useEffect(() => {
     if (step === null) return;
+    /* The demo failure stops where a real one would: the test order never arrives. */
+    if (fail && step === 3) { setStep(null); setFail(false); onResult(false); return; }
     if (step >= steps.length) { setStep(null); onResult(true); return; }
     const t = setTimeout(() => setStep((s) => (s === null ? s : s + 1)), step === 2 ? 2400 : zid && step === 3 ? 3500 : 900);
     return () => clearTimeout(t);
@@ -374,6 +377,14 @@ export function StoreCheckBlock({ camp, onResult, onNotNow }: {
         <div className="mt-3 flex gap-2">
           <Btn size="sm" onClick={() => { clicked(camp, failedOnce ? "TRY_AGAIN" : "RUN_TEST", "6c"); setStep(0); }}>{failedOnce ? t("mc.retry") : t("mc.run")}</Btn>
           <Btn size="sm" variant="ghost" onClick={() => { clicked(camp, "NOT_NOW", "6c"); onNotNow(); }}>{t("mc.notNow")}</Btn>
+          {/* The prototype's check always passes; this shows the retry and the hand-off to the team (6c). */}
+          <button
+            type="button"
+            onClick={() => { setFail(true); setStep(0); }}
+            className="ms-auto rounded-pill border border-dashed border-brand/40 px-3 py-1.5 text-meta font-semibold text-brand hover:bg-brand/[0.04]"
+          >
+            {t("mc.demoFail")}
+          </button>
         </div>
       )}
     </Card>

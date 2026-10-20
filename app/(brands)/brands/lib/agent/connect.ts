@@ -64,6 +64,9 @@ const PLATFORM_OF: Record<string, PlatformKey> = {
   "ounass.ae": "magento",
   "lunabeauty.ae": "salla",
   "freshgrocer.ae": "zid",
+  /* Demo stores for the routes no fixture shows: freshgrocer.ae is the "too small" example, so it never reaches 6a. */
+  "zid-demo.sa": "zid",
+  "shopify-demo.com": "shopify",
 };
 export const platformFor = (host: string): PlatformKey | null => PLATFORM_OF[host] ?? null;
 

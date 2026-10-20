@@ -44,7 +44,7 @@ import {
   activePlanLive, activeThread, claimOnce, correctRead, markPaid, openPanel, useAccount,
   ROLES, accessFor, claimBrand, requestAccess, salesFirst, setRole, useRole,
   push, putApproval, putCampaign, putFunding, putPlan, putRead, threadIsEmpty,
-  useActivePlan, useAds, useCampaigns, useActiveThreadId, useLivePhase, usePaid, usePhaseRequested,
+  useActivePlan, useAds, useCampaigns, useActiveThreadId, useCan, useLivePhase, usePaid, usePhaseRequested,
   accountLive, activeCampaignLive, isLaunching, markSent, startConversation, teamRoleFor,
   connectStore, nextBrandStep, patchLaunch, recordCheck, useActiveCampaign, useStore, type Campaign, type PanelView,
 } from "../lib/store";
@@ -207,6 +207,10 @@ function ChatInner() {
   const role = useRole();
   const brands = useStore((s) => s.brands);
   const [signInOpen, setSignIn] = useState(false);
+  /* A member can't set the discount or approve the brief: those cards say who can, and the chips give them a way on. */
+  const canSetCode = useCan("pay");
+  const canBrief = useCan("brief");
+  const memberChips = ["Go to the dashboard", "What happens next?"];
   /* What waits on the sign-in: the read of the store the brand just confirmed, or (signed out later) the payment. */
   const gateRef = useRef<{ host: string; go: () => void } | null>(null);
   const [gateHost, setGateHost] = useState<string | null>(null);
@@ -865,7 +869,7 @@ function ChatInner() {
   const startDiscount = (lead = "") => {
     say(`${lead}${t("post.discount")}`);
     push({ kind: "discount" });
-    setAsking({ q: "", options: [] });
+    setAsking({ q: "", options: canSetCode ? [] : memberChips });
   };
 
   const onCoupon = (rules: CouponRules) => {
@@ -895,7 +899,7 @@ function ChatInner() {
     say(`${lead || t("post.briefLead")}${t("post.briefDrafted")}`);
     push({ kind: "brief-review" });
     setWait("brief-review");
-    setAsking({ q: "", options: [] });
+    setAsking({ q: "", options: canBrief ? [] : memberChips });
   };
 
   const onBriefApproved = () => {
@@ -1697,7 +1701,12 @@ function ChatInner() {
   return (
     <ChatShell panel={<PanelHost />}>
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-[720px] space-y-7 px-4 pb-8 pt-16">
+        {/* Offline (H7), the cards can be read and scrolled but not pressed: a Confirm or Approve made offline used to
+            record a step the server never saw. */}
+        <div
+          aria-disabled={!online || undefined}
+          className={`mx-auto w-full max-w-[720px] space-y-7 px-4 pb-8 pt-16 transition-opacity ${online ? "" : "pointer-events-none select-none opacity-60"}`}
+        >
           {groups.map((g, i) => (
             <div
               key={g[0].id}
