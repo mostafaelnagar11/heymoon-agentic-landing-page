@@ -39,7 +39,7 @@ import {
 import { useT } from "../../lib/i18n";
 import type { DashboardView } from "../../lib/agent/dashboard";
 import {
-  campaignLabel, openCampaign, renameCampaign, resetAll, setActiveCampaign, showCampaignList,
+  campaignLabel, isLaunching, openCampaign, renameCampaign, resetAll, setActiveCampaign, showCampaignList,
   startConversation, useAds, useCampaigns, useStore, type Campaign,
 } from "../../lib/store";
 import { getRead } from "../../lib/agent/registry";
@@ -231,7 +231,7 @@ function Content({ collapsed, view, onView, brandName, onMobileClose }: Props) {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-meta font-semibold text-ink">{c.brandName}</span>
                       <span className="block truncate text-[10px] text-ink-faint">
-                        {c.paid ? "Running" : "Not started"}
+                        {c.paid ? (isLaunching(c) ? "Launching" : "Running") : "Not started"}
                       </span>
                     </span>
                     {c.id === activeId && <Check size={12} weight="bold" aria-hidden className="shrink-0 text-brand" />}

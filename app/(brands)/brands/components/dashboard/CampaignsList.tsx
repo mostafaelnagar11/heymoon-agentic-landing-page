@@ -20,7 +20,7 @@
 import { ArrowRight, Check, LockSimple, Warning } from "@phosphor-icons/react";
 import { fmtUSD, pace, phaseTitle, UNLOCK_AT } from "../../lib/mock/campaigns";
 import {
-  campaignLabel, openCampaign, useAds, useCampaigns, type Campaign,
+  campaignLabel, isLaunching, openCampaign, useAds, useCampaigns, type Campaign,
 } from "../../lib/store";
 import { Section } from "./kit";
 
@@ -201,6 +201,10 @@ function StatusChip({ campaign }: { campaign: Campaign }) {
         Not started
       </span>
     );
+  }
+  /* Paid, not live yet: the launch tracker's state, not "Closed". */
+  if (isLaunching(campaign) && !live) {
+    return <span className={`${skin} border-brand/25 bg-brand/[0.06] text-brand`}>Launching</span>;
   }
   if (!live) {
     return (

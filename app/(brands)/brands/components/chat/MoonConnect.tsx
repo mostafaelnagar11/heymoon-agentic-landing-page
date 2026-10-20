@@ -235,7 +235,7 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
             key={d}
             type="button"
             aria-pressed={!custom && discount === d}
-            onClick={() => { setCustom(false); setCustomText(""); setDiscount(d); }}
+            onClick={() => { setCustom(false); setCustomText(""); setDiscount(d); setBest(false); }}
             className={`rounded-pill border px-3 py-1.5 text-meta font-semibold transition ${chipOn(!custom && discount === d)}`}
           >
             {d}%
@@ -247,7 +247,7 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
             aria-label={t("mc.otherDiscount")}
             type="text" inputMode="numeric" value={customText}
             onFocus={() => setCustom(true)}
-            onChange={(e) => { setCustom(true); setCustomText(e.target.value.replace(/\D/g, "").slice(0, 2)); }}
+            onChange={(e) => { setCustom(true); setCustomText(e.target.value.replace(/\D/g, "").slice(0, 2)); setBest(false); }}
             onBlur={() => { if (Number(customText) > 90) setCustomText("90"); }}
             className={`h-8 w-16 rounded-control border px-2 text-meta text-ink outline-none focus:border-brand/50 ${
               custom ? "border-brand/40 bg-brand/[0.06]" : "border-hairline bg-white"

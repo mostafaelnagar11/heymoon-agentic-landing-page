@@ -364,6 +364,18 @@ function ChatInner() {
      conversation comes after. The agent narrates what it is doing, the
      plan assembles in front of you, and it ends by asking you something
      — which is what makes the next turn yours. */
+  /* A new conversation (New campaign, a fresh arrival) starts with nothing pending from the last one: a brief-review
+     wait left over from campaign A turned B's typed words into brief lines. Only an EMPTY thread: the id also changes
+     once when the saved session loads after the first render, and resetting then wiped the first question's chips. */
+  useEffect(() => {
+    if (!threadIsEmpty()) return;
+    setWait(null);
+    setAsking(null);
+    setPendingRead(null);
+    goalRef.current = null;
+    explainedRef.current = false;
+  }, [threadId]);
+
   useEffect(() => {
     const existing0 = activePlanLive();
     /* Read from the store, not from this render: on a cold load the first render has not seen the saved session yet,
@@ -377,13 +389,26 @@ function ChatInner() {
       window.history.replaceState(null, "", window.location.pathname + (q.toString() ? `?${q}` : ""));
       if (existing0 && !paid0 && claimOnce(`back:${threadId}`)) { welcomeBack(existing0); return; }
     }
+    /* The landing's `?read=` or `?q=`, used once per page load. A fresh arrival (not a reload) that finds an older
+       conversation starts a new one, or a rehearsal's thread took the demo's store over; and "New campaign" on the
+       same URL no longer replays the entry into the new thread. */
+    const entry = readUrl || firstText ? window.location.search : null;
+    const reload = (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.type === "reload";
+    const fresh = !!entry && usedEntry !== entry;
+    if (fresh && !threadIsEmpty()) {
+      if (!reload) { startConversation(); return; }
+      usedEntry = entry;
+    }
     if (!threadIsEmpty()) return;
-    if (firstText && !readUrl) {
+    /* A used entry falls through to the plain new-conversation greeting below. */
+    const take = fresh;
+    if (take) usedEntry = entry;
+    if (take && firstText && !readUrl) {
       push({ kind: "user", text: firstText });
       intake(firstText);
       return;
     }
-    if (readUrl) {
+    if (take && readUrl) {
       /* A read that already finished is shown as it stands, not re-run.
          The agent picks the conversation up at the question it would
          have asked when the read landed. */
@@ -1124,7 +1149,11 @@ function ChatInner() {
        comes out (applyBriefChange). */
     /* Also after a reload, when the waiting state is gone but the brief is still the brand's open step. */
     const onBrief = wait === "brief-review" || (launching && nextBrandStep(camp) === "brief");
-    if (onBrief && plan && !/^(go to (the )?dashboard|what happens next|approve( the brief)?|continue)/.test(lower)) {
+    /* A question or a command typed on the brief step is answered, not written into the brief: "When will we be
+       live?" used to land in the Say row. */
+    const asks = /\?\s*$|؟\s*$/.test(v) || /^(what|when|how|why|who|where|which|can|could|will|would|is|are|does|did|should|ماذا|متى|كيف|لماذا|هل|ما)(\s|$)/i.test(v.trim());
+    const command = /^(go to (the )?dashboard|open (the )?dashboard|dashboard|what happens next|approve( the brief)?|continue|carry on|not now|help)\b/.test(lower);
+    if (onBrief && plan && !asks && !command) {
       const b = plan.brief.value;
       const change = applyBriefChange({ mustSay: b.mustSay.value, mustNotSay: b.mustNotSay.value }, v);
       const { plan: next } = tools.edit_plan({
@@ -1204,7 +1233,8 @@ function ChatInner() {
        answerable — promising "say the word and I will pick it back up"
        and then having no idea what that word was is worse than not
        offering it. */
-    if (readRun.status === "cancelled" && readUrl) {
+    /* Only before a plan: after paying, "Continue" is the brand's next setup step, not the stopped read. */
+    if (readRun.status === "cancelled" && readUrl && !plan) {
       if (/^(read it again|read again|pick it back up|finish the read|carry on|keep going|continue)\b/.test(lower)) {
         say(`Picking it back up on ${readUrl}. Starting from the top, so nothing is half read.`);
         runRead();
@@ -1259,6 +1289,11 @@ function ChatInner() {
        because they are not requests about the plan. */
     /* Back to the brand's next step after paying. */
     if (launching && /^(continue|carry on|next step|set the discount|connect (my|the) store|run the (test|check)|the brief)$/.test(lower)) {
+      /* The step's card is still the newest one in the thread: point at it rather than stacking a second, identical
+         card under it (both live, both pressable). */
+      const step = nextBrandStep(activeCampaignLive());
+      const lastBlock = [...thread].reverse().find((i) => i.kind !== "say" && i.kind !== "user");
+      if (step && lastBlock?.kind === STEP_BLOCK[step]) { say(t("post.above")); return; }
       resumeLaunch();
       return;
     }
@@ -1433,6 +1468,17 @@ function ChatInner() {
 
     /* Anything it did not understand. It says so plainly and offers the
        things it can actually do, rather than a canned deflection. */
+    /* While launching there is no report or panel to offer yet: answer about the setup, and a timing question with the
+       one date the brand was promised. */
+    if (!out.say && launching && camp?.launch) {
+      if (/\b(when|how long|how soon|timeline|go live|live)\b/.test(lower)) {
+        say(tf("post.when", { date: dayIn(plusDays(camp.launch.paidAt, LIVE_BY_DAYS), locale) }));
+      } else {
+        say(nextBrandStep(camp) ? t("post.fallbackSetup") : t("post.fallbackWaiting"));
+      }
+      setAsking({ q: "", options: postChips });
+      return;
+    }
     say(
       out.say ||
       (paid
@@ -1820,6 +1866,12 @@ function ChatInner() {
     </ChatShell>
   );
 }
+
+/** The landing entry (`?read=`/`?q=`) this page load has already used. */
+let usedEntry: string | null = null;
+
+/** The card each of the brand's setup steps lives in. */
+const STEP_BLOCK = { store: "connect", discount: "discount", check: "store-check", brief: "brief-review" } as const;
 
 export default function ChatPage() {
   return (

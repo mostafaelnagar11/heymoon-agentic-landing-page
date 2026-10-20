@@ -276,7 +276,9 @@ export function launchStages(c: Campaign): { stage: Stage; doneAt: number | null
   const l = c.launch;
   if (!l) return [];
   const at: Record<StageKey, number | null> = {
-    store: c.connectedStore ? l.paidAt : l.legacyAt,
+    /* On the team route the brand's part is done when they hand it over, but the store isn't connected until the team
+       has done it, which is when the team sets the code (advanceLaunch). Saying "Done" at the handover was false. */
+    store: c.connectedStore ? l.paidAt : l.legacyAt ? l.coupon?.at ?? null : null,
     discount: l.coupon?.at ?? null,
     /* Only a pass counts (C13). A check handed to the team stays open until the team passes it by hand. */
     check: l.checkPassedAt,
@@ -1141,7 +1143,8 @@ export const useUnconnected = () =>
     for (const id of s.campaignOrder) {
       const c = s.campaigns[id];
       /* A launching campaign asks for its store on the checklist, as step 1. */
-      if (c?.paid && !c.connectedStore && !isLaunching(c)) return c;
+      /* The team route connects the store for the brand, so there is nothing for them to connect. */
+      if (c?.paid && !c.connectedStore && !isLaunching(c) && !c.launch?.legacyAt) return c;
     }
     return null;
   });

@@ -88,8 +88,8 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
           {rows.map((r, i) => {
             const done = r.doneAt !== null;
             const now = i === currentAt;
-            /* On the team route the team sets the code and runs the check with the brand. */
-            const withTeam = (team && (r.stage.key === "discount" || r.stage.key === "check")) || (r.stage.key === "check" && !!l.checkToTeamAt);
+            /* On the team route the team connects the store, sets the code and runs the check with the brand. */
+            const withTeam = (team && (r.stage.key === "store" || r.stage.key === "discount" || r.stage.key === "check")) || (r.stage.key === "check" && !!l.checkToTeamAt);
             const owner: StageOwner = withTeam ? "Moontech" : r.stage.owner;
             const status = done
               ? tf("lt.done", { date: day(r.doneAt!) })
