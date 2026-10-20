@@ -1267,6 +1267,7 @@ export const openCampaign = (id: string) =>
 export const openPhase = (phaseId: string) => set({ drill: { level: "phase", phaseId } });
 export const useActiveCampaign = () => useStore((s) => (s.activeCampaignId ? s.campaigns[s.activeCampaignId] ?? null : null));
 export const useActiveThreadId = () => useStore((s) => s.activeThreadId);
+export const accountLive = () => state.account;
 export const activeCampaignLive = () => (state.activeCampaignId ? state.campaigns[state.activeCampaignId] ?? null : null);
 
 /** This campaign's phases, and the one running. Everything on the

@@ -167,6 +167,9 @@ export function ConnectBlock({ camp, onConnected, onTeam, onNotNow }: {
 
 /* ── 6b · Discount rules ──────────────────────────────────────────── */
 
+const PRESETS = [10, 15, 20, 25, 35];
+const chipOn = (on: boolean) => (on ? "border-brand/40 bg-brand/[0.06] text-ink" : "border-hairline bg-white text-ink-soft hover:bg-wash");
+
 export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
   camp: Campaign;
   currency: string;
@@ -179,7 +182,11 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
   const platform: PlatformKey = camp.connectedStore ?? "custom";
   const name = pname(platform, locale);
   const siteOffer = siteOfferFor(camp.url);
-  const [discount, setDiscount] = useState(siteOffer ? Math.min(50, siteOffer + 5) : 15);
+  const start = siteOffer ? Math.min(50, siteOffer + 5) : 15;
+  const [discount, setDiscount] = useState(start);
+  /* The "Other" field holds only a custom number: a preset clears it, and focusing or typing in it selects it. */
+  const [custom, setCustom] = useState(!PRESETS.includes(start));
+  const [customText, setCustomText] = useState(PRESETS.includes(start) ? "" : String(start));
   const [limits, setLimits] = useState<Partial<Record<LimitKey, boolean>>>({ minOrder: true, onePerCustomer: true, endsWithPhase: true });
   const [minOrder, setMinOrder] = useState(200);
   const [best, setBest] = useState(false);
@@ -189,8 +196,10 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
   if (camp.launch?.coupon) return <Done>{tf("mc.codeDone", { line: couponText(camp.launch.coupon, currency, t, tf) })}</Done>;
   if (!canSet) return <OnlyAdmins what="set the discount" />;
 
-  const rules = { discount, limits, minOrder };
-  const low = siteOffer !== null && discount <= siteOffer;
+  const typed = Math.min(90, Number(customText) || 0);
+  const value = custom && typed ? typed : discount;
+  const rules = { discount: value, limits, minOrder };
+  const low = siteOffer !== null && value <= siteOffer;
 
   if (preview) {
     return (
@@ -221,25 +230,28 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
     <Card className="p-4">
       <p className="text-body font-semibold text-ink">{t("mc.codeTitle")}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label={t("mc.codeTitle")}>
-        {[10, 15, 20, 25, 35].map((d) => (
+        {PRESETS.map((d) => (
           <button
             key={d}
             type="button"
-            aria-pressed={discount === d}
-            onClick={() => setDiscount(d)}
-            className={`rounded-pill border px-3 py-1.5 text-meta font-semibold transition ${
-              discount === d ? "border-brand/40 bg-brand/[0.06] text-ink" : "border-hairline bg-white text-ink-soft hover:bg-wash"
-            }`}
+            aria-pressed={!custom && discount === d}
+            onClick={() => { setCustom(false); setCustomText(""); setDiscount(d); }}
+            className={`rounded-pill border px-3 py-1.5 text-meta font-semibold transition ${chipOn(!custom && discount === d)}`}
           >
             {d}%
           </button>
         ))}
-        <label className="flex items-center gap-1 text-meta text-ink-soft">
-          <span className="sr-only">{t("mc.otherDiscount")}</span>
+        <label className="ms-1 flex items-center gap-1.5 text-meta text-ink-soft">
+          {t("mc.other")}
           <input
-            type="number" min={1} max={90} value={discount}
-            onChange={(e) => setDiscount(Math.max(1, Math.min(90, Number(e.target.value) || 0)))}
-            className="h-8 w-16 rounded-control border border-hairline bg-white px-2 text-meta text-ink outline-none focus:border-brand/50"
+            aria-label={t("mc.otherDiscount")}
+            type="text" inputMode="numeric" value={customText}
+            onFocus={() => setCustom(true)}
+            onChange={(e) => { setCustom(true); setCustomText(e.target.value.replace(/\D/g, "").slice(0, 2)); }}
+            onBlur={() => { if (Number(customText) > 90) setCustomText("90"); }}
+            className={`h-8 w-16 rounded-control border px-2 text-meta text-ink outline-none focus:border-brand/50 ${
+              custom ? "border-brand/40 bg-brand/[0.06]" : "border-hairline bg-white"
+            }`}
           />
           %
         </label>
@@ -287,11 +299,11 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
 
       <label className="mt-3 flex items-start gap-2 rounded-control bg-lilac px-3 py-2.5 text-meta text-ink">
         <input type="checkbox" checked={best} onChange={(e) => setBest(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#4D2FB0]" />
-        <span>{tf("mc.bestOffer", { n: discount })}</span>
+        <span>{custom && !typed ? t("mc.bestOfferAny") : tf("mc.bestOffer", { n: value })}</span>
       </label>
 
       <div className="mt-3 flex gap-2">
-        <Btn size="sm" disabled={!best} onClick={() => setPreview(true)}>{t("mc.preview")}</Btn>
+        <Btn size="sm" disabled={!best || (custom && !typed)} onClick={() => setPreview(true)}>{t("mc.preview")}</Btn>
         <Btn size="sm" variant="ghost" onClick={() => { clicked(camp, "NOT_NOW", "6b"); onCancel(); }}>{t("mc.notNow")}</Btn>
       </div>
     </Card>

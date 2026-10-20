@@ -115,7 +115,8 @@ export type StageKey = "store" | "discount" | "check" | "brief" | "matching" | "
 export type StageOwner = "You" | "Moontech" | "Creators";
 export interface Stage { key: StageKey; label: string; owner: StageOwner; dueDays: number }
 
-/** In order. `dueDays` is the expected day after payment; live within 14 days is the north star. */
+/** In order. `dueDays` is the expected day after payment. Live is due on the 14-day promise itself (LIVE_BY_DAYS), so
+    the tracker never shows two dates for the same thing. */
 export const STAGES: Stage[] = [
   { key: "store", label: "Store connected", owner: "You", dueDays: 3 },
   { key: "discount", label: "Discount set", owner: "You", dueDays: 3 },
@@ -123,7 +124,7 @@ export const STAGES: Stage[] = [
   { key: "brief", label: "Brief approved", owner: "You", dueDays: 5 },
   { key: "matching", label: "Creators being matched", owner: "Moontech", dueDays: 8 },
   { key: "invited", label: "Creators invited", owner: "Moontech", dueDays: 9 },
-  { key: "live", label: "Live", owner: "Moontech", dueDays: 10 },
+  { key: "live", label: "Live", owner: "Moontech", dueDays: 14 },
   { key: "sale", label: "First sale", owner: "Creators", dueDays: 17 },
 ];
 

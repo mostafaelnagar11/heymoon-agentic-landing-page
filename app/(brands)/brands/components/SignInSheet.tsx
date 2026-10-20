@@ -42,12 +42,14 @@ const demoCodeFor = (email: string) =>
 
 const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-export function SignInSheet({ open, onClose, onVerified, host, brandName }: {
+export function SignInSheet({ open, onClose, onVerified, host, brandName, forPayment = false }: {
   open: boolean;
   onClose: () => void;
-  /** The store being paid for. Whoever pays for it first owns it; anyone else is invited or asks. */
+  /** The store the brand just confirmed. Whoever pays for it first owns it; anyone else is invited or asks. */
   host?: string;
   brandName?: string;
+  /** Opened at the payment (signed out since the store was confirmed), so "nothing was charged" means something. */
+  forPayment?: boolean;
   /** Runs after the sheet closes, with the name that was verified. */
   onVerified: (name: string) => void;
 }) {
@@ -180,6 +182,7 @@ export function SignInSheet({ open, onClose, onVerified, host, brandName }: {
         {step === "owned" || step === "requested" ? (
           <OwnedStep
             requested={step === "requested"}
+            forPayment={forPayment}
             brandName={brandName ?? host ?? "This brand"}
             owner={brand?.owner ? maskEmail(brand.owner.email) : ""}
             ownerFirst={brand?.owner.firstName ?? ""}
@@ -359,8 +362,9 @@ export function SignInSheet({ open, onClose, onVerified, host, brandName }: {
    only can invite others… I only can be invited or I request access"). Signing in with the same company's email
    doesn't hand anyone the account; it offers a request to the person who owns it, and says who that is without
    printing their whole address to someone they haven't let in. */
-function OwnedStep({ requested, brandName, owner, ownerFirst, you, onRequest, onOtherEmail, onClose }: {
+function OwnedStep({ requested, forPayment, brandName, owner, ownerFirst, you, onRequest, onOtherEmail, onClose }: {
   requested: boolean;
+  forPayment: boolean;
   brandName: string;
   owner: string;
   ownerFirst: string;
@@ -381,7 +385,7 @@ function OwnedStep({ requested, brandName, owner, ownerFirst, you, onRequest, on
         </h2>
         <p className="mt-1.5 text-body leading-6 text-ink-soft">
           {ownerFirst || "The owner"} sees it on the {brandName} team page. HeyMoon emails{" "}
-          <span dir="ltr" className="num font-semibold text-ink">{you}</span> when they answer. Nothing was charged.
+          <span dir="ltr" className="num font-semibold text-ink">{you}</span> when they answer.{forPayment && " Nothing was charged."}
         </p>
         <button type="button" onClick={onClose} className={`${wide} g-button mt-6 border border-white/50 text-[#FBF8FE]`}>
           Done

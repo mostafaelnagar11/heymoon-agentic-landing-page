@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Lightning, Sparkle } from "@phosphor-icons/react";
 import { catchUp, type MoveAction } from "../../lib/agent/moves";
-import { useActivity, useAds, useLivePhase, useReadyPhase } from "../../lib/store";
+import { useActiveCampaign, useActivity, useAds, useLivePhase, useReadyPhase } from "../../lib/store";
 import { useHeyMoon } from "./HeyMoon";
 
 const VISIT_KEY = "mtab_last_visit";
@@ -17,22 +17,41 @@ const VISIT_KEY = "mtab_last_visit";
 const SEEN_KEY = "mtab_seen_sales";
 const DAY = 86_400_000;
 
-/* "Since Tuesday, 4:12 pm" from this browser's last visit, read once and then moved to now. A first visit, or one
-   within the hour, reads the last three days instead: there is nothing "since" to speak of. Client-only, after mount,
-   so the server render and the first client render agree. */
-function useSince(): { days: number; label: string; returning: boolean } {
-  const [since, setSince] = useState({ days: 3, label: "Last 3 days", returning: false });
+/* This browser's previous visit to the dashboard, read once per page load and then moved to now. Shared, so the
+   greeting and the catch-up agree on it whichever reads first. Client-only: call it after mount. */
+let previousVisit: number | null = null;
+export function lastVisit(): number {
+  if (previousVisit === null) {
+    let prev = 0;
+    try { prev = Number(localStorage.getItem(VISIT_KEY)) || 0; localStorage.setItem(VISIT_KEY, String(Date.now())); } catch {}
+    previousVisit = prev;
+  }
+  return previousVisit;
+}
+/** Back after more than an hour away. A reload, or the first visit, is not "back". */
+export const isReturning = (prev: number, now: number) => !!prev && now - prev > 3_600_000;
+
+/* "Since Tuesday, 4:12 pm" from the last visit. A first visit, or one within the hour, reads the last three days
+   instead: there is nothing "since" to speak of. Either window, when it reaches back past the launch, is the whole
+   phase and says so: "Last 3 days" on a phase that went live this morning claimed days it was not live for. */
+function useSince(liveAt: number | null): { days: number; label: string; returning: boolean; all: boolean } {
+  const [since, setSince] = useState({ days: 3, label: "Last 3 days", returning: false, all: false });
   useEffect(() => {
     const now = Date.now();
-    let prev = 0;
-    try { prev = Number(localStorage.getItem(VISIT_KEY)) || 0; localStorage.setItem(VISIT_KEY, String(now)); } catch {}
-    if (prev && now - prev > 3_600_000) {
+    const prev = lastVisit();
+    const returning = isReturning(prev, now);
+    const from = returning ? prev : now - 3 * DAY;
+    if (liveAt && liveAt >= from) {
+      setSince({ days: Math.max(1 / 24, (now - liveAt) / DAY), label: "Since launch", returning, all: true });
+      return;
+    }
+    if (returning) {
       const d = new Date(prev);
       const day = d.toLocaleDateString("en-GB", { weekday: "long" });
       const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
-      setSince({ days: Math.min(14, (now - prev) / DAY), label: `Since ${day}, ${time}`, returning: true });
+      setSince({ days: Math.min(14, (now - prev) / DAY), label: `Since ${day}, ${time}`, returning: true, all: false });
     }
-  }, []);
+  }, [liveAt]);
   return since;
 }
 
@@ -42,7 +61,8 @@ export function CatchUp() {
   const activity = useActivity();
   const phase = useLivePhase();
   const ready = useReadyPhase();
-  const since = useSince();
+  const liveAt = useActiveCampaign()?.launch?.liveAt ?? null;
+  const since = useSince(liveAt);
 
   /* The sales this brand saw last time, read once before this visit overwrites them. */
   const seenBefore = useRef<Record<string, number> | null>(null);
@@ -63,7 +83,9 @@ export function CatchUp() {
      younger than the gap and was never seen; otherwise (a first visit to an older phase) the estimate. */
   const seen = phase && seenBefore.current ? seenBefore.current[phase.id] : undefined;
   const sales =
-    !phase || !since.returning ? undefined
+    !phase ? undefined
+    : since.all ? phase.rev
+    : !since.returning ? undefined
     : seen !== undefined ? Math.max(0, phase.rev - seen)
     : (phase.dayOfPhase ?? 0) <= Math.ceil(since.days) ? phase.rev
     : undefined;

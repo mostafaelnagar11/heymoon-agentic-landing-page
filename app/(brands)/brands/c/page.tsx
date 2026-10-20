@@ -45,7 +45,7 @@ import {
   ROLES, accessFor, claimBrand, requestAccess, salesFirst, setRole, useRole,
   push, putApproval, putCampaign, putFunding, putPlan, putRead, threadIsEmpty,
   useActivePlan, useAds, useCampaigns, useActiveThreadId, useLivePhase, usePaid, usePhaseRequested,
-  activeCampaignLive, isLaunching, markSent, startConversation, teamRoleFor,
+  accountLive, activeCampaignLive, isLaunching, markSent, startConversation, teamRoleFor,
   connectStore, nextBrandStep, patchLaunch, recordCheck, useActiveCampaign, useStore, type Campaign, type PanelView,
 } from "../lib/store";
 import { fmtUSD } from "../lib/mock/campaigns";
@@ -63,7 +63,7 @@ import { AgentTurn, BlockRow, UserTurn } from "../components/chat/Turn";
 import {
   AdCardBlock, ApprovalBlock, BriefBlock, ChangesBlock, ConfidenceBar, ConfidenceBlock,
   CreatorBlock, FundingBlock, LadderBlock, PlanBlock, ReadBlock, ReceiptBlock,
-  RejectedBlock, ReportBlock, TaskRoster, countWord, rosterTitle,
+  RejectedBlock, ReportBlock, TaskRoster, briefLine, countWord, rosterTitle,
 } from "../components/blocks";
 import { PlanCard } from "../components/PlanCard";
 import { BriefReviewBlock, ConnectBlock, DiscountBlock, StoreCheckBlock } from "../components/chat/MoonConnect";
@@ -71,6 +71,7 @@ import { LaunchTracker } from "../components/dashboard/LaunchTracker";
 import {
   LIVE_BY_DAYS, PLATFORMS, platformFor, plusDays, type CouponRules, type PlatformKey,
 } from "../lib/agent/connect";
+import { applyBriefChange } from "../lib/agent/briefChange";
 import {
   EmailSentBlock, IncludesBlock, MarketsPick, ProductsPick, focusText,
 } from "../components/ScopeBlocks";
@@ -206,6 +207,9 @@ function ChatInner() {
   const role = useRole();
   const brands = useStore((s) => s.brands);
   const [signInOpen, setSignIn] = useState(false);
+  /* What waits on the sign-in: the read of the store the brand just confirmed, or (signed out later) the payment. */
+  const gateRef = useRef<{ host: string; go: () => void } | null>(null);
+  const [gateHost, setGateHost] = useState<string | null>(null);
   /* The chips the thread offers once Phase 1 is paid for. */
   /* Until the brief is approved the brand's next step leads and the dashboard is the last choice (PRD v0.2, H1). */
   const postChips = launching && nextBrandStep(camp)
@@ -389,6 +393,7 @@ function ChatInner() {
         afterRead(storedRead);
         return;
       }
+      if (!accountLive()) { readStore(readUrl); return; }
       push({ kind: "say", text: `Reading ${readUrl}.` });
       push({ kind: "read", url: readUrl });
       return;
@@ -500,6 +505,8 @@ function ChatInner() {
   useEffect(() => {
     if (!readUrl || readRun.status !== "idle") return;
     if (storedRead?.eligibility) return;
+    /* Signed out, the read waits for the sign-in sheet, which runs it (readStore). */
+    if (!accountLive()) return;
     runRead();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readUrl]);
@@ -517,11 +524,9 @@ function ChatInner() {
       say("The payment is already open below. Confirm it there, or say “not yet”.");
       return;
     }
-    /* Money cannot move for nobody. This is the first and only point in
-       the whole flow that needs an account, so it is the first and only
-       point that asks for one — the sheet opens over the thread and the
-       payment card is what it opens onto. */
-    if (!account) { setSignIn(true); return; }
+    /* Money cannot move for nobody. The brand signed in when they confirmed the store (needAccount), so this only
+       catches someone who signed out since: the sheet opens over the thread and the payment card is what it opens onto. */
+    if (!account) { needAccount(getRead(plan.readId).url, showFunding); return; }
     /* Signed in, but to a store somebody else already owns: only its owner can add people (brand team, 15 Oct). */
     if (accessFor(getRead(plan.readId).url, account.email, brands) === "outsider") { askForAccess(); return; }
     /* A member can't move money (store.ts, CAN): they're told who can. */
@@ -896,12 +901,21 @@ function ChatInner() {
     readStore(url);
   };
 
-  /** A store link: read it. */
-  const readStore = (url: string) => {
-    setScope({});
-    say(`Reading ${url}.`);
-    push({ kind: "read", url });
-    runRead(url);
+  /** A store link: read it, once the brand is signed in. */
+  const readStore = (url: string) =>
+    needAccount(url, () => {
+      setScope({});
+      say(`Reading ${url}.`);
+      push({ kind: "read", url });
+      runRead(url);
+    });
+
+  /** The account comes first: right after the brand confirms the store, before anything is read or built for it. */
+  const needAccount = (host: string, go: () => void) => {
+    if (accountLive()) { go(); return; }
+    gateRef.current = { host, go };
+    setGateHost(host);
+    setSignIn(true);
   };
 
   /** A brand name: find its store, and ask which when there are several. */
@@ -1045,6 +1059,9 @@ function ChatInner() {
     const lower = v.toLowerCase();
     const r0 = currentRead();
 
+    /* The sheet was closed before signing in: the chip reopens it on the same store. */
+    if (/^sign in$/.test(lower) && gateRef.current) { setSignIn(true); return; }
+
     /* ── The answer the agent asked for ── */
     if (wait === "email" || wait === "email-them") {
       if (!looksLikeEmail(v)) { ask("That doesn't look like an email address. Try again?", []); return; }
@@ -1103,16 +1120,21 @@ function ChatInner() {
       return;
     }
     if (wait === "reveal-plan" && /^(looks right|looks good|yes|yep|good|great|perfect|fine|ok|okay)\b/.test(lower)) { revealReady(); return; }
-    /* A change to MoonWriter's brief, in plain words (6d). It lands as a line every creator gets. */
+    /* A change to MoonWriter's brief, in plain words (6d). Each clause lands in Say or Don't, and a line it contradicts
+       comes out (applyBriefChange). */
     /* Also after a reload, when the waiting state is gone but the brief is still the brand's open step. */
     const onBrief = wait === "brief-review" || (launching && nextBrandStep(camp) === "brief");
     if (onBrief && plan && !/^(go to (the )?dashboard|what happens next|approve( the brief)?|continue)/.test(lower)) {
+      const b = plan.brief.value;
+      const change = applyBriefChange({ mustSay: b.mustSay.value, mustNotSay: b.mustNotSay.value }, v);
       const { plan: next } = tools.edit_plan({
-        plan, patch: { brief: { mustSay: [...plan.brief.value.mustSay.value, v] } }, because: "because you changed the brief", by: "brand",
+        plan, patch: { brief: { mustSay: change.mustSay, mustNotSay: change.mustNotSay } }, because: "because you changed the brief", by: "brand",
       });
       putPlan(next);
       track("hm_brief_change_requested", { brand: camp?.url, campaign: camp?.id });
-      say(t("post.briefAdded"));
+      say(change.removed.length
+        ? tf("post.briefReplaced", { old: change.removed.map(briefLine).join(locale === "ar" ? "» و«" : "” and “") })
+        : t("post.briefAdded"));
       return;
     }
     /* ── Before any store: a link, a brand name, or a question (brand flows, P0) ── */
@@ -1173,11 +1195,7 @@ function ChatInner() {
        there being no plan yet, so "ounass.com" said in the middle of
        an edit is still an edit. */
     if (!plan && LOOKS_LIKE_STORE.test(v) && readRun.status !== "running") {
-      const url = normaliseUrl(v);
-      setScope({});
-      say(`Reading ${url}.`);
-      push({ kind: "read", url });
-      runRead(url);
+      readStore(normaliseUrl(v));
       return;
     }
 
@@ -1782,13 +1800,21 @@ function ChatInner() {
           closes onto the card the brand was reaching for. */}
       <SignInSheet
         open={signInOpen}
-        host={plan ? getRead(plan.readId).url : undefined}
+        host={gateHost ?? (plan ? getRead(plan.readId).url : undefined)}
         brandName={plan ? getRead(plan.readId).identity?.name.value : undefined}
-        onClose={() => setSignIn(false)}
+        forPayment={!!plan}
+        onClose={() => {
+          setSignIn(false);
+          /* Closed before signing in: nothing is read, and one chip brings the sheet back. */
+          if (gateRef.current && !accountLive()) ask(plan ? "" : `Sign in and I'll read ${gateRef.current.host}.`, ["Sign in"]);
+        }}
         onVerified={(name) => {
           setSignIn(false);
           push({ kind: "user", text: `Signed in as ${name}` });
-          showFunding();
+          const g = gateRef.current;
+          gateRef.current = null;
+          setGateHost(null);
+          (g?.go ?? showFunding)();
         }}
       />
     </ChatShell>

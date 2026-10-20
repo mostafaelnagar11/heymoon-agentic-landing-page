@@ -29,6 +29,7 @@
  * dollar committed or a dollar earned, and neither belongs in a total.
  */
 
+import { useEffect, useState } from "react";
 import { ArrowRight, Check, Clock, LockSimple } from "@phosphor-icons/react";
 import {
   fmtUSD, phasePct, phaseTitle, type Phase, type PhaseStatus,
@@ -39,7 +40,7 @@ import {
 } from "../../lib/store";
 import { useGo } from "../../lib/surface";
 import { AskChip } from "./HeyMoon";
-import { CatchUp } from "./CatchUp";
+import { CatchUp, isReturning, lastVisit } from "./CatchUp";
 import { paceSentence } from "../../lib/agent/dashboard";
 import { Surface } from "./kit";
 import { RevenueRuler } from "../Ruler";
@@ -234,6 +235,10 @@ function PhaseLadder({ phases, onOpen }: { phases: Phase[]; onOpen: (id: string)
 export function HomeView() {
   const go = useGo();
   const account = useAccount();
+  /* "Welcome back" only to someone who was here before, not to a brand whose first sale just landed. Known after
+     mount (the last visit is in this browser), so the line holds its height until then. */
+  const [back, setBack] = useState<boolean | null>(null);
+  useEffect(() => { setBack(isReturning(lastVisit(), Date.now())); }, []);
   const campaigns = useCampaigns();
   const phases = useCampaignPhases();
   const live = useLivePhase();
@@ -297,7 +302,7 @@ export function HomeView() {
           band is the whole subject of the dashboard, said once, in the
           brand's own numbers, at the top. */}
       <h2 className="text-greet font-semibold text-ink sm:text-section">
-        {account ? `Welcome back, ${account.firstName}` : "Welcome back"}
+        {back === null ? "\u00a0" : `${back ? "Welcome back" : "Welcome"}${account ? `, ${account.firstName}` : ""}`}
       </h2>
 
       {/* A · Catch me up: what changed since the last visit, each line with its one action (CatchUp.tsx). */}

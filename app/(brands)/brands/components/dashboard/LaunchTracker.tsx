@@ -60,7 +60,8 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
             <p className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-brand-500">{t("lt.title")}</p>
             <h2 className="mt-1.5 text-greet font-semibold text-ink sm:text-section">{heading}</h2>
             <p className="mt-1 text-body text-ink-soft">
-              {tf("lt.liveBy", { date: day(liveBy) })}{!camp.connectedStore && !team ? t("lt.refund") : ""}
+              {l.liveAt ? tf("lt.liveSince", { date: day(l.liveAt) }) : tf("lt.liveBy", { date: day(liveBy) })}
+              {!camp.connectedStore && !team ? t("lt.refund") : ""}
             </p>
           </div>
           {brandStep && (
@@ -75,7 +76,7 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
       <div className="overflow-hidden rounded-card border border-hairline bg-white shadow-card">
         {compact && (
           <p className="border-b border-hairline px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.14em] text-ink-faint">
-            {tf("lt.compact", { date: day(liveBy) })}
+            {l.liveAt ? tf("lt.compactLive", { date: day(l.liveAt) }) : tf("lt.compact", { date: day(liveBy) })}
           </p>
         )}
         <div role="progressbar" aria-label="Launch" aria-valuemin={0} aria-valuemax={rows.length} aria-valuenow={doneCount} className="flex gap-1 px-4 pt-3">
