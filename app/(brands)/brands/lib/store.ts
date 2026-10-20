@@ -23,7 +23,7 @@ import type {
 import { rememberRead } from "./agent/registry";
 import { hash } from "./agent/rng";
 import { ADS, PHASES, type Phase } from "./mock/campaigns";
-import { CREATORS } from "./mock/creators";
+import { STAGES, type CouponRules, type Stage, type StageKey } from "./agent/connect";
 
 /* ------------------------------------------------------------------ */
 /* Thread blocks                                                       */
@@ -71,8 +71,12 @@ export type ThreadItem =
   | { id: string; kind: "pick-products"; readId: string; at: number }
   /* What the $1,000 includes, shown with the plan before Pay. */
   | { id: string; kind: "includes"; at: number }
-  /* Has a brief, or writes one with the agent (brand flows, P0). Answered once, then it says which. */
-  | { id: string; kind: "brief-choice"; at: number }
+  /* After payment, MoonConnect's steps in the conversation (PRD v0.2, 6a to 6d), and the launch tracker after them. */
+  | { id: string; kind: "connect"; at: number }
+  | { id: string; kind: "discount"; at: number }
+  | { id: string; kind: "store-check"; at: number }
+  | { id: string; kind: "brief-review"; at: number }
+  | { id: string; kind: "tracker"; at: number }
   /* The plan, emailed: to the brand leaving for now, or to whoever decides (brand flows, P0 "leaves", P1). */
   | { id: string; kind: "email-sent"; to: string; planId: string; at: number };
 
@@ -238,31 +242,63 @@ export interface Campaign {
   suggestions?: { by: string; text: string; at: number }[];
 }
 
-/* The cold start (brand flows, P2, 19 Oct review: "like Stripe's onboarding"). Phase 1 is paid and nothing is
-   selling yet, so the dashboard is a checklist rather than sales figures. Connecting the store lives on the campaign
-   (`connectedStore`) and the tracking codes follow from it; the rest is here. */
+/* After payment, until the first sale (PRD: HeyMoon v0.2, from payment to first campaign live, 20 Oct). The brand
+   connects its store, sets the discount rules, passes the store check and approves the brief, all in the
+   conversation with MoonConnect; then Moontech matches, invites and launches, and the dashboard shows the launch
+   tracker until the first redemption. Each field is the fact Orbit records as a ledger event. A connected store is
+   the campaign's `connectedStore`; the team route (unsupported platform, or Shopify while its app is in review) is
+   `legacyAt`. */
 export interface Launch {
-  creatorsKept: boolean;
-  briefApproved: boolean;
-  /** Big brands launch with their own legal and procurement steps; everyone else skips step 5. */
-  enterprise: boolean;
-  enterpriseSteps: { legal: boolean; products: boolean; signoff: boolean };
-  /** Invited someone, or chose not to. Optional, so it never holds the launch. */
-  teamDone: boolean;
-  /** When the first drafts arrived. */
-  draftsAt: number | null;
-  /** When the first ad was approved and Phase 1 went live. The checklist is finished from then on. */
+  paidAt: number;
+  legacyAt: number | null;
+  coupon: CouponRules | null;
+  checkAttempts: number;
+  checkPassedAt: number | null;
+  /** Two failed checks: the Moontech team passes it by hand. */
+  checkToTeamAt: number | null;
+  briefApprovedAt: number | null;
+  /** Who approved it (the PRD's "approved by", a Contact). */
+  briefApprovedBy?: string | null;
+  /** Guidelines or past UGC the brand added to the brief (MNMP-1). */
+  briefFiles: string[];
+  matchedAt: number | null;
+  invitedAt: number | null;
   liveAt: number | null;
-  /** Creators the brand swapped out while nobody in the matched pool fits the freed fee yet. MoonMatch keeps looking;
-      the replacement is offered before they are briefed. */
-  swapping?: number[];
+  firstSaleAt: number | null;
 }
 
-/** One creator's tracking code: their first name and the brand's (brand flows, P2 step 2). */
-export const trackingCode = (creatorName: string, brandName: string) =>
-  `${creatorName.split(" ")[0].toUpperCase().replace(/[^A-Z]/g, "")}-${brandName.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 6)}`;
+/** Paid and no first sale yet: the dashboard shows the launch tracker rather than results. */
+export const isLaunching = (c: Campaign | null | undefined) => !!c?.paid && !!c.launch && !c.launch.firstSaleAt;
 
-export const isLaunching = (c: Campaign | null | undefined) => !!c?.paid && !!c.launch && !c.launch.liveAt;
+/** Where each tracker stage stands (H5): when its fact was recorded, or null while it is open. On the team route the
+    team sets the code and runs the check with the brand, so those two wait on Moontech rather than on the brand. */
+export function launchStages(c: Campaign): { stage: Stage; doneAt: number | null }[] {
+  const l = c.launch;
+  if (!l) return [];
+  const at: Record<StageKey, number | null> = {
+    store: c.connectedStore ? l.paidAt : l.legacyAt,
+    discount: l.coupon?.at ?? null,
+    /* Only a pass counts (C13). A check handed to the team stays open until the team passes it by hand. */
+    check: l.checkPassedAt,
+    brief: l.briefApprovedAt,
+    matching: l.matchedAt,
+    invited: l.invitedAt,
+    live: l.liveAt,
+    sale: l.firstSaleAt,
+  };
+  return STAGES.map((stage) => ({ stage, doneAt: at[stage.key] }));
+}
+
+/** The brand's next step after paying, or null once the brief is approved (their part is done). */
+export function nextBrandStep(c: Campaign | null | undefined): "store" | "discount" | "check" | "brief" | null {
+  const l = c?.launch;
+  if (!c || !l) return null;
+  if (!c.connectedStore && !l.legacyAt) return "store";
+  if (!l.legacyAt && !l.coupon) return "discount";
+  if (!l.legacyAt && !l.checkPassedAt && !l.checkToTeamAt) return "check";
+  if (!l.briefApprovedAt) return "brief";
+  return null;
+}
 
 export type StorePlatform = "salla" | "zid" | "shopify" | "magento";
 
@@ -476,7 +512,9 @@ const AUTONOMY_KEY = "mtab_autonomy";
    and would keep showing it, so it is dropped rather than read. */
 /* v5, 20 Oct: a paid campaign starts on the launch checklist rather than on the demo's running ladder, so the
    running account a login used to open is dropped and the login opens the cold start instead (19 Oct review). */
-const STATE_KEY = "mtab_state_v5";
+/* v6, 20 Oct: the launch follows the v0.2 PRD (store, discount, check and brief in the chat, then Moontech's), so a
+   campaign saved with the earlier checklist is dropped rather than half-read. */
+const STATE_KEY = "mtab_state_v6";
 const KEPT = [
   "campaigns", "campaignOrder", "activeCampaignId",
   "reads", "plans", "activePlanId",
@@ -884,9 +922,9 @@ function freshLadder(campId: string, plan: Plan): Phase[] {
 }
 
 
-/** Phase 1 is paid for. A fresh campaign does not start running here: it opens the launch checklist, and Phase 1
-    goes live when its first ad is approved (`goLive`). The running demo's ladder is already in flight. */
-export const markPaid = (opts?: { enterprise?: boolean }) =>
+/** Phase 1 is paid for. A fresh campaign does not start running here: the brand's four steps and Moontech's launch
+    follow (Launch). The running demo's ladder is already in flight. */
+export const markPaid = (at: number = Date.now()) =>
   set((s) => {
     const id = s.activeCampaignId;
     const c = id ? s.campaigns[id] : null;
@@ -894,15 +932,14 @@ export const markPaid = (opts?: { enterprise?: boolean }) =>
     const fresh = c.phases[0]?.status === "ready";
     const launch: Launch | undefined = fresh
       ? {
-          creatorsKept: false, briefApproved: false,
-          enterprise: !!opts?.enterprise, enterpriseSteps: { legal: false, products: false, signoff: false },
-          teamDone: false, draftsAt: null, liveAt: null,
+          paidAt: at, legacyAt: null, coupon: null, checkAttempts: 0, checkPassedAt: null, checkToTeamAt: null,
+          briefApprovedAt: null, briefFiles: [], matchedAt: null, invitedAt: null, liveAt: null, firstSaleAt: null,
         }
       : c.launch;
     return { campaigns: { ...s.campaigns, [id]: { ...c, paid: true, ...(launch ? { launch } : {}) } } };
   });
 
-/** One step of the launch checklist done (or undone). */
+/** One launch fact recorded (or several). */
 export const patchLaunch = (campaignId: string, patch: Partial<Launch>) =>
   set((s) => {
     const c = s.campaigns[campaignId];
@@ -910,52 +947,53 @@ export const patchLaunch = (campaignId: string, patch: Partial<Launch>) =>
     return patchCampaignIn(s, campaignId, { launch: { ...c.launch, ...patch } });
   });
 
-/** The first drafts arrive (brand flows, P2 step 7). In the product they come from the creators within 48 hours;
-    the prototype takes them from the demo's drafts, re-pointed at this campaign's Phase 1 and its own crew. */
-export const deliverDrafts = (campaignId: string, crewIds: number[], at: number) =>
+/** The store check ran (6c). A pass is recorded; a second failure hands it to the Moontech team. */
+export const recordCheck = (campaignId: string, passed: boolean, at: number) =>
   set((s) => {
     const c = s.campaigns[campaignId];
-    if (!c?.launch || c.launch.draftsAt) return {};
-    const p1 = c.phases[0];
-    /* One draft per creator on the crew, each in their own photo. The templates give the three verdicts a first
-       review should show: on brief, a miss with a re-cut note, and on brief again. */
-    const templates = ["ad-1", "ad-4", "ad-6"].map((id) => ADS.find((a) => a.id === id)!).filter(Boolean);
-    const drafts: AdRecord[] = crewIds.slice(0, templates.length).map((creatorId, i) => {
-      const t = templates[i];
-      const who = CREATORS.find((x) => x.id === creatorId);
-      const name = who?.name ?? t.creatorName;
-      return {
-        ...t,
-        id: `${campaignId}-draft-${i + 1}`, campaignId: p1.id, creatorId, creatorName: name,
-        avatar: who?.avatar ?? t.avatar,
-        img: who ? who.avatar.replace(/avatar\.jpg$/, "p1.jpg") : t.img,
-        video: undefined,
-        track: trackingCode(name, c.brandName),
-        state: "waiting" as const, performance: undefined,
-        submitted: i === 0 ? "1 hour ago" : `${i + 1} hours ago`,
-      };
-    });
-    return {
-      extraAds: [...s.extraAds.filter((a) => !a.id.startsWith(`${campaignId}-draft-`)), ...drafts],
-      ads: { ...s.ads, ...Object.fromEntries(drafts.map((d) => [d.id, "waiting" as const])) },
-      campaigns: {
-        ...s.campaigns,
-        [campaignId]: { ...c, adIds: [...c.adIds, ...drafts.map((d) => d.id)], launch: { ...c.launch, draftsAt: at } },
+    if (!c?.launch) return {};
+    const attempts = c.launch.checkAttempts + 1;
+    return patchCampaignIn(s, campaignId, {
+      launch: {
+        ...c.launch, checkAttempts: attempts,
+        checkPassedAt: passed ? at : c.launch.checkPassedAt,
+        checkToTeamAt: !passed && attempts >= 2 ? at : c.launch.checkToTeamAt,
       },
-    };
+    });
   });
 
-/** The first ad is approved: it goes live, and so does Phase 1. From here the dashboard is the running one. */
-export const goLive = (campaignId: string, adId: string, at: number) =>
+/** Moontech's next stage. First anything the team owes on the launch conditions (C13): on the team route it sets the
+    code and passes the store check with the brand; after two failed checks it passes the check by hand. Then 7 and 8:
+    the list is ready, the creators are invited, the campaign is live, which starts Phase 1. In the product these are
+    NASA and launchCampaign, which refuses while any condition is missing; the prototype steps them by hand. */
+export const advanceLaunch = (campaignId: string, at: number) =>
   set((s) => {
     const c = s.campaigns[campaignId];
-    if (!c?.launch || c.launch.liveAt) return {};
-    const today = new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-    const phases = c.phases.map((p, i) => (i === 0 ? { ...p, status: "live" as const, dayOfPhase: 1, start: today } : p));
-    return {
-      ads: { ...s.ads, [adId]: "live" as const },
-      campaigns: { ...s.campaigns, [campaignId]: { ...c, phases, launch: { ...c.launch, liveAt: at } } },
-    };
+    const l = c?.launch;
+    if (!c || !l || !l.briefApprovedAt || (!c.connectedStore && !l.legacyAt)) return {};
+    if (!l.coupon) {
+      const coupon: CouponRules = { discount: 15, limits: { minOrder: true, onePerCustomer: true, endsWithPhase: true }, minOrder: 200, bestOfferBy: "the Moontech team, with the brand", at };
+      return patchCampaignIn(s, campaignId, { launch: { ...l, coupon } });
+    }
+    if (!l.checkPassedAt) return patchCampaignIn(s, campaignId, { launch: { ...l, checkPassedAt: at } });
+    if (!l.matchedAt) return patchCampaignIn(s, campaignId, { launch: { ...l, matchedAt: at } });
+    if (!l.invitedAt) return patchCampaignIn(s, campaignId, { launch: { ...l, invitedAt: at } });
+    if (!l.liveAt) {
+      const today = new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+      const phases = c.phases.map((p, i) => (i === 0 ? { ...p, status: "live" as const, dayOfPhase: 1, start: today } : p));
+      return patchCampaignIn(s, campaignId, { phases, launch: { ...l, liveAt: at } });
+    }
+    return {};
+  });
+
+/** The first redemption (9). The dashboard switches from the tracker to results. */
+export const recordFirstSale = (campaignId: string, amount: number, at: number) =>
+  set((s) => {
+    const c = s.campaigns[campaignId];
+    const l = c?.launch;
+    if (!c || !l?.liveAt || l.firstSaleAt) return {};
+    const phases = c.phases.map((p, i) => (i === 0 ? { ...p, rev: p.rev + amount } : p));
+    return patchCampaignIn(s, campaignId, { phases, launch: { ...l, firstSaleAt: at } });
   });
 
 /** A plan emailed before paying (brand flows, P0 "leaves" and P1 "someone else decides"). */

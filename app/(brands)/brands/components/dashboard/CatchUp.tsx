@@ -6,20 +6,22 @@
    The arithmetic is lib/agent/moves (catchUp); the presses go through HeyMoon's `run`, so an approval is still a
    request the brand confirms. */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Lightning, Sparkle } from "@phosphor-icons/react";
 import { catchUp, type MoveAction } from "../../lib/agent/moves";
 import { useActivity, useAds, useLivePhase, useReadyPhase } from "../../lib/store";
 import { useHeyMoon } from "./HeyMoon";
 
 const VISIT_KEY = "mtab_last_visit";
+/* What each phase had sold when the brand last looked, so "In sales" is the real change since then, not an estimate. */
+const SEEN_KEY = "mtab_seen_sales";
 const DAY = 86_400_000;
 
 /* "Since Tuesday, 4:12 pm" from this browser's last visit, read once and then moved to now. A first visit, or one
    within the hour, reads the last three days instead: there is nothing "since" to speak of. Client-only, after mount,
    so the server render and the first client render agree. */
-function useSince(): { days: number; label: string } {
-  const [since, setSince] = useState({ days: 3, label: "Last 3 days" });
+function useSince(): { days: number; label: string; returning: boolean } {
+  const [since, setSince] = useState({ days: 3, label: "Last 3 days", returning: false });
   useEffect(() => {
     const now = Date.now();
     let prev = 0;
@@ -28,7 +30,7 @@ function useSince(): { days: number; label: string } {
       const d = new Date(prev);
       const day = d.toLocaleDateString("en-GB", { weekday: "long" });
       const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase();
-      setSince({ days: Math.min(14, (now - prev) / DAY), label: `Since ${day}, ${time}` });
+      setSince({ days: Math.min(14, (now - prev) / DAY), label: `Since ${day}, ${time}`, returning: true });
     }
   }, []);
   return since;
@@ -41,7 +43,31 @@ export function CatchUp() {
   const phase = useLivePhase();
   const ready = useReadyPhase();
   const since = useSince();
-  const { rows, ready: readyRow } = catchUp({ phase, ready, ads, activity, days: since.days });
+
+  /* The sales this brand saw last time, read once before this visit overwrites them. */
+  const seenBefore = useRef<Record<string, number> | null>(null);
+  const [seenReady, setSeenReady] = useState(false);
+  useEffect(() => {
+    try { seenBefore.current = JSON.parse(localStorage.getItem(SEEN_KEY) ?? "{}"); } catch { seenBefore.current = {}; }
+    setSeenReady(true);
+  }, []);
+  useEffect(() => {
+    if (!seenReady || !phase) return;
+    try {
+      const now = JSON.parse(localStorage.getItem(SEEN_KEY) ?? "{}");
+      localStorage.setItem(SEEN_KEY, JSON.stringify({ ...now, [phase.id]: phase.rev }));
+    } catch {}
+  }, [seenReady, phase?.id, phase?.rev]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* Since the last visit: exactly what was added, when the last visit saw this phase; all of it, when the phase is
+     younger than the gap and was never seen; otherwise (a first visit to an older phase) the estimate. */
+  const seen = phase && seenBefore.current ? seenBefore.current[phase.id] : undefined;
+  const sales =
+    !phase || !since.returning ? undefined
+    : seen !== undefined ? Math.max(0, phase.rev - seen)
+    : (phase.dayOfPhase ?? 0) <= Math.ceil(since.days) ? phase.rev
+    : undefined;
+  const { rows, ready: readyRow } = catchUp({ phase, ready, ads, activity, days: since.days, sales });
   if (!rows.length && !readyRow) return null;
 
   const btn = (a: MoveAction, primary: boolean) => (

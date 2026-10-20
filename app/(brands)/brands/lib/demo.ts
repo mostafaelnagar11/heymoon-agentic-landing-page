@@ -8,15 +8,15 @@
    Which state it opens changed at the 19 Oct review. It used to open Ounass two phases in (Phase 1 done, Phase 2
    live, drafts waiting), and the walkthrough jumped straight into an advanced dashboard. A login now opens the cold
    start, the way a brand who has just paid arrives (brand flows, P2): Ounass read and planned, Phase 1 paid, the
-   brand account owned, and the launch checklist with nothing done yet. The running account is still there for
-   showing what comes later: /brands/dashboard?demo=running.
+   brand account owned, and the launch tracker waiting on the store. The running account is still there for
+   showing what comes later: /brands/dashboard?demo=running. (20 Oct: after paying the brand's next step is in the
+   conversation, per the v0.2 PRD, so the tracker's "Continue in the conversation" picks up at the store.)
 
    A browser that already has a campaign keeps its own; one with a campaign and nobody signed in is signed in. */
 
 import { fixtureFor } from "./mock/reads";
 import { readIdFor, rememberRead } from "./agent/registry";
 import { judge } from "./agent/eligibility";
-import { isEnterpriseHost } from "./agent/intake";
 import { planFor } from "./agent/tools";
 import {
   claimBrand, connectStore, currentAccount, hasCampaigns, markPaid, putCampaign, putPlan, putRead, resetAll, signIn,
@@ -40,7 +40,7 @@ export function openSampleAccount(opts?: { running?: boolean }) {
   const plan = planFor(read, "balanced");
   putPlan(plan);
   putCampaign(plan, SAMPLE.url, { running: opts?.running });
-  markPaid({ enterprise: isEnterpriseHost(SAMPLE.url) });
+  markPaid(now);
   if (opts?.running) connectStore("shopify");
   signIn(who, now);
   const acct = currentAccount();

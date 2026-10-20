@@ -15,7 +15,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight, CheckCircle, Circle, EnvelopeSimple, FileArrowUp, Package, PencilLine, ShieldCheck, Sparkle, Storefront, Star,
+  ArrowRight, CheckCircle, Circle, EnvelopeSimple, Package, ShieldCheck, Sparkle, Storefront, Star,
 } from "@phosphor-icons/react";
 import type { BrandRead, Plan, ProductFocus } from "../lib/agent/types";
 import { marketName, PHASE1_BUDGET } from "../lib/agent/tools";
@@ -240,69 +240,6 @@ export function IncludesBlock({ plan, salesFirst = false }: {
       <div className="mt-3 space-y-2.5">
         {qa("Any other fees?", `Only VAT, ${fmtUSD(plan.price.vat.value)}.`)}
       </div>
-    </Card>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* The brief                                                           */
-/* ------------------------------------------------------------------ */
-
-/** How the brief came in (brand flows, P0 "has a brief?"). */
-export type BriefSource =
-  | { kind: "upload"; file: string }
-  | { kind: "written"; feel: string; must: string; mustNot: string }
-  | { kind: "agent" };
-
-/** Has a brief, or writes one with the agent: asked before the plan is built, answered once. A brand that has a
-    brief already knows what its creators must say, and one that does not gets three questions rather than a form. */
-export function BriefChoiceBlock({ chosen, onUpload, onWrite, onSkip }: {
-  chosen: BriefSource | null;
-  onUpload: (file: string) => void;
-  onWrite: () => void;
-  onSkip: () => void;
-}) {
-  if (chosen) {
-    const line =
-      chosen.kind === "upload" ? `Brief: ${chosen.file}`
-      : chosen.kind === "written" ? "Brief: written with HeyMoon"
-      : "Brief: HeyMoon drafts it from your store";
-    return (
-      <Card className="flex items-center gap-2 px-3.5 py-2.5">
-        <CheckCircle size={14} weight="fill" className="shrink-0 text-good-deep" aria-hidden />
-        <p className="text-meta text-ink-soft">{line}</p>
-      </Card>
-    );
-  }
-  const tile = "flex w-full items-start gap-2.5 rounded-control border border-hairline bg-white px-3 py-3 text-start transition hover:bg-wash";
-  return (
-    <Card className="p-4">
-      <p className="text-body font-semibold text-ink">Do you have a brief for the creators?</p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <label className={`${tile} cursor-pointer focus-within:border-brand/50`}>
-          <FileArrowUp size={16} weight="fill" className="mt-0.5 shrink-0 text-brand" aria-hidden />
-          <span className="min-w-0">
-            <span className="block text-meta font-semibold text-ink">Upload it</span>
-            <span className="block text-[11px] leading-4 text-ink-soft">PDF, Word or slides. I&apos;ll read it into the plan.</span>
-          </span>
-          <input
-            type="file"
-            accept=".pdf,.doc,.docx,.ppt,.pptx,.key,.txt"
-            className="sr-only"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f.name); }}
-          />
-        </label>
-        <button type="button" onClick={onWrite} className={tile}>
-          <PencilLine size={16} weight="fill" className="mt-0.5 shrink-0 text-brand" aria-hidden />
-          <span className="min-w-0">
-            <span className="block text-meta font-semibold text-ink">Write it with me</span>
-            <span className="block text-[11px] leading-4 text-ink-soft">Three quick questions, and I draft it.</span>
-          </span>
-        </button>
-      </div>
-      <button type="button" onClick={onSkip} className="mt-2.5 text-meta font-semibold text-ink-faint hover:text-ink">
-        Skip, draft it from my store
-      </button>
     </Card>
   );
 }

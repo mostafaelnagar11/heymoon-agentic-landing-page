@@ -202,13 +202,18 @@ export function catchUp(i: {
   ads: AdRecord[];
   activity: ActivityLike[];
   days: number;
+  /** The sales actually added since the last visit, when the dashboard knows them (CatchUp keeps a note of what the
+      brand last saw). Without it the figure is estimated from the pace, which is only right on an older phase. */
+  sales?: number;
 }): { rows: CatchUpRow[]; ready: CatchUpRow | null } {
   const rows: CatchUpRow[] = [];
   const { phase } = i;
 
   if (phase && phase.dayOfPhase) {
     const p = pace(phase);
-    const since = round10(Math.min(phase.rev, (p?.perDay ?? 0) * i.days));
+    /* An estimate that reaches the whole phase is the phase's own total, exactly, so it agrees with the figure below. */
+    const est = Math.min(phase.rev, (p?.perDay ?? 0) * i.days);
+    const since = i.sales !== undefined ? Math.min(phase.rev, i.sales) : est >= phase.rev ? phase.rev : round10(est);
     const live = i.ads.filter((a) => a.campaignId === phase.id && a.state === "live" && a.performance)
       .sort((a, b) => (b.performance?.revenue.value ?? 0) - (a.performance?.revenue.value ?? 0));
     const top = live[0];

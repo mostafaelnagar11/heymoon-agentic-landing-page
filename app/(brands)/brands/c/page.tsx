@@ -36,7 +36,7 @@ import {
   type Repair,
 } from "../lib/agent/tools";
 import {
-  CREATORS_ANSWER, GOALS, HELD, TALK, firstAnswer, isEnterpriseHost, isQuestion, looksLikeName, lookupBrand,
+  CREATORS_ANSWER, GOALS, HELD, TALK, firstAnswer, isQuestion, looksLikeName, lookupBrand,
 } from "../lib/agent/intake";
 import type { BrandRead, Plan, PlanChange, PlanPatch, ProductFocus, Report } from "../lib/agent/types";
 import { useStream } from "../lib/agent/useStream";
@@ -45,13 +45,15 @@ import {
   ROLES, accessFor, claimBrand, requestAccess, salesFirst, setRole, useRole,
   push, putApproval, putCampaign, putFunding, putPlan, putRead, threadIsEmpty,
   useActivePlan, useAds, useCampaigns, useActiveThreadId, useLivePhase, usePaid, usePhaseRequested,
-  activeCampaignLive, isLaunching, markSent, startConversation, teamRoleFor, useActiveCampaign, useStore, type PanelView,
+  activeCampaignLive, isLaunching, markSent, startConversation, teamRoleFor,
+  connectStore, nextBrandStep, patchLaunch, recordCheck, useActiveCampaign, useStore, type Campaign, type PanelView,
 } from "../lib/store";
 import { fmtUSD } from "../lib/mock/campaigns";
 import { getRead, readIdFor } from "../lib/agent/registry";
 import { normaliseUrl } from "../lib/mock/reads";
 import { looksLikeEmail, maskEmail } from "../lib/email";
-import { useT } from "../lib/i18n";
+import { STR, dayIn, useT } from "../lib/i18n";
+import { track } from "../lib/track";
 import { Btn, Card } from "../components/ui";
 import { Thinking, Typed, WorkingLine } from "../components/Stream";
 import { ChatShell } from "../components/chat/ChatShell";
@@ -59,13 +61,18 @@ import { Composer } from "../components/chat/Composer";
 import { PanelHost } from "../components/chat/PanelHost";
 import { AgentTurn, BlockRow, UserTurn } from "../components/chat/Turn";
 import {
-  AdCardBlock, ApprovalBlock, BriefBlock, ChangesBlock, ChecklistBlock, ConfidenceBar, ConfidenceBlock,
+  AdCardBlock, ApprovalBlock, BriefBlock, ChangesBlock, ConfidenceBar, ConfidenceBlock,
   CreatorBlock, FundingBlock, LadderBlock, PlanBlock, ReadBlock, ReceiptBlock,
   RejectedBlock, ReportBlock, TaskRoster, countWord, rosterTitle,
 } from "../components/blocks";
 import { PlanCard } from "../components/PlanCard";
+import { BriefReviewBlock, ConnectBlock, DiscountBlock, StoreCheckBlock } from "../components/chat/MoonConnect";
+import { LaunchTracker } from "../components/dashboard/LaunchTracker";
 import {
-  BriefChoiceBlock, EmailSentBlock, IncludesBlock, MarketsPick, ProductsPick, focusText, type BriefSource,
+  LIVE_BY_DAYS, PLATFORMS, platformFor, plusDays, type CouponRules, type PlatformKey,
+} from "../lib/agent/connect";
+import {
+  EmailSentBlock, IncludesBlock, MarketsPick, ProductsPick, focusText,
 } from "../components/ScopeBlocks";
 
 /* What the Phase 1 payment was made against. After the phase is paid an
@@ -167,18 +174,19 @@ const PANEL_INTENT: { re: RegExp; view: PanelView; say: string }[] = [
 /** What the agent is waiting on (see `wait` below). */
 type Wait =
   | null | "store" | "other-store" | "goal" | "focus" | "launch-note" | "products" | "phase1"
-  | "brief-choice" | "brief-1" | "brief-2" | "brief-3" | "email" | "email-them"
-  | "reveal-plan" | "reveal-brief" | "brief-edit";
+  | "email" | "email-them" | "reveal-plan" | "brief-review";
 
 /** What the brand settles before the plan is built (brand flows, P0). */
-type Scope = { markets?: string[]; focus?: ProductFocus; brief?: BriefSource };
+type Scope = { markets?: string[]; focus?: ProductFocus };
 
 /** "a or b", for the stores a brand name points at. */
 const orList = (parts: string[]) =>
   parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} or ${parts[parts.length - 1]}`;
 
 function ChatInner() {
-  const { t } = useT();
+  const { t, tf, locale } = useT();
+  /* After payment the agent speaks the brand's language (PRD v0.2, H6). Platform names as the brand says them. */
+  const pnameIn = (p: PlatformKey) => (locale === "ar" ? PLATFORMS[p].ar.name : PLATFORMS[p].name);
   const router = useRouter();
   const plan = useActivePlan();
   const thread = useStore(activeThread);
@@ -192,13 +200,17 @@ function ChatInner() {
   const approvals = useStore((s) => s.approvals);
   const connected = useStore((s) => (s.activeCampaignId ? s.campaigns[s.activeCampaignId]?.connectedStore ?? null : null));
   const account = useAccount();
-  /* Paid and not live yet: the launch checklist on the dashboard is where they are (brand flows, P2). */
-  const launching = isLaunching(useActiveCampaign());
+  /* Paid, no first sale yet: the brand's steps run here, then Moontech's (PRD v0.2). */
+  const camp = useActiveCampaign();
+  const launching = isLaunching(camp);
   const role = useRole();
   const brands = useStore((s) => s.brands);
   const [signInOpen, setSignIn] = useState(false);
   /* The chips the thread offers once Phase 1 is paid for. */
-  const postChips = connected ? POST_CHIPS : POST_CHIPS_UNCONNECTED;
+  /* Until the brief is approved the brand's next step leads and the dashboard is the last choice (PRD v0.2, H1). */
+  const postChips = launching && nextBrandStep(camp)
+    ? ["Continue", "What happens next?", "Go to the dashboard"]
+    : connected ? POST_CHIPS : POST_CHIPS_UNCONNECTED;
   const ads = useAds();
   const paid = usePaid();
 
@@ -235,6 +247,19 @@ function ChatInner() {
         !(EXPLAINERS.has(o) && asked.has(o))
     );
   const [text, setText] = useState("");
+  /* The connection handler (PRD v0.2, H7): offline blocks the chat with one line and no error page; back online, it
+     says so and carries on where it was. */
+  const [online, setOnline] = useState(true);
+  const [backOnline, setBackOnline] = useState(false);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const off = () => { setOnline(false); setBackOnline(false); track("hm_error_shown", { kind: "connectivity" }); };
+    const on = () => { setOnline(true); setBackOnline(true); clearTimeout(t); t = setTimeout(() => setBackOnline(false), 3000); };
+    window.addEventListener("offline", off);
+    window.addEventListener("online", on);
+    if (!navigator.onLine) off();
+    return () => { window.removeEventListener("offline", off); window.removeEventListener("online", on); clearTimeout(t); };
+  }, []);
   const [changes, setChanges] = useState<Record<string, PlanChange[]>>({});
   const [reports, setReports] = useState<Record<string, Report>>({});
   const [fix, setFix] = useState<Repair | null>(null);
@@ -252,8 +277,6 @@ function ChatInner() {
   /* What the brand said it is hoping for, and whether Phase 1 has been explained. Per conversation. */
   const goalRef = useRef<string | null>(null);
   const explainedRef = useRef(false);
-  /* The brief, written with the agent one question at a time. */
-  const briefDraft = useRef<{ feel: string; must: string }>({ feel: "", must: "" });
   const [awaitingCorrection, setAwaitingCorrection] = useState(false);
   /* The scope the brand confirms before the plan is built (brand team, 15 Oct): which markets, which products. A
      ref beside the state, because the build's completion callback reads it after the closure that started it. */
@@ -380,14 +403,14 @@ function ChatInner() {
       /* Unpaid, it is a return visit (brand flows, P1). Paid, the plan and the brief are what they came back for
          (19 Oct review: "a way back to the plan and brief after paying"). */
       if (!paid0) { welcomeBack(existing); return; }
-      push({
-        kind: "say",
-        text: isLaunching(camp0)
-          ? `Your plan for ${existing.brandName}, and the brief. Phase 1 is paid, and the launch checklist is on the dashboard.`
-          : `Your campaign for ${existing.brandName}. Phase 1 is live and paid.`,
-      });
+      /* Paid, and their steps aren't done: the next one, here, where it happens (PRD v0.2). */
+      if (isLaunching(camp0)) {
+        say(tf("post.welcome", { brand: existing.brandName }));
+        resumeLaunch(camp0);
+        return;
+      }
+      push({ kind: "say", text: `Your campaign for ${existing.brandName}. Phase 1 is live and paid.` });
       push({ kind: "plan-card" });
-      push({ kind: "brief-card" });
       setAsking({ q: "", options: postChips });
     } else {
       push({
@@ -537,18 +560,6 @@ function ChatInner() {
     push({ kind: "funding", requestId: req.id });
   };
 
-  /** After the plan: the brief they wrote, if they wrote one, then the decision. */
-  const revealBrief = () => {
-    const br = scopeRef.current.brief;
-    if (br && br.kind !== "agent") {
-      say("And the brief your creators get.");
-      push({ kind: "brief-card" });
-      ask("", ["Brief looks good", "Change the brief"]);
-      setWait("reveal-brief");
-      return;
-    }
-    revealReady();
-  };
   const revealReady = () => {
     setWait(null);
     ask("Ready to start Phase 1?", READY_CHIPS);
@@ -584,9 +595,6 @@ function ChatInner() {
         if (sc.markets?.length && sc.markets.join() !== v0.markets.value.join() && !cancelled) {
           v1 = tools.edit_plan({ plan: v0, patch: { markets: sc.markets }, because: "because those are the markets you picked", by: "brand" }).plan;
         }
-        /* A brief written with the agent goes in as the brand's own words: their line leads, their musts first. An
-           uploaded one is read in by name; the prototype cannot parse the file. */
-        const br = sc.brief;
         /* The agent's own brief tells creators to cover the bestsellers. When the brand chose a launch or named
            products, that line says what they chose instead. */
         const f = sc.focus;
@@ -594,22 +602,8 @@ function ChatInner() {
         const b0 = lead
           ? { ...v1.brief.value, mustSay: { ...v1.brief.value.mustSay, value: v1.brief.value.mustSay.value.map((l) => (/^Cover one of:/.test(l) ? lead : l)) } }
           : v1.brief.value;
-        if (lead && br?.kind !== "written") v1 = { ...v1, brief: { ...v1.brief, value: b0 } };
-        const v2 = br?.kind === "written" && !cancelled
-          ? tools.edit_plan({
-              plan: v1,
-              patch: {
-                brief: {
-                  headline: br.feel.charAt(0).toUpperCase() + br.feel.slice(1),
-                  mustSay: [br.must, ...b0.mustSay.value].filter(Boolean),
-                  ...(br.mustNot && !/^(nothing|no|none)\b/i.test(br.mustNot) ? { mustNotSay: [br.mustNot, ...b0.mustNotSay.value] } : {}),
-                },
-              },
-              because: "because you wrote it with HeyMoon",
-              by: "brand",
-            }).plan
-          : v1;
-        const v: Plan = sc.focus ? { ...v2, focus: sc.focus } : v2;
+        if (lead) v1 = { ...v1, brief: { ...v1.brief, value: b0 } };
+        const v: Plan = sc.focus ? { ...v1, focus: sc.focus } : v1;
         /* A half-built plan is not a plan. The build assembles in
            order — markets, audience, crew, price, brief, ladder — so a
            run stopped early has real figures in the fields it reached
@@ -682,7 +676,8 @@ function ChatInner() {
     if (!scopeRef.current.focus && (r.bestsellers?.value.length ?? 0) > 0) { askFocus(r, ""); return; }
     if (!scopeRef.current.markets && (r.markets?.value.length ?? 0) > 0) { askMarkets(r); return; }
     if (!explainedRef.current) { askPhase1(); return; }
-    if (!scopeRef.current.brief) { askBrief(); return; }
+    /* No brief question here: MoonWriter drafts it after payment, from the read, the plan and this conversation
+       (PRD v0.2, step 6d). */
     buildNow(r);
   };
 
@@ -771,33 +766,6 @@ function ChatInner() {
     setWait("phase1");
   };
 
-  /** Has a brief, or writes one with the agent (brand flows, P0). */
-  const askBrief = () => {
-    say("Last thing before I build it.");
-    push({ kind: "brief-choice" });
-    setAsking({ q: "", options: [] });
-    setWait("brief-choice");
-  };
-
-  const onBrief = (source: BriefSource, said: string) => {
-    const r = currentRead();
-    if (!r) return;
-    push({ kind: "user", text: said });
-    setScope({ ...scopeRef.current, brief: source });
-    if (source.kind === "upload") say(`Got it. I'll build the plan on ${source.file}, and keep your wording.`);
-    buildNow(r);
-  };
-
-  /** The three questions. From the card, the brand's answer is said for them; typed, it is already in the thread. */
-  const writeBrief = (fromCard: boolean) => {
-    if (fromCard) push({ kind: "user", text: "Write it with me" });
-    briefDraft.current = { feel: "", must: "" };
-    /* The card says which was chosen from here; the answers fill it in as they come. */
-    setScope({ ...scopeRef.current, brief: { kind: "written", feel: "", must: "", mustNot: "" } });
-    ask("Three quick ones. After someone sees a post, what should they feel or do?", []);
-    setWait("brief-1");
-  };
-
   /** Plan saved and emailed: to the brand leaving for now, or to whoever decides (brand flows, P0 and P1). */
   const emailPlan = (who: "self" | "them") => {
     if (who === "self" && account) { sendPlan(account.email, false); return; }
@@ -823,6 +791,98 @@ function ChatInner() {
     say(`Welcome back. Your plan for ${getRead(p.readId).url} is here.`);
     push({ kind: "plan-card" });
     ask("What held you back last time?", [...HELD, "Start Phase 1"]);
+  };
+
+  /* ── After payment: MoonConnect, in this conversation (PRD v0.2, steps 6a to 6d) ──
+     One short line and one card per step. The brand can stop at any step ("Not now") and pick it up here later;
+     "Go to the dashboard" stays the second choice until the brief is approved (H1). */
+  const resumeLaunch = (c: Campaign | null = activeCampaignLive()) => {
+    const step = nextBrandStep(c);
+    if (step === "store") { startConnect(c); return; }
+    if (step === "discount") { startDiscount(); return; }
+    if (step === "check") { startCheck(); return; }
+    if (step === "brief") { startBrief(); return; }
+    say(t("post.allDone"));
+    push({ kind: "tracker" });
+    setAsking({ q: "", options: ["Go to the dashboard", "What happens next?"] });
+  };
+
+  const startConnect = (c: Campaign | null) => {
+    const host = c?.url ?? "";
+    const p = platformFor(host);
+    say(p ? tf("post.storeNext", { host, platform: pnameIn(p) }) : t("post.storeNextPlain"));
+    push({ kind: "connect" });
+    setWait(null);
+    setAsking({ q: "", options: [] });
+  };
+
+  const onConnected = (p: PlatformKey) => {
+    const c = activeCampaignLive();
+    if (!c || p === "custom") return;
+    connectStore(p, c.id);
+    startDiscount();
+  };
+
+  /** Shopify while its app is in review, or a store HeyMoon has no connector for: the team route (legacy). */
+  const onTeamRoute = () => {
+    const c = activeCampaignLive();
+    if (!c) return;
+    patchLaunch(c.id, { legacyAt: Date.now() });
+    say(t("post.teamToo"));
+    startBrief(t("post.briefMeanwhile"));
+  };
+
+  const startDiscount = (lead = "") => {
+    say(`${lead}${t("post.discount")}`);
+    push({ kind: "discount" });
+    setAsking({ q: "", options: [] });
+  };
+
+  const onCoupon = (rules: CouponRules) => {
+    const c = activeCampaignLive();
+    if (!c) return;
+    patchLaunch(c.id, { coupon: rules });
+    startCheck();
+  };
+
+  const startCheck = (lead = "") => {
+    say(`${lead}${t("post.check")}`);
+    push({ kind: "store-check" });
+    setAsking({ q: "", options: [] });
+  };
+
+  const onCheck = (passed: boolean) => {
+    const c = activeCampaignLive();
+    if (!c) return;
+    recordCheck(c.id, passed, Date.now());
+    if (passed) { startBrief(t("post.briefPassed")); return; }
+    if ((activeCampaignLive()?.launch?.checkToTeamAt ?? null) !== null) {
+      startBrief(t("post.briefTeamCheck"));
+    }
+  };
+
+  const startBrief = (lead = "") => {
+    say(`${lead || t("post.briefLead")}${t("post.briefDrafted")}`);
+    push({ kind: "brief-review" });
+    setWait("brief-review");
+    setAsking({ q: "", options: [] });
+  };
+
+  const onBriefApproved = () => {
+    const c = activeCampaignLive();
+    if (!c?.launch) return;
+    patchLaunch(c.id, { briefApprovedAt: Date.now(), briefApprovedBy: account ? `${account.firstName} ${account.lastName}`.trim() : null });
+    setWait(null);
+    say(tf("post.approved", { date: dayIn(plusDays(c.launch.paidAt, LIVE_BY_DAYS), locale) }));
+    push({ kind: "tracker" });
+    setAsking({ q: "", options: ["Go to the dashboard", "What happens next?"] });
+  };
+
+  const notNow = () => {
+    const step = nextBrandStep(activeCampaignLive());
+    say(step === "store" ? t("post.notNowStore") : t("post.notNow"));
+    setWait(null);
+    setAsking({ q: "", options: ["Continue", "Go to the dashboard"] });
   };
 
   /** A different store, from a conversation about this one: a new conversation, read in place. */
@@ -943,16 +1003,10 @@ function ChatInner() {
   /** The answer to "what happens next?", from wherever the brand is. */
   const whatNext = () => {
     if (!paid)
-      return (
-        `You start Phase 1 and pay for it. Then the launch checklist: connect your store, meet your creators and ` +
-        `approve the brief. The first drafts arrive within 48 hours, and nothing goes live until you approve it.`
-      );
+      return "You pay for Phase 1. Then, here: connect your store, set the discount, a quick store check, and the brief. Moontech matches the creators and launches, within 14 days of paying.";
     if (launching)
-      return (
-        "The launch checklist on the dashboard: connect your store, meet your creators and approve the brief. " +
-        "Phase 1 goes live with the first draft you approve."
-      );
-    return "Phase 1 is live. Every order through a creator's code counts, and drafts arrive for your approval as they're made.";
+      return nextBrandStep(activeCampaignLive()) ? t("post.nextYours") : t("post.nextMoontech");
+    return "Phase 1 is live. Every order through a creator's code counts toward the guarantee.";
   };
 
   const runReport = () => {
@@ -979,6 +1033,8 @@ function ChatInner() {
   };
 
   const send = () => sendText(text);
+  /** A chip reads in the brand's language; its value, which the conversation matches on, stays the same. */
+  const chipText = (c: string) => (STR[`chip.${c}`] ? t(`chip.${c}`) : c);
 
   const sendText = (raw: string) => {
     const v = raw.trim();
@@ -1046,45 +1102,19 @@ function ChatInner() {
       setAsking({ q: "", options: left });
       return;
     }
-    if (wait === "brief-choice") {
-      if (/write|with (me|you)|together|no\b|don.?t have|none/.test(lower)) { writeBrief(false); return; }
-      if (/skip|draft it|you write|from (my|the) store/.test(lower)) { setScope({ ...scopeRef.current, brief: { kind: "agent" } }); if (r0) buildNow(r0); return; }
-      if (/upload|yes|have (one|a brief)/.test(lower)) { ask("Use Upload it on the card above, and pick the file.", []); return; }
-    }
-    if (wait === "reveal-plan" && /^(looks right|looks good|yes|yep|good|great|perfect|fine|ok|okay)\b/.test(lower)) { revealBrief(); return; }
-    if (wait === "reveal-brief") {
-      if (/^(brief looks good|looks good|yes|good|fine|ok|okay)\b/.test(lower)) { revealReady(); return; }
-      if (/^change the brief$/.test(lower)) { ask("What should change?", []); setWait("brief-edit"); return; }
-    }
-    if (wait === "brief-edit" && plan) {
+    if (wait === "reveal-plan" && /^(looks right|looks good|yes|yep|good|great|perfect|fine|ok|okay)\b/.test(lower)) { revealReady(); return; }
+    /* A change to MoonWriter's brief, in plain words (6d). It lands as a line every creator gets. */
+    /* Also after a reload, when the waiting state is gone but the brief is still the brand's open step. */
+    const onBrief = wait === "brief-review" || (launching && nextBrandStep(camp) === "brief");
+    if (onBrief && plan && !/^(go to (the )?dashboard|what happens next|approve( the brief)?|continue)/.test(lower)) {
       const { plan: next } = tools.edit_plan({
         plan, patch: { brief: { mustSay: [...plan.brief.value.mustSay.value, v] } }, because: "because you changed the brief", by: "brand",
       });
       putPlan(next);
-      say("Added.");
-      push({ kind: "brief-card" });
-      revealReady();
+      track("hm_brief_change_requested", { brand: camp?.url, campaign: camp?.id });
+      say(t("post.briefAdded"));
       return;
     }
-    if (wait === "brief-1") {
-      briefDraft.current.feel = v;
-      ask("What must every creator say or show?", []);
-      setWait("brief-2");
-      return;
-    }
-    if (wait === "brief-2") {
-      briefDraft.current.must = v;
-      ask("And anything they must never say or do?", ["Nothing else"]);
-      setWait("brief-3");
-      return;
-    }
-    if (wait === "brief-3" && r0) {
-      setScope({ ...scopeRef.current, brief: { kind: "written", ...briefDraft.current, mustNot: v } });
-      say("That's the brief. I've kept your words.");
-      buildNow(r0);
-      return;
-    }
-
     /* ── Before any store: a link, a brand name, or a question (brand flows, P0) ── */
     if (!plan && !hasRead && readRun.status !== "running") { intake(v); return; }
 
@@ -1209,6 +1239,11 @@ function ChatInner() {
     /* Chips the agent itself offered about where the brand is in the
        flow. They are answered here rather than sent through `interpret`,
        because they are not requests about the plan. */
+    /* Back to the brand's next step after paying. */
+    if (launching && /^(continue|carry on|next step|set the discount|connect (my|the) store|run the (test|check)|the brief)$/.test(lower)) {
+      resumeLaunch();
+      return;
+    }
     if (/go to (the )?dashboard|open the dashboard/.test(lower)) {
       /* A handoff, not another panel, and it says nothing on the way:
          a sentence about a destination you are already being taken to
@@ -1217,6 +1252,7 @@ function ChatInner() {
       return;
     }
     if (/what happens next|what.s next|what now/.test(lower)) {
+      if (paid) track("hm_help_requested", { brand: camp?.url, campaign: camp?.id, via: "what happens next" });
       say(whatNext());
       setAsking({ q: "", options: paid ? postChips : ["Start Phase 1", "See all three phases"] });
       return;
@@ -1416,7 +1452,7 @@ function ChatInner() {
   function renderItem(item: (typeof visible)[number], afterSay: boolean): ReactNode {
     switch (item.kind) {
       case "user":
-        return <UserTurn key={item.id} text={item.text} />;
+        return <UserTurn key={item.id} text={chipText(item.text)} />;
       case "say":
         return (
           /* Consecutive assistant turns share one mark — the speaker is
@@ -1467,8 +1503,8 @@ function ChatInner() {
               onConfirmed={() => {
                 /* Per campaign, not global. A second campaign is not
                    paid for because the first one was. */
-                /* Phase 1 is paid, not live: it opens the launch checklist (brand flows, P2). */
-                markPaid({ enterprise: plan ? isEnterpriseHost(getRead(plan.readId).url) : false });
+                /* Phase 1 is paid, not live: the brand stays here and MoonConnect leads the store steps (PRD v0.2). */
+                markPaid();
                 /* The first payment for a store makes the payer its owner (brand team, 15 Oct). */
                 if (plan && account) {
                   const r = getRead(plan.readId);
@@ -1478,14 +1514,9 @@ function ChatInner() {
                    creator cards here: the plan beside the conversation
                    holds the crew, and the full roster belongs on the
                    campaign view, not in the chat. */
-                say("Paid. Phase 1 is yours.");
+                say(t("post.paid"));
                 push({ kind: "receipt", requestId: req.id });
-                push({ kind: "checklist" });
-                say(
-                  "Next is the launch checklist on the dashboard: connect your store, meet your creators and approve " +
-                  "the brief. Phase 1 goes live with the first draft you approve."
-                );
-                setAsking({ q: "What happens next?", options: postChips });
+                resumeLaunch();
               }}
               onCancelled={() =>
                 ask(
@@ -1535,7 +1566,29 @@ function ChatInner() {
           <BlockRow key={item.id}><LadderBlock plan={plan} compact onStart={paid ? undefined : openFunding} paid={paid} /></BlockRow>
         ) : null;
       case "checklist":
-        return <BlockRow key={item.id}><ChecklistBlock /></BlockRow>;
+      case "tracker":
+        return <BlockRow key={item.id}><LaunchTracker compact /></BlockRow>;
+      case "connect":
+        return camp ? (
+          <BlockRow key={item.id}>
+            <ConnectBlock camp={camp} onConnected={onConnected} onTeam={onTeamRoute} onNotNow={notNow} />
+          </BlockRow>
+        ) : null;
+      case "discount":
+        return camp ? (
+          <BlockRow key={item.id}>
+            <DiscountBlock
+              camp={camp}
+              currency={plan ? getRead(plan.readId).priceBand?.value.currency ?? "AED" : "AED"}
+              onConfirmed={onCoupon}
+              onCancel={notNow}
+            />
+          </BlockRow>
+        ) : null;
+      case "store-check":
+        return camp ? <BlockRow key={item.id}><StoreCheckBlock camp={camp} onResult={onCheck} onNotNow={notNow} /></BlockRow> : null;
+      case "brief-review":
+        return camp && plan ? <BlockRow key={item.id}><BriefReviewBlock camp={camp} plan={plan} onApprove={onBriefApproved} /></BlockRow> : null;
       case "score":
         return (
           <BlockRow key={item.id}>
@@ -1556,17 +1609,6 @@ function ChatInner() {
       }
       case "includes":
         return plan ? <BlockRow key={item.id}><IncludesBlock plan={plan} salesFirst={salesFirst(role)} /></BlockRow> : null;
-      case "brief-choice":
-        return (
-          <BlockRow key={item.id}>
-            <BriefChoiceBlock
-              chosen={scope.brief ?? (plan ? { kind: "agent" } : null)}
-              onUpload={(file) => onBrief({ kind: "upload", file }, `Uploaded ${file}`)}
-              onWrite={() => writeBrief(true)}
-              onSkip={() => onBrief({ kind: "agent" }, "Draft it from my store")}
-            />
-          </BlockRow>
-        );
       case "email-sent": {
         const p = plan?.id === item.planId ? plan : null;
         return p ? <BlockRow key={item.id}><EmailSentBlock to={item.to} plan={p} /></BlockRow> : null;
@@ -1702,11 +1744,22 @@ function ChatInner() {
         </div>
       </div>
 
+      {(!online || backOnline) && (
+        <div role={online ? "status" : "alert"} className="mx-auto w-full max-w-[720px] px-4 pb-2">
+          <p className={`flex items-center gap-2 rounded-control px-3.5 py-2.5 text-meta font-semibold ${online ? "bg-good/[0.08] text-good-deep" : "bg-amber-soft text-amber"}`}>
+            <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${online ? "bg-good" : "animate-pulse bg-amber"}`} />
+            {online ? t("post.online") : t("post.offline")}
+          </p>
+        </div>
+      )}
+
       <Composer
+        disabled={!online}
         value={text}
         onChange={setText}
         onSend={send}
-        chips={isTyping ? [] : liveChips(asking?.options ?? defaultChips)}
+        chips={isTyping || !online ? [] : liveChips(asking?.options ?? defaultChips)}
+        chipLabel={chipText}
         onChip={sendText}
         /* A new thread has no plan to change and nothing to pay for,
            so it asked to change a plan that did not exist and warned
@@ -1714,7 +1767,7 @@ function ChatInner() {
            what this conversation is actually for at each of its three
            stages. */
         placeholder={
-          paid ? "Ask me anything about this phase"
+          paid ? t("post.placeholder")
           : plan ? "Ask anything, or tell me what to change"
           : hasRead ? "Type your answer"
           : "Paste your store link, or ask me anything"

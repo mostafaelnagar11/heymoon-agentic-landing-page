@@ -23,7 +23,7 @@ import { ArrowUp, Square } from "@phosphor-icons/react";
 
 export function Composer({
   value, onChange, onSend, chips = [], onChip, disabled, placeholder, note,
-  busy = false, onStop, stopLabel = "Stop",
+  busy = false, onStop, stopLabel = "Stop", chipLabel,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -38,6 +38,8 @@ export function Composer({
   busy?: boolean;
   onStop?: () => void;
   stopLabel?: string;
+  /** What a chip reads as, when it isn't its own value (the Arabic for "Continue"). */
+  chipLabel?: (c: string) => string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -62,7 +64,7 @@ export function Composer({
                 onClick={() => onChip?.(c)}
                 className="rounded-pill border border-black/[0.09] bg-white px-3 py-1.5 text-meta font-medium text-ink-soft transition hover:border-brand/40 hover:text-brand"
               >
-                {c}
+                {chipLabel ? chipLabel(c) : c}
               </button>
             ))}
           </div>

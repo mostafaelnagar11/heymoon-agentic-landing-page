@@ -31,6 +31,7 @@ import { TeamView } from "./TeamView";
 import {
   resetAll, setAccountDetails, setLocale, setProfile, useAccount, useActiveCampaign, useProfile, useStore, accountContact,
   ROLES, setRole, useRole } from "../../lib/store";
+import { track } from "../../lib/track";
 import { useT } from "../../lib/i18n";
 import { getRead } from "../../lib/agent/registry";
 
@@ -346,7 +347,7 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
             <div className="min-w-0">
               <p className="text-body font-semibold text-ink">Language</p>
               <p className="mt-0.5 max-w-[46ch] text-[11px] leading-4 text-ink-faint">
-                The dashboard follows once translated.
+                The launch steps, the tracker and the menus switch now. Other pages follow.
               </p>
             </div>
             <div className="flex shrink-0 gap-1 rounded-control border border-hairline bg-canvas p-1">
@@ -357,7 +358,7 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
                 <button
                   key={o.k}
                   type="button"
-                  onClick={() => setLocale(o.k)}
+                  onClick={() => { track("hm_language_switched", { to: o.k }); setLocale(o.k); }}
                   aria-pressed={locale === o.k}
                   className={`rounded-[9px] px-3 py-1.5 text-[12px] font-semibold transition ${
                     locale === o.k ? "bg-white text-ink shadow-card" : "text-ink-faint hover:text-ink-soft"

@@ -13,11 +13,10 @@ import { useLocale } from "../lib/store";
 
 export function DirSync() {
   const locale = useLocale();
-  /* `lang` is global, `dir` is not. Only the three translated surfaces —
-     landing, the Brand Read and the thread — set `dir="rtl"` on their own
-     root. Mirroring a screen whose copy is still English produces
-     right-aligned English, which is worse than leaving it alone. The rest
-     of the app follows when it is translated. */
+  /* `lang` is global, `dir` is not. Only the translated surfaces set `dir="rtl"` on their own root: the landing, the
+     Brand Read, and (20 Oct, PRD v0.2 H6) the conversation and the dashboard, whose launch flow is in Arabic.
+     Mirroring a screen whose copy is still English produces right-aligned English, which is worse than leaving it
+     alone. The rest of the app follows when it is translated. */
   useEffect(() => {
     document.documentElement.lang = locale;
     document.documentElement.dir = "ltr";
@@ -32,6 +31,7 @@ export function LangToggle({ className = "", plain = false }: { className?: stri
     <button
       onClick={() => {
         const next = locale === "ar" ? "en" : "ar";
+        import("../lib/track").then((m) => m.track("hm_language_switched", { to: next }));
         import("../lib/store").then((m) => m.setLocale(next));
       }}
       className={

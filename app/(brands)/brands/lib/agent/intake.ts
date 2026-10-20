@@ -28,11 +28,6 @@ export function lookupBrand(name: string): string[] {
   return DIRECTORY.find((d) => d.names.includes(n))?.domains ?? [];
 }
 
-/** Big brands launch with their own legal and procurement steps (brand flows, P2 step 5). */
-export function isEnterpriseHost(host: string): boolean {
-  return DIRECTORY.some((d) => d.enterprise && d.domains.includes(host));
-}
-
 /** Something to answer rather than a name to look up. */
 export function isQuestion(text: string): boolean {
   const t = clean(text);

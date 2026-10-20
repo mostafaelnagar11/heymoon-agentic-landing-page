@@ -25,6 +25,7 @@ import {
   useActiveThreadId, useActivePlan, useCampaigns, usePanel, useStore, type Campaign,
 } from "../../lib/store";
 import type { PanelView } from "../../lib/store";
+import { useT } from "../../lib/i18n";
 
 export function ChatShell({ children, panel }: { children: ReactNode; panel: ReactNode }) {
   const { open } = usePanel();
@@ -34,9 +35,10 @@ export function ChatShell({ children, panel }: { children: ReactNode; panel: Rea
      One row is furniture — that was the argument for deleting it, and
      it is the same argument for bringing it back exactly here. */
   const railed = campaigns.length > 1;
+  const { dir } = useT();
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden bg-white">
+    <div dir={dir} className="flex h-[100dvh] overflow-hidden bg-white">
       {railed && (
         <aside
           className="hidden w-[212px] shrink-0 flex-col border-e border-hairline bg-rail md:flex"

@@ -35,6 +35,7 @@ import { tools } from "../../lib/agent/tools";
 import type { ApprovalRequest } from "../../lib/agent/types";
 import { ApprovalBlock } from "../blocks";
 import { Typed } from "../Stream";
+import { useT } from "../../lib/i18n";
 
 const VIEW_LABEL: Record<DashboardView, string> = {
   home: "Dashboard", campaign: "Campaign", creators: "Creators", inbox: "Needs you",
@@ -201,6 +202,7 @@ export function HeyMoonProvider({ children }: { children: ReactNode }) {
 /** A request in words. On a phone there is no room for a field up here, so it is a button that opens the panel
     with its box, which is the one case where the panel opens empty: the brand asked for it. */
 export function AskBar() {
+  const { t } = useT();
   const { ask, chips, setOpen } = useHeyMoon();
   const [text, setText] = useState("");
   const [focus, setFocus] = useState(false);
@@ -232,7 +234,7 @@ export function AskBar() {
             onFocus={() => setFocus(true)}
             onBlur={() => setTimeout(() => setFocus(false), 120)}
             onKeyDown={(e) => { if (e.key === "Escape") field.current?.blur(); }}
-            placeholder="Ask HeyMoon, or tell it what to do"
+            placeholder={t("dash.ask")}
             aria-label="Ask HeyMoon"
             className="min-w-0 flex-1 bg-transparent text-meta text-ink outline-none placeholder:text-ink-faint"
           />

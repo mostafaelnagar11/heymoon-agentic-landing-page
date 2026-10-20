@@ -29,6 +29,7 @@ import { PlanCard, ConfidenceMeter } from "./PlanCard";
 import { CreatorNames, CreatorSummary } from "./CreatorCard";
 import { ApprovalCard } from "./AdCards";
 import { OnlyAdmins } from "./dashboard/Roles";
+import { useT } from "../lib/i18n";
 
 /* ------------------------------------------------------------------ */
 /* Attribution                                                         */
@@ -186,21 +187,22 @@ export function FundingBlock({ req, onConfirmed, onCancelled }: {
    either, because the one step left is connecting the store and a way
    out here would invite the brand to leave before it. */
 export function ReceiptBlock({ req }: { req: FundingRequest }) {
+  const { t, tf } = useT();
   return (
     <Card className="overflow-hidden border-good/30">
       <div className="flex items-center gap-2 border-b border-hairline bg-good/[0.06] px-4 py-3">
         <ReceiptIcon size={16} weight="fill" className="text-good-deep" aria-hidden />
-        <p className="text-body font-semibold text-ink">Phase {req.phaseNo} · Started</p>
-        <Pill tone="good" className="ms-auto">Paid</Pill>
+        <p className="text-body font-semibold text-ink">{tf("receipt.title", { n: req.phaseNo })}</p>
+        <Pill tone="good" className="ms-auto">{t("receipt.paid")}</Pill>
       </div>
       <div className="p-4">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-body text-ink-soft">
-          <span className="font-semibold text-ink">Charged:</span>
+          <span className="font-semibold text-ink">{t("receipt.charged")}</span>
           <Figure src={req.total} render={fmtUSD(req.total.value)} size="sm" />
           <span>· {req.method.brand} ••••{req.method.last4}</span>
         </div>
         <p className="mt-1.5 text-body text-ink-soft">
-          <span className="font-semibold text-ink">Receipt:</span> Emailed to you, and kept on this campaign.
+          <span className="font-semibold text-ink">{t("receipt.receipt")}</span> {t("receipt.emailed")}
         </p>
       </div>
     </Card>
@@ -872,7 +874,7 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
                         <Figure src={plan.price.revenueTarget} render={`${r.multiple}x`} size="sm" /> guaranteed
                       </span>
                       <span className="text-meta text-ink-faint">·</span>
-                      <span className="text-meta text-ink-faint">{paid ? "Started today" : "Starts today"}</span>
+                      <span className="text-meta text-ink-faint">{paid ? "Paid" : "Due today"}</span>
                     </div>
                     {!compact && <p className="mt-1 text-[11px] leading-4 text-ink-faint">{r.note}</p>}
                     {/* The refund rule on this phase's own figures (lib/agent/guarantee.ts). */}
@@ -947,72 +949,6 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
           )}
         </div>
       )}
-    </Card>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Plan → payment → briefing → connection, as one card                 */
-/*                                                                     */
-/* Shown the moment payment clears. Three ticks and one open item, so   */
-/* the brand knows exactly how much is left: one step, and it is the    */
-/* one that makes the guarantee measurable. The receipt above it no     */
-/* longer repeats that step, because this is the list that owns it.     */
-/* ------------------------------------------------------------------ */
-
-export function ChecklistBlock() {
-  const paid = usePaid();
-  const camp = useStore((s) => (s.activeCampaignId ? s.campaigns[s.activeCampaignId] ?? null : null));
-  /* The launch checklist lives on the dashboard (brand flows, P2); this card says where the brand is in it. */
-  const l = camp?.launch;
-  const launched = !l || !!l.liveAt;
-  const prepared = !!camp?.connectedStore && !!l?.creatorsKept && !!l?.briefApproved;
-  const steps = [
-    { label: "Plan approved", detail: "Three phases planned. Phase 1 is the only one you start today.", done: true },
-    {
-      label: "Payment received",
-      detail: `The ${fmtUSD(PHASE1_BUDGET)} warm-up, the same price for every brand.`,
-      done: paid,
-    },
-    {
-      label: "Launch checklist",
-      detail: "On the dashboard: connect your store, meet your creators, approve the brief.",
-      done: launched || prepared,
-    },
-    {
-      label: "First ad live",
-      detail: "Phase 1 goes live with the first draft you approve.",
-      done: launched,
-    },
-  ];
-  /* One step is next, not every step that is left. */
-  const nextAt = steps.findIndex((st) => !st.done);
-  return (
-    <Card className="overflow-hidden">
-      <p className="border-b border-hairline px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.14em] text-ink-faint">
-        Where you are
-      </p>
-      <ol className="divide-y divide-hairline">
-        {steps.map((st, i) => (
-          <li key={st.label} className={`flex items-start gap-3 px-4 py-3 ${i === nextAt ? "bg-brand/[0.04]" : ""}`}>
-            <span
-              aria-hidden
-              className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${
-                st.done ? "bg-good text-white" : "border-2 border-brand text-brand"
-              }`}
-            >
-              {st.done ? <Check size={12} weight="bold" /> : i + 1}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className={`block text-body font-semibold ${st.done ? "text-ink-soft line-through decoration-ink-faint/60" : "text-ink"}`}>
-                {st.label}
-              </span>
-              <span className="block text-meta leading-5 text-ink-faint">{st.detail}</span>
-            </span>
-            {i === nextAt && <Pill tone="brand">Next</Pill>}
-          </li>
-        ))}
-      </ol>
     </Card>
   );
 }

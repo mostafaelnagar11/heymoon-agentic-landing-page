@@ -249,13 +249,172 @@ export const STR: Dict = {
   "why": { en: "Why this number", ar: "لماذا هذا الرقم" },
   "nav.dashboard": { en: "Dashboard", ar: "لوحة التحكم" },
   "lang": { en: "العربية", ar: "English" },
+
+  /* ── After payment (PRD v0.2: steps 6a to 9, H6 "Arabic and English on every screen in this flow") ──
+     The conversation's lines, MoonConnect's four cards and the launch tracker. A first pass in the same register as
+     the English, for the Arabic copywriter. Store, product and creator names stay as they are. */
+  "post.paid": { en: "Paid. Phase 1 is yours.", ar: "تم الدفع. المرحلة الأولى أصبحت لك." },
+  "post.welcome": { en: "Welcome back. Phase 1 for {brand} is paid.", ar: "أهلًا بعودتك. المرحلة الأولى لـ {brand} مدفوعة." },
+  "post.storeNext": { en: "Next, your store. {host} runs on {platform}.", ar: "الخطوة التالية: متجرك. {host} يعمل على {platform}." },
+  "post.storeNextPlain": { en: "Next, your store.", ar: "الخطوة التالية: متجرك." },
+  "post.teamToo": { en: "They'll set the code and the test order with you too.", ar: "وسيضبط معك الفريق كود الخصم والطلب التجريبي أيضًا." },
+  "post.discount": { en: "Now the code your creators share.", ar: "الآن، الكود الذي سيشاركه صنّاع المحتوى." },
+  "post.check": { en: "Last store step: a test order, so every code counts.", ar: "آخر خطوة في المتجر: طلب تجريبي، لنتأكد أن كل كود يُحتسب." },
+  "post.briefLead": { en: "Now the brief. ", ar: "الآن، الموجز. " },
+  "post.briefPassed": { en: "Passed. Now the brief. ", ar: "نجح الاختبار. الآن، الموجز. " },
+  "post.briefMeanwhile": { en: "Meanwhile, the brief. ", ar: "وفي الأثناء، الموجز. " },
+  "post.briefTeamCheck": { en: "The Moontech team will run the check with you by hand. Meanwhile, the brief. ", ar: "سيجري فريق مون تك الاختبار معك يدويًا. وفي الأثناء، الموجز. " },
+  "post.briefDrafted": { en: "MoonWriter drafted it from your store, the plan and this chat.", ar: "كتب MoonWriter مسودته من متجرك والخطة وهذه المحادثة." },
+  "post.approved": { en: "Approved. That's everything from you. Moontech matches your creators and launches, live by {date}.", ar: "تمت الموافقة. هذا كل ما نحتاجه منك. يختار فريق مون تك صنّاع المحتوى ويطلق الحملة، لتنطلق قبل {date}." },
+  "post.allDone": { en: "That's everything from you. Moontech takes it from here.", ar: "هذا كل ما نحتاجه منك. فريق مون تك يتولى الباقي." },
+  "post.notNowStore": { en: "Fine. Connect it within 14 days, or Phase 1 is refunded.", ar: "لا بأس. اربط متجرك خلال 14 يومًا، وإلا نعيد لك مبلغ المرحلة الأولى." },
+  "post.notNow": { en: "Fine. Pick it up here any time.", ar: "لا بأس. أكمل من هنا متى شئت." },
+  "post.briefAdded": { en: "Added to the brief.", ar: "أضفته إلى الموجز." },
+  "post.nextYours": { en: "Your steps, here: connect your store, set the discount, a quick store check, and the brief. Then Moontech matches the creators and launches.", ar: "خطواتك هنا: اربط متجرك، واضبط الخصم، واختبار سريع للمتجر، ثم الموجز. بعدها يختار فريق مون تك صنّاع المحتوى ويطلق الحملة." },
+  "post.nextMoontech": { en: "Moontech is matching your creators, then invites them and launches. The tracker on the dashboard shows each stage and its date.", ar: "يختار فريق مون تك صنّاع المحتوى الآن، ثم يدعوهم ويطلق الحملة. متتبّع الإطلاق في لوحة التحكم يعرض كل مرحلة وموعدها." },
+  "post.offline": { en: "You're offline. Reconnecting. Nothing here is lost.", ar: "انقطع الاتصال. نعيد الاتصال الآن، ولن يضيع شيء هنا." },
+  "post.online": { en: "Back online.", ar: "عاد الاتصال." },
+  "post.placeholder": { en: "Ask me anything about this phase", ar: "اسألني أي شيء عن هذه المرحلة" },
+  "chip.Continue": { en: "Continue", ar: "متابعة" },
+  "chip.What happens next?": { en: "What happens next?", ar: "ماذا بعد؟" },
+  "chip.Go to the dashboard": { en: "Go to the dashboard", ar: "اذهب إلى لوحة التحكم" },
+
+  "receipt.title": { en: "Phase {n} · Paid", ar: "المرحلة {n} · مدفوعة" },
+  "receipt.charged": { en: "Charged:", ar: "المبلغ:" },
+  "receipt.receipt": { en: "Receipt:", ar: "الإيصال:" },
+  "receipt.emailed": { en: "Emailed to you, and kept on this campaign.", ar: "أُرسل إلى بريدك، ومحفوظ في هذه الحملة." },
+  "receipt.paid": { en: "Paid", ar: "مدفوعة" },
+
+  "mc.where": { en: "Where does your store run?", ar: "على أي منصة يعمل متجرك؟" },
+  "mc.connecting": { en: "Connecting {name}", ar: "جارٍ ربط {name}" },
+  "mc.step.open": { en: "Opening connect.moontech.co", ar: "فتح connect.moontech.co" },
+  "mc.step.signin": { en: "Signing in on {name}", ar: "تسجيل الدخول في {name}" },
+  "mc.step.approve": { en: "Approving read-only access", ar: "الموافقة على صلاحية القراءة فقط" },
+  "mc.step.back": { en: "Back in this chat", ar: "العودة إلى هذه المحادثة" },
+  "mc.connectTitle": { en: "Connect {name}", ar: "اربط {name}" },
+  "mc.lock": { en: "You sign in on {name}, never here. Read-only: orders and products.", ar: "تسجّل الدخول في {name}، لا هنا. قراءة فقط: الطلبات والمنتجات." },
+  "mc.lockTeam": { en: "Nothing to enter here.", ar: "لا شيء لتُدخله هنا." },
+  "mc.notNow": { en: "Not now", ar: "ليس الآن" },
+  "mc.connected": { en: "{name} connected. Read-only.", ar: "تم ربط {name}. قراءة فقط." },
+  "mc.teamDone": { en: "The Moontech team connects it with you, within a working day.", ar: "يربطه فريق مون تك معك خلال يوم عمل." },
+  "mc.codeTitle": { en: "The creators' code", ar: "كود صنّاع المحتوى" },
+  "mc.otherDiscount": { en: "Other discount", ar: "خصم آخر" },
+  "mc.siteOffer": { en: "Your site already shows up to {n}% off. Shoppers won't use a smaller code.", ar: "متجرك يعرض حاليًا خصمًا يصل إلى {n}%. لن يستخدم المتسوقون كودًا أقل منه." },
+  "mc.enforces": { en: "{name} enforces it", ar: "{name} تطبّقه" },
+  "mc.cant": { en: "{name} can't. Creators are told instead.", ar: "{name} لا تطبّقه، لذا نُبلغ صنّاع المحتوى." },
+  "mc.cantShort": { en: "{name} can't, so creators are told", ar: "{name} لا تطبّقه، لذا نُبلغ صنّاع المحتوى" },
+  "mc.bestOffer": { en: "{n}% is the best offer on my site, counting product codes and Tabby or Tamara offers.", ar: "خصم {n}% هو أفضل عرض في متجري، بما في ذلك أكواد المنتجات وعروض تابي وتمارا." },
+  "mc.preview": { en: "Preview", ar: "معاينة" },
+  "mc.oneCode": { en: "One code per creator, made when they accept. You confirmed it's the best offer on your site.", ar: "كود لكل صانع محتوى، يُنشأ عند قبوله. وقد أكّدت أنه أفضل عرض في متجرك." },
+  "mc.confirm": { en: "Confirm", ar: "تأكيد" },
+  "mc.cancel": { en: "Cancel", ar: "إلغاء" },
+  "mc.codeDone": { en: "Code: {line}.", ar: "الكود: {line}." },
+  "mc.limit.minOrder": { en: "Minimum order", ar: "حد أدنى للطلب" },
+  "mc.limit.onePerCustomer": { en: "One use per customer", ar: "استخدام واحد لكل عميل" },
+  "mc.limit.excludeSale": { en: "Not on sale items", ar: "لا يشمل المنتجات المخفّضة" },
+  "mc.limit.endsWithPhase": { en: "Ends with Phase 1", ar: "ينتهي بانتهاء المرحلة الأولى" },
+  "mc.line.off": { en: "{n}% off", ar: "خصم {n}%" },
+  "mc.line.min": { en: "min order {n} {cur}", ar: "حد أدنى {n} {cur}" },
+  "mc.line.one": { en: "one per customer", ar: "مرة لكل عميل" },
+  "mc.line.sale": { en: "not on sale items", ar: "لا يشمل المخفّضات" },
+  "mc.line.ends": { en: "ends with Phase 1", ar: "ينتهي مع المرحلة الأولى" },
+  "mc.checkTitle": { en: "Store check", ar: "اختبار المتجر" },
+  "mc.checkDesc": { en: "A free test order on {name}, so every code counts.", ar: "طلب تجريبي مجاني على {name}، لنتأكد أن كل كود يُحتسب." },
+  "mc.checkFailed": { en: "The test order didn't reach us. One more try, then the team takes it.", ar: "لم يصلنا الطلب التجريبي. محاولة أخرى، ثم يتولاه الفريق." },
+  "mc.check.code": { en: "Test code {code} made", ar: "تم إنشاء كود الاختبار {code}" },
+  "mc.check.order": { en: "Free test order placed", ar: "تم تقديم طلب تجريبي مجاني" },
+  "mc.check.wait": { en: "Order arriving, about two minutes", ar: "الطلب في الطريق، نحو دقيقتين" },
+  "mc.check.zid": { en: "Cancel the test order on Zid. We'll see it here", ar: "ألغِ الطلب التجريبي في زد، وسنرى ذلك هنا" },
+  "mc.check.cancelled": { en: "Order cancelled", ar: "تم إلغاء الطلب" },
+  "mc.check.deleted": { en: "Test code deleted", ar: "تم حذف كود الاختبار" },
+  "mc.run": { en: "Run the test", ar: "ابدأ الاختبار" },
+  "mc.retry": { en: "Try again", ar: "حاول مجددًا" },
+  "mc.checkDone": { en: "Store check passed. Every code counts on {name}.", ar: "نجح اختبار المتجر. كل كود يُحتسب على {name}." },
+  "mc.checkTeam": { en: "The Moontech team runs the check with you.", ar: "يجري فريق مون تك الاختبار معك." },
+  "mc.briefEyebrow": { en: "The brief · drafted by MoonWriter", ar: "الموجز · بقلم MoonWriter" },
+  "mc.row.say": { en: "Say", ar: "المطلوب" },
+  "mc.row.dont": { en: "Don't", ar: "الممنوع" },
+  "mc.row.products": { en: "Products", ar: "المنتجات" },
+  "mc.row.markets": { en: "Markets", ar: "الأسواق" },
+  "mc.row.languages": { en: "Languages", ar: "اللغات" },
+  "mc.row.platforms": { en: "Platforms", ar: "المنصات" },
+  "mc.row.files": { en: "Files", ar: "الملفات" },
+  "mc.launch": { en: "The new launch: {x}", ar: "الإطلاق الجديد: {x}" },
+  "mc.bestsellers": { en: "Your bestsellers", ar: "الأكثر مبيعًا لديك" },
+  "mc.languages": { en: "English and Arabic", ar: "العربية والإنجليزية" },
+  "mc.briefNote": { en: "Approving sets the direction. Creators post without a content review. Want a change? Tell me below.", ar: "موافقتك تحدد الاتجاه، وينشر صنّاع المحتوى دون مراجعة للمحتوى. تريد تغييرًا؟ اكتبه لي في الأسفل." },
+  "mc.approve": { en: "Approve the brief", ar: "وافق على الموجز" },
+  "mc.addFiles": { en: "Add guidelines or UGC", ar: "أضف إرشادات أو محتوى سابقًا" },
+  "mc.briefDone": { en: "Brief approved", ar: "تمت الموافقة على الموجز" },
+  "mc.briefBy": { en: " by {name}", ar: " من {name}" },
+  "mc.briefFiles": { en: ", with {n} file(s)", ar: "، مع {n} ملف" },
+
+  "lt.title": { en: "Launch tracker", ar: "متتبّع الإطلاق" },
+  "lt.next.store": { en: "Next: connect your store", ar: "التالي: اربط متجرك" },
+  "lt.next.discount": { en: "Next: set the discount", ar: "التالي: اضبط الخصم" },
+  "lt.next.check": { en: "Next: the store check", ar: "التالي: اختبار المتجر" },
+  "lt.next.brief": { en: "Next: approve the brief", ar: "التالي: وافق على الموجز" },
+  "lt.preparing": { en: "Moontech is preparing your launch", ar: "فريق مون تك يجهّز إطلاق حملتك" },
+  "lt.live": { en: "Live. Waiting for the first sale", ar: "الحملة تعمل. بانتظار أول عملية بيع" },
+  "lt.liveBy": { en: "Live by {date}.", ar: "الانطلاق قبل {date}." },
+  "lt.refund": { en: " Connect your store within 14 days, or Phase 1 is refunded.", ar: " اربط متجرك خلال 14 يومًا، وإلا نعيد لك مبلغ المرحلة الأولى." },
+  "lt.continue": { en: "Continue in the conversation", ar: "أكمل في المحادثة" },
+  "lt.compact": { en: "Launch tracker · live by {date}", ar: "متتبّع الإطلاق · الانطلاق قبل {date}" },
+  "lt.stage.store": { en: "Store connected", ar: "تم ربط المتجر" },
+  "lt.stage.discount": { en: "Discount set", ar: "تم ضبط الخصم" },
+  "lt.stage.check": { en: "Store checked", ar: "تم اختبار المتجر" },
+  "lt.stage.brief": { en: "Brief approved", ar: "تمت الموافقة على الموجز" },
+  "lt.stage.matching": { en: "Creators being matched", ar: "اختيار صنّاع المحتوى" },
+  "lt.stage.invited": { en: "Creators invited", ar: "دعوة صنّاع المحتوى" },
+  "lt.stage.live": { en: "Live", ar: "انطلاق الحملة" },
+  "lt.stage.sale": { en: "First sale", ar: "أول عملية بيع" },
+  "lt.owner.You": { en: "You", ar: "أنت" },
+  "lt.owner.Moontech": { en: "Moontech", ar: "مون تك" },
+  "lt.owner.Creators": { en: "Creators", ar: "صنّاع المحتوى" },
+  "lt.note.matching": { en: "Progress, not names.", ar: "نعرض التقدّم، لا الأسماء." },
+  "lt.note.invited": { en: "Each creator gets their code within a minute of accepting.", ar: "يصل كل صانع محتوى كوده خلال دقيقة من قبوله." },
+  "lt.note.sale": { en: "Results replace this tracker.", ar: "تحلّ النتائج محل هذا المتتبّع." },
+  "lt.done": { en: "Done {date}", ar: "تم {date}" },
+  "lt.waiting": { en: "Waiting on you", ar: "بانتظارك" },
+  "lt.inProgress": { en: "In progress", ar: "جارٍ" },
+  "lt.by": { en: "By {date}", ar: "قبل {date}" },
+  "lt.demoNext": { en: "Demo: Moontech's next step", ar: "تجربة: خطوة مون تك التالية" },
+  "lt.demoSale": { en: "Demo: the first sale", ar: "تجربة: أول عملية بيع" },
+
+  "dash.title": { en: "Dashboard", ar: "لوحة التحكم" },
+  "dash.campaigns": { en: "Campaigns", ar: "الحملات" },
+  "dash.settings": { en: "Settings", ar: "الإعدادات" },
+  "dash.menu": { en: "Menu", ar: "القائمة" },
+  "dash.signOut": { en: "Sign out", ar: "تسجيل الخروج" },
+  "dash.build": { en: "Build a campaign", ar: "أنشئ حملة" },
+  "dash.ask": { en: "Ask HeyMoon, or tell it what to do", ar: "اسأل HeyMoon، أو اطلب منه ما تريد" },
+
 };
 
 export function useT() {
   const locale = useLocale();
   const t = (k: string) => STR[k]?.[locale] ?? k;
-  return { t, locale, dir: (locale === "ar" ? "rtl" : "ltr") as "rtl" | "ltr", isAr: locale === "ar" };
+  /** A string with {placeholders} filled in: names, dates and amounts stay as they are. */
+  const tf = (k: string, vars: Record<string, string | number>) => fill(t(k), vars);
+  return { t, tf, locale, dir: (locale === "ar" ? "rtl" : "ltr") as "rtl" | "ltr", isAr: locale === "ar" };
 }
+
+export const fill = (s: string, vars: Record<string, string | number>) =>
+  s.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`));
+
+/** "3 Nov", or "3 نوفمبر" with Western digits (see `num`). */
+export const dayIn = (t: number, locale: Locale) =>
+  new Date(t).toLocaleDateString(locale === "ar" ? "ar-u-nu-latn" : "en-GB", { day: "numeric", month: "short" });
+
+/** The six Gulf markets, in Arabic. Anything else keeps its English name. */
+export const MARKET_AR: Record<string, string> = {
+  AE: "الإمارات", SA: "السعودية", KW: "الكويت", QA: "قطر", BH: "البحرين", OM: "عُمان",
+};
+
+/** Platform names as a brand in the Gulf says them. */
+export const PLATFORM_AR: Record<string, string> = {
+  salla: "سلة", zid: "زد", shopify: "Shopify", magento: "Adobe Commerce", custom: "منصة أخرى",
+};
 
 /** Arabic-Indic digits look wrong beside Latin currency codes and
     handles, so numbers stay Western throughout. Only the direction and

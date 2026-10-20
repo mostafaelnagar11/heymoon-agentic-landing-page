@@ -26,7 +26,7 @@ export function AgentTurn({ children, mark = true }: { children: ReactNode; mark
           </span>
         )}
       </span>
-      <div className="min-w-0 flex-1">{children}</div>
+      <div dir="auto" className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }
@@ -34,7 +34,7 @@ export function AgentTurn({ children, mark = true }: { children: ReactNode; mark
 export function UserTurn({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
-      <p className="max-w-[80%] whitespace-pre-line rounded-[18px] bg-brand/[0.07] px-4 py-2.5 text-prose text-ink">
+      <p dir="auto" className="max-w-[80%] whitespace-pre-line rounded-[18px] bg-brand/[0.07] px-4 py-2.5 text-prose text-ink">
         {text}
       </p>
     </div>

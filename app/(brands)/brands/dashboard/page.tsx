@@ -35,7 +35,7 @@ import { DashboardSidebar, NAV } from "../components/dashboard/Sidebar";
 import { DashboardTopbar } from "../components/dashboard/Topbar";
 import { HeyMoonPanel, HeyMoonProvider, useHeyMoon } from "../components/dashboard/HeyMoon";
 import { ConnectAlert } from "../components/dashboard/ConnectAlert";
-import { LaunchChecklist } from "../components/dashboard/LaunchChecklist";
+import { LaunchTracker } from "../components/dashboard/LaunchTracker";
 import { PreviewBanner } from "../components/dashboard/Roles";
 import {
   campaignLabel, isLaunching, setDashboardView, showCampaignList, useActiveCampaign, useAds, useDashboardView,
@@ -44,6 +44,7 @@ import {
 import { SurfaceProvider } from "../lib/surface";
 import { openSampleAccount } from "../lib/demo";
 import { phaseTitle } from "../lib/mock/campaigns";
+import { useT } from "../lib/i18n";
 import type { DashboardView } from "../lib/agent/dashboard";
 
 /** Nothing built yet, said inside the dashboard rather than instead of
@@ -108,6 +109,7 @@ export default function DashboardPage() {
   const cameFrom = useRef<DashboardView>("home");
   useEffect(() => { if (!settingsOpen) cameFrom.current = view; }, [view, settingsOpen]);
 
+  const { t, dir } = useT();
   const camp = useActiveCampaign();
   const anyCampaign = useCampaigns().length > 0;
   const launching = isLaunching(camp);
@@ -156,7 +158,7 @@ export default function DashboardPage() {
         : campaignLabel(camp);
 
   const TITLE: Record<DashboardView, string> = {
-    home: "Dashboard",
+    home: t("dash.title"),
     /* All five campaign tabs are headed by the campaign, not by the
        tab: the tab row directly below already says which face is open,
        and repeating it in the heading left the brand you are looking
@@ -166,8 +168,8 @@ export default function DashboardPage() {
     inbox: drilled,
     ads: drilled,
     activity: drilled,
-    autonomy: "Settings",
-    settings: "Settings",
+    autonomy: t("dash.settings"),
+    settings: t("dash.settings"),
   };
 
   return (
@@ -177,7 +179,7 @@ export default function DashboardPage() {
     <HeyMoonProvider>
     <Frame>
     {(assistant) => (
-    <div className="flex h-[100dvh] overflow-hidden bg-canvas">
+    <div dir={dir} className="flex h-[100dvh] overflow-hidden bg-canvas">
       {/* The rail is the work, and settings is not the work. It steps
           aside here and the top bar carries a way back instead, so the
           page you came from is one press away and nothing else on
@@ -235,9 +237,9 @@ export default function DashboardPage() {
             ) : (
               <>
             {!anyCampaign && <EmptyDashboard />}
-            {/* Paid, nothing live yet: the launch checklist stands in for the overview (brand flows, P2). The
-                campaign's other tabs stay open. */}
-            {launching && (view === "home" || view === "campaign") && <LaunchChecklist />}
+            {/* Paid, no first sale yet: the launch tracker stands in for the overview (PRD v0.2, H5). The campaign's
+                other tabs stay open. */}
+            {launching && (view === "home" || view === "campaign") && <LaunchTracker />}
             {anyCampaign && !launching && camp && !camp.paid && view === "home" && <PlanWaiting brandName={camp.brandName} />}
             {anyCampaign && !launching && (!camp || camp.paid) && view === "home" && <HomeView />}
             {/* One component for five views. Creators, Needs you, Ads

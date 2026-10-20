@@ -19,6 +19,7 @@ import Link from "next/link";
 import { accessFor, accountName, resetAll, startConversation, useAccount, useActiveCampaign, useStore } from "../../lib/store";
 import { ArrowLeft, Bell, List, Plus } from "@phosphor-icons/react";
 import { AskBar } from "./HeyMoon";
+import { useT } from "../../lib/i18n";
 
 export function DashboardTopbar({
   title,
@@ -33,6 +34,7 @@ export function DashboardTopbar({
       collapse then, so it becomes the way back to where you were. */
   onBack?: () => void;
 }) {
+  const { t } = useT();
   const [menu, setMenu] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   /* Whoever signed in, and what they are on this brand. It said "Mostafa Elnagar, Admin" to everyone. */
@@ -93,7 +95,7 @@ export function DashboardTopbar({
           className="g-button inline-flex h-10 items-center gap-2 rounded-pill border border-white/50 px-4 text-meta font-semibold text-[#FBF8FE] transition"
         >
           <Plus size={13} weight="bold" aria-hidden />
-          <span className="hidden sm:inline">Build a campaign</span>
+          <span className="hidden sm:inline">{t("dash.build")}</span>
         </Link>
 
         <span
@@ -126,7 +128,7 @@ export function DashboardTopbar({
               </div>
               {/* The same sign-out as the rail's: it clears this browser's work. */}
               <a href="/brands" onClick={() => resetAll()} className="block px-3 py-2.5 text-body font-medium text-danger transition hover:bg-danger/[0.06]">
-                Sign out
+                {t("dash.signOut")}
               </a>
             </div>
           )}

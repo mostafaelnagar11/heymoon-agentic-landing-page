@@ -36,6 +36,7 @@ import {
   X,
   type Icon,
 } from "@phosphor-icons/react";
+import { useT } from "../../lib/i18n";
 import type { DashboardView } from "../../lib/agent/dashboard";
 import {
   campaignLabel, openCampaign, renameCampaign, resetAll, setActiveCampaign, showCampaignList,
@@ -101,6 +102,9 @@ function BrandMark({ campaign, size }: { campaign: Campaign | null; size: number
 }
 
 function Content({ collapsed, view, onView, brandName, onMobileClose }: Props) {
+  const { t } = useT();
+  /* The rail's words in the brand's language (PRD v0.2, H6): the tracker page sits inside it. */
+  const L: Record<string, string> = { home: t("dash.title"), campaign: t("dash.campaigns"), settings: t("dash.settings") };
   const [switcher, setSwitcher] = useState(false);
   const campaigns = useCampaigns();
   const ads = useAds();
@@ -262,7 +266,7 @@ function Content({ collapsed, view, onView, brandName, onMobileClose }: Props) {
       </div>
 
       {!collapsed && (
-        <p className="mb-2 px-2 text-[9px] font-medium uppercase tracking-widest text-ink-faint/60">Menu</p>
+        <p className="mb-2 px-2 text-[9px] font-medium uppercase tracking-widest text-ink-faint/60">{t("dash.menu")}</p>
       )}
 
       <nav className="relative mb-6 flex w-full flex-col gap-1" aria-label="Dashboard" ref={campWrap}>
@@ -282,7 +286,7 @@ function Content({ collapsed, view, onView, brandName, onMobileClose }: Props) {
                 if (item.key === "campaign") showCampaignList();
                 onMobileClose?.();
               }}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? L[item.key] ?? item.label : undefined}
               aria-expanded={collapsed && item.key === "campaign" ? campMenu : undefined}
               aria-haspopup={collapsed && item.key === "campaign" ? "menu" : undefined}
               aria-current={active ? "page" : undefined}
@@ -293,7 +297,7 @@ function Content({ collapsed, view, onView, brandName, onMobileClose }: Props) {
               }`}
             >
               <I size={20} weight={active ? "fill" : "regular"} aria-hidden className="shrink-0" />
-              {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
+              {!collapsed && <span className="min-w-0 flex-1 truncate">{L[item.key] ?? item.label}</span>}
             </button>
           );
         })}
@@ -382,7 +386,7 @@ function Content({ collapsed, view, onView, brandName, onMobileClose }: Props) {
           <button
             onClick={() => { onView(FOOT.key); onMobileClose?.(); }}
             aria-current={view === FOOT.key ? "page" : undefined}
-            title={collapsed ? FOOT.label : undefined}
+            title={collapsed ? L[FOOT.key] ?? FOOT.label : undefined}
             className={`flex h-11 items-center rounded-pill text-body font-medium transition ${
               collapsed ? "justify-center px-0" : "gap-3 px-3"
             } ${
@@ -390,7 +394,7 @@ function Content({ collapsed, view, onView, brandName, onMobileClose }: Props) {
             }`}
           >
             <FOOT.icon size={20} weight={view === FOOT.key ? "fill" : "regular"} aria-hidden className="shrink-0" />
-            {!collapsed && <span>{FOOT.label}</span>}
+            {!collapsed && <span>{L[FOOT.key] ?? FOOT.label}</span>}
           </button>
           {/* A NEW campaign, not the old conversation. Going back to
               the thread that built this one is the one thing this
@@ -401,13 +405,13 @@ function Content({ collapsed, view, onView, brandName, onMobileClose }: Props) {
           <Link
             href="/brands"
             onClick={() => resetAll()}
-            title={collapsed ? "Sign out" : undefined}
+            title={collapsed ? t("dash.signOut") : undefined}
             className={`flex h-11 items-center rounded-pill text-body font-medium text-ink-60 transition hover:bg-danger/[0.07] hover:text-danger ${
               collapsed ? "justify-center px-0" : "gap-3 px-3"
             }`}
           >
             <SignOut size={20} weight="regular" aria-hidden className="shrink-0 rtl:rotate-180" />
-            {!collapsed && <span>Sign out</span>}
+            {!collapsed && <span>{t("dash.signOut")}</span>}
           </Link>
         </div>
       </div>
