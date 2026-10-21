@@ -12,7 +12,7 @@
  */
 
 import { useState } from "react";
-import { ArrowsLeftRight, Check, CheckCircle, Crown, EnvelopeSimple, Eye, Minus, PaperPlaneTilt, UserPlus, X } from "@phosphor-icons/react";
+import { ArrowsLeftRight, CaretDown, Check, CheckCircle, Crown, EnvelopeSimple, Eye, Minus, PaperPlaneTilt, UserPlus, X } from "@phosphor-icons/react";
 import { Btn } from "../ui";
 import { Section, Surface } from "./kit";
 import {
@@ -88,6 +88,7 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
   const [tried, setTried] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [handing, setHanding] = useState(false);
+  const [rolesOpen, setRolesOpen] = useState(false);
 
   if (!host) {
     return (
@@ -328,7 +329,23 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
         </Section>
       )}
 
-      <Section title="What each role can do">
+      {/* Folded by default (21 Oct): the table is reference, not something a brand reads every visit. */}
+      <Section
+        title={
+          <button
+            type="button"
+            onClick={() => setRolesOpen((o) => !o)}
+            aria-expanded={rolesOpen}
+            aria-controls="roles-table"
+            className="inline-flex items-center gap-2 text-section font-semibold text-ink"
+          >
+            What each role can do
+            <CaretDown size={14} weight="bold" aria-hidden className={`text-ink-faint transition ${rolesOpen ? "rotate-180" : ""}`} />
+          </button>
+        }
+      >
+        {rolesOpen && (
+        <div id="roles-table">
         <Surface className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-start">
             <thead>
@@ -370,6 +387,8 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
             </div>
           )}
         </Surface>
+        </div>
+        )}
       </Section>
 
       {account && !real && (
