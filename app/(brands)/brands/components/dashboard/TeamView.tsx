@@ -293,7 +293,7 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
 
           {!manages && (
             <p className="border-t border-hairline p-5 text-[11px] leading-4 text-ink-faint">
-              Only {brand.owner.firstName} or an admin can invite people, change roles or answer requests to join.
+              Only {brand.owner.firstName || "the owner"} or an admin can invite people, change roles or answer requests to join.
             </p>
           )}
         </Surface>

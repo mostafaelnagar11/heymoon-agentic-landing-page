@@ -26,7 +26,7 @@ export function OnlyAdmins({ what, className = "" }: { what: string; className?:
 export function MemberCall({ adId, className = "" }: { adId: string; className?: string }) {
   const account = useAccount();
   const rec = useAdRecs()[adId];
-  const by = account?.firstName ?? "A member";
+  const by = account?.firstName || account?.email || "A member";
   if (rec) {
     return (
       <p className={`text-meta text-ink-soft ${className}`}>

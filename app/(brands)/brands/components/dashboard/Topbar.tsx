@@ -49,7 +49,8 @@ export function DashboardTopbar({
     : access === "member" || access === "invited" ? "Team member"
     : account ? "Not on this brand's team"
     : "HeyMoon asks at the payment";
-  const mark = account ? `${account.firstName[0] ?? ""}${account.lastName[0] ?? ""}`.toUpperCase() || "?" : "?";
+  /* Initials from the name, or the email's first letter: sign-in takes no name (21 Oct). */
+  const mark = account ? (`${account.firstName[0] ?? ""}${account.lastName[0] ?? ""}` || account.email[0] || "?").toUpperCase() : "?";
 
   /* A menu that only closes by pressing the thing that opened it is a
      menu people leave open. */

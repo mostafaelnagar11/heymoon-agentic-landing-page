@@ -303,7 +303,7 @@ export function HomeView() {
           band is the whole subject of the dashboard, said once, in the
           brand's own numbers, at the top. */}
       <h2 className="text-greet font-semibold text-ink sm:text-section">
-        {back === null ? "\u00a0" : `${back ? "Welcome back" : "Welcome"}${account ? `, ${account.firstName}` : ""}`}
+        {back === null ? "\u00a0" : `${back ? "Welcome back" : "Welcome"}${account?.firstName ? `, ${account.firstName}` : ""}`}
       </h2>
 
       {/* A · Catch me up: what changed since the last visit, each line with its one action (CatchUp.tsx). */}

@@ -563,7 +563,7 @@ function ChatInner() {
     /* A member can't move money (store.ts, CAN): they're told who can. */
     if (teamRoleFor(getRead(plan.readId).url, account.email, brands) === "member") {
       const b = brands[getRead(plan.readId).url];
-      say(`Only the owner or an admin can start a phase${b ? `, like ${b.owner.firstName}` : ""}. Nothing was charged.`);
+      say(`Only the owner or an admin can start a phase${b ? `, like ${b.owner.firstName || b.owner.email}` : ""}. Nothing was charged.`);
       ask("", ["Email the plan", "Change something"]);
       return;
     }
@@ -913,7 +913,7 @@ function ChatInner() {
   const onBriefApproved = () => {
     const c = activeCampaignLive();
     if (!c?.launch) return;
-    patchLaunch(c.id, { briefApprovedAt: Date.now(), briefApprovedBy: account ? `${account.firstName} ${account.lastName}`.trim() : null });
+    patchLaunch(c.id, { briefApprovedAt: Date.now(), briefApprovedBy: account ? `${account.firstName} ${account.lastName}`.trim() || account.email : null });
     setWait(null);
     /* The team route promises no date (O7): the team sets the store up first. The business profile, if still to do, is
        the brand's last step, in the dashboard (21 Oct). */
@@ -1288,7 +1288,7 @@ function ChatInner() {
       const b = brands[host];
       if (b && accessFor(host, account.email, brands) === "outsider") {
         requestAccess(host, { firstName: account.firstName, lastName: account.lastName, email: account.email }, Date.now());
-        say(`Sent. ${b.owner.firstName} sees it on the ${b.brandName} team page, and HeyMoon emails you when they answer.`);
+        say(`Sent. ${b.owner.firstName || "The owner"} sees it on the ${b.brandName} team page, and HeyMoon emails you when they answer.`);
         setAsking({ q: "", options: ["Change something"] });
         return;
       }

@@ -50,15 +50,13 @@ export function SignInSheet({ open, onClose, onVerified, host, brandName, forPay
   brandName?: string;
   /** Opened at the payment (signed out since the store was confirmed), so "nothing was charged" means something. */
   forPayment?: boolean;
-  /** Runs after the sheet closes, with the name that was verified. */
+  /** Runs after the sheet closes, with the address that was verified. */
   onVerified: (name: string) => void;
 }) {
   /* "owned": the code was right, but the brand already has an owner and this address isn't on their team. The
      person is NOT signed in: they can ask the owner for access or use another address. "requested": asked. */
   const [step, setStep] = useState<"details" | "code" | "owned" | "requested">("details");
   const brand = useBrandAccount(host);
-  const [first, setFirst] = useState("");
-  const [last, setLast] = useState("");
   const [email, setEmail] = useState("");
   /* The personal-address line shows once the brand has tried to continue with one, or left the field holding
      one, not on every keystroke while "sara@gmail" is still being typed. */
@@ -75,7 +73,7 @@ export function SignInSheet({ open, onClose, onVerified, host, brandName, forPay
   const expired = left <= 0;
   const shown = email.trim().toLowerCase();
   const personal = looksLikeEmail(email) && isPersonal(email);
-  const ready = !!first.trim() && !!last.trim() && looksLikeEmail(email) && !personal;
+  const ready = looksLikeEmail(email) && !personal;
 
   /* Every open is a fresh attempt. A sheet that reopens holding the
      half-typed code from a run the brand abandoned looks broken. */
@@ -128,12 +126,12 @@ export function SignInSheet({ open, onClose, onVerified, host, brandName, forPay
          theirs, or anyone could file one in someone else's name. */
       const access = host ? accessFor(host, shown) : "unclaimed";
       if (access === "outsider") { setStep("owned"); return; }
-      if (access === "invited" && host) joinBrand(host, { firstName: first.trim(), lastName: last.trim(), email: shown }, Date.now());
+      if (access === "invited" && host) joinBrand(host, { firstName: "", lastName: "", email: shown }, Date.now());
       signIn(
-        { firstName: first.trim(), lastName: last.trim(), email: shown },
+        { firstName: "", lastName: "", email: shown },
         Date.now()
       );
-      onVerified(`${first.trim()} ${last.trim()}`);
+      onVerified(shown);
     }, 700);
   };
 
@@ -189,7 +187,7 @@ export function SignInSheet({ open, onClose, onVerified, host, brandName, forPay
             you={shown}
             onRequest={() => {
               if (!host) return;
-              requestAccess(host, { firstName: first.trim(), lastName: last.trim(), email: shown }, Date.now());
+              requestAccess(host, { firstName: "", lastName: "", email: shown }, Date.now());
               setStep("requested");
             }}
             onOtherEmail={() => { setEmail(""); setChecked(false); setStep("details"); }}
@@ -204,39 +202,14 @@ export function SignInSheet({ open, onClose, onVerified, host, brandName, forPay
             <p className="mt-1.5 text-body text-ink-soft">HeyMoon emails a code to confirm it is you</p>
 
             <form onSubmit={(e) => { e.preventDefault(); sendCode(); }} noValidate className="mt-6">
-              <div className="grid grid-cols-2 gap-3">
-                {([
-                  { id: "signin-first", label: "First name", v: first, set: setFirst, ref: firstBox, ac: "given-name" },
-                  { id: "signin-last", label: "Last name", v: last, set: setLast, ref: undefined, ac: "family-name" },
-                ] as const).map((f) => (
-                  <div key={f.id}>
-                    <label htmlFor={f.id} className="mb-1.5 block text-meta font-medium text-ink-60">
-                      {f.label}
-                    </label>
-                    <input
-                      ref={f.ref}
-                      id={f.id}
-                      value={f.v}
-                      onChange={(e) => f.set(e.target.value)}
-                      autoComplete={f.ac}
-                      spellCheck={false}
-                      /* A focused field darkens its own hairline and
-                         nothing more. The purple stroke it used to draw
-                         was the brand colour doing a job the caret
-                         already does, on every field in turn, which
-                         made filling the form flash. */
-                      className="w-full rounded-control border border-black/[0.1] bg-white px-4 py-3 text-body text-ink outline-none transition placeholder:text-ink-faint focus:border-ink/25"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <label htmlFor="signin-email" className="mb-1.5 mt-4 block text-meta font-medium text-ink-60">
+              {/* Email only (21 Oct): no first or last name to sign in. A name can be added in Settings → Account. */}
+              <label htmlFor="signin-email" className="mb-1.5 block text-meta font-medium text-ink-60">
                 Work email
               </label>
               {/* Any company address, not only the store's own domain. Always ltr: an address reads left to right in
                   every language. */}
               <input
+                ref={firstBox}
                 id="signin-email"
                 type="email"
                 dir="ltr"
