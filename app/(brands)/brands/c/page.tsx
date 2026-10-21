@@ -180,9 +180,6 @@ type Wait =
 /** What the brand settles before the plan is built (brand flows, P0). */
 type Scope = { markets?: string[]; focus?: ProductFocus };
 
-/** "a or b", for the stores a brand name points at. */
-const orList = (parts: string[]) =>
-  parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} or ${parts[parts.length - 1]}`;
 
 function ChatInner() {
   const { t, tf, locale } = useT();
@@ -212,7 +209,7 @@ function ChatInner() {
   const canBrief = useCan("brief");
   const memberChips = ["Go to the dashboard", "What happens next?"];
   /* What waits on the sign-in: the read of the store the brand just confirmed, or (signed out later) the payment. */
-  const gateRef = useRef<{ host: string; go: () => void } | null>(null);
+  const gateRef = useRef<{ host: string; go: () => void; nudge?: string } | null>(null);
   const [gateHost, setGateHost] = useState<string | null>(null);
   /* The chips the thread offers once Phase 1 is paid for. */
   /* Until the brief is approved the brand's next step leads and the dashboard is the last choice (PRD v0.2, H1). */
@@ -419,13 +416,12 @@ function ChatInner() {
          The agent picks the conversation up at the question it would
          have asked when the read landed. */
       if (storedRead?.eligibility) {
-        push({ kind: "say", text: `Already read ${readUrl}.` });
+        push({ kind: "say", text: `I've already read ${readUrl}.` });
         push({ kind: "read", url: readUrl });
         afterRead(storedRead);
         return;
       }
-      if (!accountLive()) { readStore(readUrl); return; }
-      push({ kind: "say", text: `Reading ${readUrl}.` });
+      push({ kind: "say", text: `Reading ${readUrl} now. It takes about 15 seconds.` });
       push({ kind: "read", url: readUrl });
       return;
     }
@@ -476,7 +472,7 @@ function ChatInner() {
          submission. Reacting to the work rather than to the shop keeps
          it true for every store: nobody's catalogue is being flattered,
          the agent is just pleased with what it has to work with. */
-      ask(`Okay. That is plenty to work with.\n\nHere's what I found. Does it look right?`, ["Looks right", "Something's off"]);
+      ask(`There's plenty to work with here. Does this look right?`, ["Looks right", "Something's off"]);
     } else {
       /* What did not clear is on the block below, in the words the
          read itself used. Repeating it here would put someone else's
@@ -536,8 +532,6 @@ function ChatInner() {
   useEffect(() => {
     if (!readUrl || readRun.status !== "idle") return;
     if (storedRead?.eligibility) return;
-    /* Signed out, the read waits for the sign-in sheet, which runs it (readStore). */
-    if (!accountLive()) return;
     runRead();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readUrl]);
@@ -592,20 +586,20 @@ function ChatInner() {
     /* Every figure — the total, the VAT, what Phase 1 guarantees against
        the plan's own multiple — is on the card below. The sentence
        introduces it and gets out of the way. */
-    say("Here's what you're agreeing to.");
+    say("Here's exactly what you're agreeing to.");
     push({ kind: "funding", requestId: req.id });
   };
 
   const revealReady = () => {
     setWait(null);
-    ask("Ready to start Phase 1?", READY_CHIPS);
+    ask("Shall we start Phase 1?", READY_CHIPS);
   };
 
   /** Everything is settled: build the plan. */
   const buildNow = (r: BrandRead) => {
     setPendingRead(null);
     setWait(null);
-    say("Building your plan now.");
+    say("Great, building your plan now.");
     startBuild(r);
   };
 
@@ -681,9 +675,9 @@ function ChatInner() {
            three phases and what the $1,000 includes are a chip away, not printed by default: Phase 1 was explained
            before the build. */
         const crew = v.creators.value.length;
-        say(`Done. ${fmtUSD(v.budget.value)} in, ${fmtUSD(v.price.revenueTarget.value)} in sales guaranteed, from ${countWord(crew)} creator${crew === 1 ? "" : "s"}.`);
+        say(`Here's your plan: ${fmtUSD(v.budget.value)} in, ${fmtUSD(v.price.revenueTarget.value)} in guaranteed sales, from ${countWord(crew)} creator${crew === 1 ? "" : "s"}.`);
         push({ kind: "plan-card" });
-        ask("Look right?", ["Looks right", "Change something"]);
+        ask("How does it look?", ["Looks right", "Change something"]);
         setWait("reveal-plan");
       }
     );
@@ -721,21 +715,21 @@ function ChatInner() {
       never what the plan is. */
   const askRole = (r: BrandRead) => {
     const name = r.identity?.name.value;
-    say(`What do you do${name ? ` at ${name}` : ""}?`);
+    say(`Good. What's your role${name ? ` at ${name}` : ""}?`);
     setAsking({ q: "", options: ROLES.map((x) => x.label) });
   };
 
   const onRole = (r: BrandRead, key: (typeof ROLES)[number]["key"]) => {
     setRole(key);
     roleRef.current = key;
-    say(salesFirst(key) ? "Then I'll keep this about sales." : "Then I'll show you the creators and what they'll post.");
+    say(salesFirst(key) ? "Got it, I'll keep this about sales." : "Got it, I'll show you the creators and what they'll post.");
     nextStep(r);
   };
 
   /** Their goal, in their words (brand flows, P0). */
   const askGoal = (r: BrandRead) => {
     const name = r.identity?.name.value;
-    ask(`What are you hoping this does for ${name ?? "you"}?`, [...GOALS]);
+    ask(`What would you like this campaign to do for ${name ?? "you"}?`, [...GOALS]);
     setWait("goal");
   };
 
@@ -747,14 +741,14 @@ function ChatInner() {
       setWait("launch-note");
       return;
     }
-    askFocus(r, text === GOALS[2] ? "Then start where it's safest: what already sells." : "Then I'd point it at what already sells.");
+    askFocus(r, text === GOALS[2] ? "Then let's start where it's safest: what already sells." : "Then let's start with what already sells.");
   };
 
   /** What it pushes, asked in words (19 Oct review: "in conversation instead of the picker"). */
   const askFocus = (r: BrandRead, lead: string) => {
     const top = (r.bestsellers?.value ?? []).slice(0, 3).map((p) => p.name);
     if (!top.length) { setScope({ ...scopeRef.current, focus: { kind: "bestsellers" } }); nextStep(r); return; }
-    ask(`${lead ? `${lead} ` : ""}Your bestsellers are the ${listOf(top)}. Push those, or something else?`, ["Push the bestsellers", "Something else"]);
+    ask(`${lead ? `${lead} ` : ""}Your bestsellers are the ${listOf(top)}. Should creators push those, or something else?`, ["Push the bestsellers", "Something else"]);
     setWait("focus");
   };
 
@@ -766,7 +760,7 @@ function ChatInner() {
 
   /** Where it runs: the markets the read found (MarketsPick), with the regional-store note. */
   const askMarkets = (r: BrandRead) => {
-    say("Where should it run?");
+    say("And where should it run?");
     push({ kind: "pick-markets", readId: r.id });
     setAsking({ q: "", options: [] });
   };
@@ -792,11 +786,11 @@ function ChatInner() {
     const [b1, b2, b3] = PHASE_BUDGETS;
     const [, m2, m3] = PHASE_MULTIPLES;
     say(
-      `How it works, before I build it:\n\n` +
+      `Before I build it, here's how it works:\n\n` +
       `• Phase 1: ${fmtUSD(b1)}, with ${fmtUSD(b1)} in sales guaranteed.\n` +
       `• At 80%, Phase 2 opens: ${fmtUSD(b2)} at ${m2}x. Then Phase 3: ${fmtUSD(b3)} at ${m3}x.\n` +
       `• Fall short, and you get back the same share of what you paid.\n\n` +
-      `${k(t.budget)} in, ${k(t.revenue)} in guaranteed sales.`
+      `That's ${k(t.budget)} in, for ${k(t.revenue)} in guaranteed sales.`
     );
     setAsking({ q: "", options: PHASE1_CHIPS });
     setWait("phase1");
@@ -947,30 +941,36 @@ function ChatInner() {
     readStore(url);
   };
 
-  /** A store link: read it, once the brand is signed in. */
-  const readStore = (url: string) =>
-    needAccount(url, () => {
-      setScope({});
-      say(`Reading ${url}.`);
-      push({ kind: "read", url });
-      runRead(url);
-    });
+  /** A store link: read it. No sign-in first (21 Oct): the read is the wow moment, so it runs before any ask. */
+  const readStore = (url: string) => {
+    setScope({});
+    say(`Reading ${url} now. It takes about 15 seconds.`);
+    push({ kind: "read", url });
+    runRead(url);
+  };
 
-  /** The account comes first: right after the brand confirms the store, before anything is read or built for it. */
-  const needAccount = (host: string, go: () => void) => {
+  /** An account before the next step. Asked once the brand has seen the read and said it looks right, framed as
+      saving it (21 Oct), and again at payment only if they signed out since. `ask` is said before the sheet opens;
+      `nudge` is what the chat says if the sheet is closed without signing in. */
+  const needAccount = (host: string, go: () => void, opts: { ask?: string; nudge?: string } = {}) => {
     if (accountLive()) { go(); return; }
-    gateRef.current = { host, go };
+    gateRef.current = { host, go, nudge: opts.nudge };
     setGateHost(host);
+    /* The line first, then the sheet: opened together, the sheet covered the sentence that explains it. */
+    if (opts.ask) { say(opts.ask); window.setTimeout(() => setSignIn(true), 1100); return; }
     setSignIn(true);
   };
+  /** The save-it ask after the read: the brand has seen the value, and is about to answer questions and get a plan. */
+  const SAVE_ASK = "Great, let's sign you in so I can save this.";
+  const SAVE_NUDGE = "No problem. Sign in whenever you're ready, and I'll save this and build your plan.";
 
   /** A brand name: find its store, and ask which when there are several. */
   const lookup = (name: string) => {
     const hits = lookupBrand(name);
     const shown = name.trim().replace(/^\w/, (c) => c.toUpperCase());
     if (!hits.length) ask(`I couldn't find a store called ${shown}. Paste its link and I'll read it.`, []);
-    else if (hits.length === 1) ask(`Is this ${hits[0]}?`, [hits[0], "No, a different store"]);
-    else ask(`Is this ${orList(hits)}?`, [...hits, "Neither"]);
+    else if (hits.length === 1) ask(`I found ${hits[0]}. Is that your store?`, [hits[0], "No, a different store"]);
+    else ask(`I found ${countWord(hits.length)} ${shown} stores. Which one is yours?`, [...hits, "Neither"]);
     setWait("store");
   };
 
@@ -1307,7 +1307,7 @@ function ChatInner() {
         say(`Fixed. Building the plan on that.`);
         setAwaitingCorrection(false);
         setPendingRead(null);
-        startBuild(r);
+        needAccount(r.url, () => startBuild(r), { ask: SAVE_ASK, nudge: SAVE_NUDGE });
         return;
       }
     }
@@ -1421,7 +1421,7 @@ function ChatInner() {
           if (paid) { say(ALREADY_PAID); return; }
           /* Before anything is built: whatever is still open (nextStep). A plan that already exists is changed by
              sentences instead. */
-          if (!plan) { nextStep(r); return; }
+          if (!plan) { needAccount(r.url, () => nextStep(r), { ask: SAVE_ASK, nudge: SAVE_NUDGE }); return; }
           ask("The plan is built. Start Phase 1 when you're ready, or change anything.", READY_CHIPS);
           return;
         }
@@ -1520,8 +1520,8 @@ function ChatInner() {
       out.say ||
       (paid
         /* After paying only the budget changes, and a paid phase never does (C3): the audience isn't on offer. */
-        ? "I didn't catch that. I can change the brief, pull a report, or open your campaign in the panel."
-        : "I didn't catch that. Markets, audience, creators, the brief and the guarantee all move, so say it in plain words.")
+        ? "Sorry, I didn't catch that. I can change the brief, pull a report, or open your campaign in the panel."
+        : "Sorry, I didn't catch that. You can change the markets, audience, creators, brief or guarantee. Just say it in plain words.")
     );
   };
 
@@ -1895,7 +1895,7 @@ function ChatInner() {
         onClose={() => {
           setSignIn(false);
           /* Closed before signing in: nothing is read, and one chip brings the sheet back. */
-          if (gateRef.current && !accountLive()) ask(plan ? "" : `Sign in and I'll read ${gateRef.current.host}.`, ["Sign in"]);
+          if (gateRef.current && !accountLive()) ask(gateRef.current.nudge ?? "", ["Sign in"]);
         }}
         onVerified={(name) => {
           setSignIn(false);
