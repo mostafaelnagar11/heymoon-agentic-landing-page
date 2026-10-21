@@ -363,6 +363,8 @@ export interface FundingRequest {
   vat: Sourced<number>;
   total: Sourced<number>;
   method: { brand: string; last4: string; expires: string };
+  /** Who it is billed to, entered on the card before Pay (21 Oct). The VAT and total follow from it (billing.ts). */
+  billing?: import("./billing").Billing;
   /** What the brand is committing to, spelled out. */
   commits: string[];
   state: "pending" | "confirmed" | "cancelled";

@@ -292,6 +292,8 @@ export const STR: Dict = {
   "receipt.charged": { en: "Charged:", ar: "المبلغ:" },
   "receipt.receipt": { en: "Receipt:", ar: "الإيصال:" },
   "receipt.emailed": { en: "Emailed to you, and kept on this campaign.", ar: "أُرسل إلى بريدك، ومحفوظ في هذه الحملة." },
+  "receipt.billed": { en: "Billed to:", ar: "الفاتورة باسم:" },
+  "receipt.vat": { en: "VAT {pct}%", ar: "ضريبة القيمة المضافة {pct}%" },
   "receipt.paid": { en: "Paid", ar: "مدفوعة" },
 
   "mc.where": { en: "Where does your store run?", ar: "على أي منصة يعمل متجرك؟" },

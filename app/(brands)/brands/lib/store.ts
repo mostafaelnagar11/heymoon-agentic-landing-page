@@ -21,6 +21,7 @@ import type {
   FundingRequest, Plan,
 } from "./agent/types";
 import { rememberRead } from "./agent/registry";
+import { withBilling, type Billing } from "./agent/billing";
 import { hash } from "./agent/rng";
 import { ADS, PHASES, type Phase } from "./mock/campaigns";
 import { FIRST_SALE_DAYS, LAUNCH_BY_DAYS, PHASE_START_DAYS, STAGES, plusDays, type CouponRules, type Stage, type StageKey } from "./agent/connect";
@@ -768,11 +769,13 @@ export const putFunding = (r: FundingRequest) =>
 
 /** The only place a payment is recorded, and it is only ever reachable
     from an explicit click on the confirmation block. */
-export const confirmFunding = (id: string) =>
+/** Paid, with the billing details the brand entered on the card: they set the VAT and the total (billing.ts). */
+export const confirmFunding = (id: string, billing?: Billing) =>
   set((s) => {
     const r = s.funding[id];
     if (!r || r.state !== "pending") return {};
-    return { funding: { ...s.funding, [id]: { ...r, state: "confirmed" } } };
+    const paid = billing ? withBilling(r, billing) : r;
+    return { funding: { ...s.funding, [id]: { ...paid, state: "confirmed" } } };
   });
 
 export const cancelFunding = (id: string) =>

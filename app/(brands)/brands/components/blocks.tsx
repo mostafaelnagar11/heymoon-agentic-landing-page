@@ -22,6 +22,7 @@ import { READ_ORDER, ReadValue, readValueTree, srcFor } from "./ReadValue";
 import { TypeOn } from "./TypeOn";
 import { PHASE1_BUDGET, PHASE1_ROAS, READ_TASKS } from "../lib/agent/tools";
 import { shortfallLine } from "../lib/agent/guarantee";
+import { BILLING_COUNTRIES, vatOnBudget, vatRateFor } from "../lib/agent/billing";
 import {
   CONFIDENCE_HIGH_RATIO, CONFIDENCE_MEDIUM_RATIO, getConfidence, type ConfidenceLevel,
 } from "../lib/agent/model";
@@ -82,6 +83,10 @@ export function FundingBlock({ req, onConfirmed, onCancelled }: {
 }) {
   const live = useStore((s) => s.funding[req.id]) ?? req;
   const [busy, setBusy] = useState(false);
+  /* Billed to (21 Oct): three answers before Pay, in place of a saved card. The VAT follows the UAE question. */
+  const [brandName, setBrandName] = useState("");
+  const [country, setCountry] = useState("");
+  const [uae, setUae] = useState<boolean | null>(null);
 
   /* Once paid, this block steps aside. The thread pushes the receipt as
      its own block straight after it, so a receipt here as well would
@@ -107,6 +112,12 @@ export function FundingBlock({ req, onConfirmed, onCancelled }: {
      rather than read out of the prose in `commits`, so the two can
      never drift apart. */
   const guaranteed = live.amount.value * PHASE1_ROAS;
+  const amount = live.amount.value;
+  const vat = uae === null ? null : vatOnBudget(amount, uae);
+  const total = amount + (vat ?? 0);
+  const pct = uae === null ? null : Math.round(vatRateFor(uae) * 100);
+  const ready = !!brandName.trim() && !!country && uae !== null;
+  const field = "h-10 w-full rounded-control border border-hairline bg-white px-3 text-body text-ink outline-none transition focus:border-brand/50";
 
   return (
     <Card className="overflow-hidden border-brand/30">
@@ -120,9 +131,9 @@ export function FundingBlock({ req, onConfirmed, onCancelled }: {
         {/* One total, said once and said large. The split underneath it
             is the arithmetic, not a second price. */}
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <Figure src={live.total} render={`${fmtUSD(live.total.value)} today`} size="lg" />
+          <p className="text-figure font-bold text-ink tabular-nums">{fmtUSD(total)} today</p>
           <p className="text-meta text-ink-faint tabular-nums">
-            {fmtUSD(live.amount.value)} + {fmtUSD(live.vat.value)} VAT
+            {vat === null ? "+ VAT, depending on where the company is registered" : vat ? `${fmtUSD(amount)} + ${fmtUSD(vat)} VAT (${pct}%)` : `${fmtUSD(amount)} · no VAT (0%)`}
           </p>
         </div>
 
@@ -142,16 +153,44 @@ export function FundingBlock({ req, onConfirmed, onCancelled }: {
           </li>
         </ul>
 
-        <div className="mt-3 flex items-center gap-3 rounded-control bg-wash px-3 py-2.5">
-          {/* The card brand in capitals is a badge, so the capitals come
-              from the stylesheet and the string stays as it is written. */}
-          <span aria-hidden className="grid h-7 w-11 place-items-center rounded bg-gradient-to-br from-brand to-brand-500 text-[9px] font-bold uppercase text-white">
-            {live.method.brand}
-          </span>
-          <p className="text-meta text-ink-soft">
-            •••• {live.method.last4} · expires {live.method.expires}
-          </p>
-          <LockSimple size={12} weight="fill" className="ms-auto shrink-0 text-ink-faint" aria-hidden />
+        {/* Who it is billed to. All three are needed before Pay, and the UAE answer sets the VAT (billing.ts). */}
+        <div className="mt-3 grid gap-3 rounded-control bg-brand/[0.02] p-3 sm:grid-cols-2">
+          <label className="grid gap-1 text-meta font-medium text-ink">
+            Brand name
+            <input
+              value={brandName}
+              onChange={(e) => setBrandName(e.target.value)}
+              placeholder="Enter brand name"
+              autoComplete="organization"
+              className={field}
+            />
+          </label>
+          <label className="grid gap-1 text-meta font-medium text-ink">
+            Country
+            <select value={country} onChange={(e) => setCountry(e.target.value)} className={`${field} ${country ? "" : "text-ink-faint"}`}>
+              <option value="" disabled>Choose a country</option>
+              {BILLING_COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <fieldset className="sm:col-span-2">
+            <legend className="text-meta font-medium text-ink">Is your company registered in the UAE?</legend>
+            <div role="radiogroup" aria-label="Is your company registered in the UAE?" className="mt-1.5 flex gap-2">
+              {([["Yes", true], ["No", false]] as const).map(([label, value]) => (
+                <button
+                  key={label}
+                  type="button"
+                  role="radio"
+                  aria-checked={uae === value}
+                  onClick={() => setUae(value)}
+                  className={`h-10 min-w-[88px] rounded-pill border px-4 text-body font-semibold transition ${
+                    uae === value ? "border-brand/40 bg-brand/[0.08] text-ink" : "border-hairline bg-white text-ink-soft hover:bg-wash"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
         </div>
 
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -163,12 +202,18 @@ export function FundingBlock({ req, onConfirmed, onCancelled }: {
           </Btn>
           <Btn
             className="sm:flex-[1.6]"
-            disabled={busy}
-            onClick={() => { setBusy(true); confirmFunding(live.id); onConfirmed(live.id); }}
+            disabled={busy || !ready}
+            onClick={() => {
+              if (!ready) return;
+              setBusy(true);
+              confirmFunding(live.id, { brandName: brandName.trim(), country, uaeRegistered: uae! });
+              onConfirmed(live.id);
+            }}
           >
-            Pay {fmtUSD(live.total.value)}
+            Pay {fmtUSD(total)}
           </Btn>
         </div>
+        {!ready && <p className="mt-2 text-[11px] leading-4 text-ink-faint">Add the brand name, country and UAE registration to pay.</p>}
         <p className="mt-2 text-[11px] leading-4 text-ink-faint">
           Paying starts Phase {live.phaseNo}. Nothing else is committed.
         </p>
@@ -199,8 +244,13 @@ export function ReceiptBlock({ req }: { req: FundingRequest }) {
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-body text-ink-soft">
           <span className="font-semibold text-ink">{t("receipt.charged")}</span>
           <Figure src={req.total} render={fmtUSD(req.total.value)} size="sm" />
-          <span>· {req.method.brand} ••••{req.method.last4}</span>
+          {req.billing && <span>· {tf("receipt.vat", { pct: Math.round(vatRateFor(req.billing.uaeRegistered) * 100) })}</span>}
         </div>
+        {req.billing && (
+          <p className="mt-1.5 text-body text-ink-soft">
+            <span className="font-semibold text-ink">{t("receipt.billed")}</span> {req.billing.brandName}, {req.billing.country}
+          </p>
+        )}
         <p className="mt-1.5 text-body text-ink-soft">
           <span className="font-semibold text-ink">{t("receipt.receipt")}</span> {t("receipt.emailed")}
         </p>
