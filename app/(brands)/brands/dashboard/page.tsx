@@ -99,9 +99,9 @@ export default function DashboardPage() {
      fields, one owner each; the cross-links reach this one through
      the surface context below. */
   const stored = useDashboardView();
-  const KNOWN = ["settings", "autonomy", ...NAV.map((v) => v.key), ...CAMPAIGN_TABS.map((t) => t.key)];
+  const KNOWN = ["settings", "autonomy", "business", ...NAV.map((v) => v.key), ...CAMPAIGN_TABS.map((t) => t.key)];
   const view: DashboardView = (KNOWN.includes(stored) ? stored : "campaign") as DashboardView;
-  const settingsOpen = view === "settings" || view === "autonomy";
+  const settingsOpen = view === "settings" || view === "autonomy" || view === "business";
   const isCampaignView = CAMPAIGN_TABS.some((t) => t.key === view);
   /* Remembered rather than hardcoded to "home": a brand who opened
      settings from the ads queue expects the back arrow to return them
@@ -127,6 +127,12 @@ export default function DashboardPage() {
   /* ?demo=running opens the same brand two phases in, for showing what a running campaign looks like. */
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
+    /* From the chat's "Complete business profile": Settings on that tab (21 Oct). */
+    if (q.get("view") === "business") {
+      setDashboardView("business");
+      q.delete("view");
+      window.history.replaceState(null, "", window.location.pathname + (q.toString() ? `?${q}` : ""));
+    }
     if (!q.has("signin") && q.get("demo") !== "running") return;
     openSampleAccount({ running: q.get("demo") === "running" });
     q.delete("signin");
@@ -170,6 +176,7 @@ export default function DashboardPage() {
     activity: drilled,
     autonomy: t("dash.settings"),
     settings: t("dash.settings"),
+    business: t("dash.settings"),
   };
 
   return (
@@ -233,7 +240,11 @@ export default function DashboardPage() {
                 the activity log and the inbox still link to `autonomy`,
                 which is a section of this page now. */}
             {settingsOpen ? (
-              <SettingsView initialTab={view === "autonomy" ? "autonomy" : "brand"} key={view} />
+              <SettingsView
+                initialTab={view === "autonomy" ? "autonomy" : view === "business" ? "business" : "brand"}
+                onBack={() => setDashboardView(cameFrom.current)}
+                key={view}
+              />
             ) : (
               <>
             {!anyCampaign && <EmptyDashboard />}

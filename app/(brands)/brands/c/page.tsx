@@ -45,7 +45,7 @@ import {
   ROLES, accessFor, claimBrand, requestAccess, salesFirst, setRole, useRole,
   push, putApproval, putCampaign, putFunding, putPlan, putRead, threadIsEmpty,
   useActivePlan, useAds, useCampaigns, useActiveThreadId, useCan, useLivePhase, usePaid, usePhaseRequested,
-  accountLive, activeCampaignLive, isLaunching, markSent, startConversation, teamRoleFor,
+  accountLive, activeCampaignLive, isLaunching, markSent, profilePending, startConversation, teamRoleFor,
   connectStore, nextBrandStep, patchLaunch, recordCheck, useActiveCampaign, useStore, type Campaign, type PanelView,
 } from "../lib/store";
 import { fmtUSD } from "../lib/mock/campaigns";
@@ -69,7 +69,7 @@ import { PlanCard } from "../components/PlanCard";
 import { BriefReviewBlock, ConnectBlock, DiscountBlock, StoreCheckBlock } from "../components/chat/MoonConnect";
 import { LaunchTracker } from "../components/dashboard/LaunchTracker";
 import {
-  LAUNCH_BY_DAYS, PHASE_START_DAYS, PLATFORMS, platformFor, plusDays, type CouponRules, type PlatformKey,
+  LAUNCH_BY_DAYS, PHASE_START_DAYS, PLATFORMS, PROFILE_BY_DAYS, platformFor, plusDays, type CouponRules, type PlatformKey,
 } from "../lib/agent/connect";
 import { applyBriefChange } from "../lib/agent/briefChange";
 import {
@@ -218,6 +218,8 @@ function ChatInner() {
   /* Until the brief is approved the brand's next step leads and the dashboard is the last choice (PRD v0.2, H1). */
   const postChips = launching && nextBrandStep(camp)
     ? ["Continue", "What happens next?", "Go to the dashboard"]
+    /* The chat's steps done, the business profile is next, in the dashboard (21 Oct). */
+    : launching && profilePending(camp) ? PROFILE_CHIPS
     : connected ? POST_CHIPS : POST_CHIPS_UNCONNECTED;
   const ads = useAds();
   const paid = usePaid();
@@ -836,6 +838,12 @@ function ChatInner() {
     if (step === "discount") { startDiscount(); return; }
     if (step === "check") { startCheck(); return; }
     if (step === "brief") { startBrief(); return; }
+    if (c?.launch && profilePending(c)) {
+      say(tf("post.profileNext", { pdate: dayIn(plusDays(c.launch.paidAt, PROFILE_BY_DAYS), locale) }));
+      push({ kind: "tracker" });
+      setAsking({ q: "", options: PROFILE_CHIPS });
+      return;
+    }
     say(t("post.allDone"));
     push({ kind: "tracker" });
     setAsking({ q: "", options: ["Go to the dashboard", "What happens next?"] });
@@ -907,10 +915,18 @@ function ChatInner() {
     if (!c?.launch) return;
     patchLaunch(c.id, { briefApprovedAt: Date.now(), briefApprovedBy: account ? `${account.firstName} ${account.lastName}`.trim() : null });
     setWait(null);
-    /* The team route promises no date (O7): the team sets the store up first. */
-    say(c.launch.legacyAt ? t("post.approvedTeam") : tf("post.approved", { date: dayIn(plusDays(c.launch.paidAt, LAUNCH_BY_DAYS), locale) }));
+    /* The team route promises no date (O7): the team sets the store up first. The business profile, if still to do, is
+       the brand's last step, in the dashboard (21 Oct). */
+    const pdate = dayIn(plusDays(c.launch.paidAt, PROFILE_BY_DAYS), locale);
+    const date = dayIn(plusDays(c.launch.paidAt, LAUNCH_BY_DAYS), locale);
+    const profileToDo = !c.launch.profileAt;
+    say(
+      profileToDo
+        ? (c.launch.legacyAt ? tf("post.approvedProfileTeam", { pdate }) : tf("post.approvedProfile", { pdate, date }))
+        : (c.launch.legacyAt ? t("post.approvedTeam") : tf("post.approved", { date }))
+    );
     push({ kind: "tracker" });
-    setAsking({ q: "", options: ["Go to the dashboard", "What happens next?"] });
+    setAsking({ q: "", options: profileToDo ? PROFILE_CHIPS : ["Go to the dashboard", "What happens next?"] });
   };
 
   const notNow = () => {
@@ -1052,6 +1068,7 @@ function ChatInner() {
       const c = activeCampaignLive();
       const l = c?.launch;
       if (nextBrandStep(c)) return t("post.nextYours");
+      if (l && profilePending(c)) return tf("post.nextProfile", { pdate: dayIn(plusDays(l.paidAt, PROFILE_BY_DAYS), locale) });
       if (l?.phaseStartedAt) return t("post.nextPhase");
       if (l?.launchedAt) return tf("post.nextLaunched", { date: dayIn(plusDays(l.launchedAt, PHASE_START_DAYS), locale) });
       return t("post.nextMoontech");
@@ -1308,6 +1325,11 @@ function ChatInner() {
       resumeLaunch();
       return;
     }
+    /* The business profile is done in the dashboard's Settings (21 Oct). */
+    if (/^(complete (the |my |your )?business profile|(the |my )?business profile)$/.test(lower)) {
+      router.push("/brands/dashboard?view=business");
+      return;
+    }
     if (/go to (the )?dashboard|open the dashboard/.test(lower)) {
       /* A handoff, not another panel, and it says nothing on the way:
          a sentence about a destination you are already being taken to
@@ -1485,7 +1507,11 @@ function ChatInner() {
       if (/\b(when|how long|how soon|timeline|go live|live)\b/.test(lower)) {
         say(camp.launch.legacyAt && !camp.launch.launchedAt ? t("post.whenTeam") : tf("post.when", { date: dayIn(plusDays(camp.launch.paidAt, LAUNCH_BY_DAYS), locale) }));
       } else {
-        say(nextBrandStep(camp) ? t("post.fallbackSetup") : t("post.fallbackWaiting"));
+        say(
+          nextBrandStep(camp) ? t("post.fallbackSetup")
+          : profilePending(camp) ? tf("post.fallbackProfile", { pdate: dayIn(plusDays(camp.launch.paidAt, PROFILE_BY_DAYS), locale) })
+          : t("post.fallbackWaiting")
+        );
       }
       setAsking({ q: "", options: postChips });
       return;
@@ -1886,6 +1912,9 @@ function ChatInner() {
 
 /** The landing entry (`?read=`/`?q=`) this page load has already used. */
 let usedEntry: string | null = null;
+
+/** After the brief, while the business profile is still to do: the dashboard step leads. */
+const PROFILE_CHIPS = ["Complete business profile", "What happens next?", "Go to the dashboard"];
 
 /** The card each of the brand's setup steps lives in. */
 const STEP_BLOCK = { store: "connect", discount: "discount", check: "store-check", brief: "brief-review" } as const;

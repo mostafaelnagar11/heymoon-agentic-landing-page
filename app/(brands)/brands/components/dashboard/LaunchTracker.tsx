@@ -14,9 +14,9 @@ import Link from "next/link";
 import { track } from "../../lib/track";
 import { ArrowRight, Check, CircleNotch } from "@phosphor-icons/react";
 import {
-  advanceLaunch, launchStages, nextBrandStep, recordFirstSale, useActiveCampaign, type Campaign,
+  advanceLaunch, launchStages, nextBrandStep, recordFirstSale, setDashboardView, useActiveCampaign, type Campaign,
 } from "../../lib/store";
-import { LAUNCH_BY_DAYS, PHASE_START_DAYS, plusDays, type StageKey, type StageOwner } from "../../lib/agent/connect";
+import { LAUNCH_BY_DAYS, PHASE_START_DAYS, PROFILE_BY_DAYS, plusDays, type StageKey, type StageOwner } from "../../lib/agent/connect";
 import { dayIn, useT } from "../../lib/i18n";
 
 const OWNER_TONE: Record<StageOwner, string> = {
@@ -26,6 +26,7 @@ const OWNER_TONE: Record<StageOwner, string> = {
 };
 
 const NOTE: Partial<Record<StageKey, string>> = {
+  profile: "lt.note.profile",
   matching: "lt.note.matching",
   launched: "lt.note.launched",
   phase: "lt.note.phase",
@@ -52,9 +53,12 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
   const doneCount = rows.filter((r) => r.doneAt !== null).length;
 
   /* PRD v0.2 v3: launched (wave 1 sent, day 0), then the phase starts (day 6), then the first sale. */
-  const heading = brandStep ? t(`lt.next.${brandStep}`) : !l.launchedAt ? t("lt.preparing") : !l.phaseStartedAt ? t("lt.launched") : t("lt.phaseOn");
+  /* After the chat's steps, the business profile in Settings (21 Oct); Moontech's matching waits on it. */
+  const profileDue = !brandStep && !l.profileAt;
+  const heading = brandStep ? t(`lt.next.${brandStep}`) : profileDue ? t("lt.next.profile") : !l.launchedAt ? t("lt.preparing") : !l.phaseStartedAt ? t("lt.launched") : t("lt.phaseOn");
   const sub =
-    !l.launchedAt ? tf("lt.launchBy", { date: day(launchBy) })
+    profileDue ? tf("lt.profileBy", { date: day(plusDays(l.paidAt, PROFILE_BY_DAYS)), launch: day(launchBy) })
+    : !l.launchedAt ? tf("lt.launchBy", { date: day(launchBy) })
     : !l.phaseStartedAt ? tf("lt.launchedOn", { date: day(l.launchedAt), phase: day(plusDays(l.launchedAt, PHASE_START_DAYS)) })
     : tf("lt.phaseSince", { date: day(l.phaseStartedAt) });
 
@@ -75,6 +79,16 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
               {t("lt.continue")}
               <ArrowRight size={13} weight="bold" aria-hidden className="rtl:rotate-180" />
             </Link>
+          )}
+          {profileDue && (
+            <button
+              type="button"
+              onClick={() => setDashboardView("business")}
+              className="inline-flex items-center gap-1.5 rounded-pill bg-brand px-4 py-2 text-body font-semibold text-white transition hover:bg-brand-hover"
+            >
+              {t("lt.openProfile")}
+              <ArrowRight size={13} weight="bold" aria-hidden className="rtl:rotate-180" />
+            </button>
           )}
         </header>
       )}
@@ -124,7 +138,7 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
       </div>
 
       {/* Moontech's stages are NASA and launchCampaign in the product. The prototype steps them by hand, and says so. */}
-      {!compact && !brandStep && !l.firstSaleAt && (
+      {!compact && !brandStep && !profileDue && !l.firstSaleAt && (
         <div className="flex flex-wrap gap-2">
           {!l.phaseStartedAt ? (
             <button

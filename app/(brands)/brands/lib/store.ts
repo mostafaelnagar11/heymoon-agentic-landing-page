@@ -205,7 +205,9 @@ export type PanelView =
   | "plan" | "read"
   /* The dashboard's own views. `home` is the overview the rail opens on;
      the rest are the running views. */
-  | "home" | "campaign" | "creators" | "ads" | "inbox" | "activity" | "autonomy" | "settings";
+  | "home" | "campaign" | "creators" | "ads" | "inbox" | "activity" | "autonomy" | "settings"
+  /* Settings opened on the Business profile tab (the tracker's profile step). */
+  | "business";
 
 /* A campaign, and the conversation that built it.
 
@@ -262,6 +264,8 @@ export interface Launch {
   briefApprovedBy?: string | null;
   /** Guidelines or past UGC the brand added to the brief (MNMP-1). */
   briefFiles: string[];
+  /** The business profile was completed (Settings, within 10 days of paying). Matching waits on it. */
+  profileAt: number | null;
   matchedAt: number | null;
   /** launchCampaign ran: the campaign is active and wave 1 is sent (day 0). "Launched" in the PRD's north star. */
   launchedAt: number | null;
@@ -282,6 +286,7 @@ export function launchStages(c: Campaign): { stage: Stage; doneAt: number | null
     /* On the team route the brand's part is done when they hand it over, but the store isn't connected until the team
        has done it, which is when the team sets the code (advanceLaunch). Saying "Done" at the handover was false. */
     store: c.connectedStore ? l.paidAt : l.legacyAt ? l.coupon?.at ?? null : null,
+    profile: l.profileAt ?? null,
     discount: l.coupon?.at ?? null,
     /* Only a pass counts (C13). A check handed to the team stays open until the team passes it by hand. */
     check: l.checkPassedAt,
@@ -401,12 +406,16 @@ export interface State {
 export interface Profile {
   industry: string;
   country: string;
-  /** Billing. All optional, all blank to start: nothing here is
-      invented on a brand's behalf. */
+  /** The business profile (Settings → Business profile, 21 Oct). All blank to start: nothing here is invented on a
+      brand's behalf. Tax registration and office location are required; the trade licence can come later. */
   vat: string;
+  legalName?: string;
+  /** The trade licence number. */
   tradeLicence: string;
+  licenceFile?: string;
   street: string;
   city: string;
+  area?: string;
   /** One switch, because there is one channel: the work email that
       signed in. Off means HeyMoon only speaks inside the product. */
   notifications: boolean;
@@ -945,7 +954,8 @@ export const markPaid = (at: number = Date.now()) =>
     const launch: Launch | undefined = fresh
       ? {
           paidAt: at, legacyAt: null, coupon: null, checkAttempts: 0, checkPassedAt: null, checkToTeamAt: null,
-          briefApprovedAt: null, briefFiles: [], matchedAt: null, launchedAt: null, phaseStartedAt: null, firstSaleAt: null,
+          briefApprovedAt: null, briefFiles: [], profileAt: profileComplete(s.profile) ? at : null,
+          matchedAt: null, launchedAt: null, phaseStartedAt: null, firstSaleAt: null,
         }
       : c.launch;
     return { campaigns: { ...s.campaigns, [id]: { ...c, paid: true, ...(launch ? { launch } : {}) } } };
@@ -989,7 +999,8 @@ export const advanceLaunch = (campaignId: string, at: number) =>
       return patchCampaignIn(s, campaignId, { launch: { ...l, coupon } });
     }
     if (!l.checkPassedAt) return patchCampaignIn(s, campaignId, { launch: { ...l, checkPassedAt: at } });
-    if (!l.matchedAt) return patchCampaignIn(s, campaignId, { launch: { ...l, matchedAt: at } });
+    /* Matching waits on the brand's business profile (21 Oct). */
+    if (!l.matchedAt) return l.profileAt ? patchCampaignIn(s, campaignId, { launch: { ...l, matchedAt: at } }) : {};
     if (!l.launchedAt) return patchCampaignIn(s, campaignId, { launch: { ...l, launchedAt: at } });
     if (!l.phaseStartedAt) {
       const today = new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -1369,6 +1380,38 @@ export const usePaid = () =>
 export const useActivePlan = () => useStore((s) => (s.activePlanId ? s.plans[s.activePlanId] ?? null : null));
 export const useAccount = () => useStore((s) => s.account);
 export const useProfile = () => useStore((s) => s.profile);
+
+/** A UAE TRN is 15 digits; elsewhere any tax number of five characters or more is taken as given. */
+export const trnValid = (vat: string, country: string) => {
+  const v = vat.replace(/\s+/g, "");
+  return /^(united arab emirates|uae)$/i.test(country.trim()) ? /^\d{15}$/.test(v) : v.length >= 5;
+};
+/** The three sections of the business profile, each done or not. */
+export const profileSections = (p: Profile) => ({
+  tax: trnValid(p.vat, p.country) && !!p.legalName?.trim(),
+  licence: !!p.tradeLicence.trim() && !!p.licenceFile,
+  office: !!p.country.trim() && !!p.city.trim() && !!p.street.trim(),
+});
+/** Complete enough to launch: tax registration and office location. The trade licence can come later. */
+export const profileComplete = (p: Profile) => {
+  const s = profileSections(p);
+  return s.tax && s.office;
+};
+/** Paid and launching, with the business profile still to do. */
+export const profilePending = (c: Campaign | null | undefined) => !!c?.launch && !c.launch.profileAt;
+
+/** Saves the business profile. Complete, it closes the tracker's profile step on every launching campaign. */
+export const saveBusinessProfile = (patch: Partial<Profile>, at: number) =>
+  set((s) => {
+    const profile = { ...s.profile, ...patch };
+    if (!profileComplete(profile)) return { profile };
+    const campaigns = { ...s.campaigns };
+    for (const id of Object.keys(campaigns)) {
+      const c = campaigns[id];
+      if (c.launch && !c.launch.profileAt) campaigns[id] = { ...c, launch: { ...c.launch, profileAt: at } };
+    }
+    return { profile, campaigns };
+  });
 export const setProfile = (patch: Partial<Profile>) =>
   set((s) => ({ profile: { ...s.profile, ...patch } }));
 

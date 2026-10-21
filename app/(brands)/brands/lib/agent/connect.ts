@@ -115,7 +115,7 @@ export const couponLine = (c: Pick<CouponRules, "discount" | "limits" | "minOrde
 
 /* ── The launch tracker (H5) ── */
 
-export type StageKey = "store" | "discount" | "check" | "brief" | "matching" | "launched" | "phase" | "sale";
+export type StageKey = "store" | "discount" | "check" | "brief" | "profile" | "matching" | "launched" | "phase" | "sale";
 export type StageOwner = "You" | "Moontech" | "Creators";
 export interface Stage { key: StageKey; label: string; owner: StageOwner; dueDays: number }
 
@@ -128,13 +128,17 @@ export const STAGES: Stage[] = [
   { key: "discount", label: "Discount set", owner: "You", dueDays: 3 },
   { key: "check", label: "Store checked", owner: "You", dueDays: 3 },
   { key: "brief", label: "Brief approved", owner: "You", dueDays: 5 },
-  { key: "matching", label: "Creators being matched", owner: "Moontech", dueDays: 8 },
+  /* In the dashboard, not the chat (21 Oct): Settings → Business profile, within 10 days of paying. Matching waits on it. */
+  { key: "profile", label: "Business profile", owner: "You", dueDays: 10 },
+  { key: "matching", label: "Creators being matched", owner: "Moontech", dueDays: 11 },
   { key: "launched", label: "Launched (wave 1 sent)", owner: "Moontech", dueDays: 14 },
   { key: "phase", label: "Phase started (day 6)", owner: "Moontech", dueDays: 20 },
   { key: "sale", label: "First sale", owner: "Creators", dueDays: 27 },
 ];
 
 export const LAUNCH_BY_DAYS = 14;
+/** The business profile is due within 10 days of paying. */
+export const PROFILE_BY_DAYS = 10;
 /** Wave 1 goes out on day 0; the phase starts on day 6. */
 export const PHASE_START_DAYS = 6;
 /** The first sale is expected within 7 days of the phase starting (the PRD's outcome target). */

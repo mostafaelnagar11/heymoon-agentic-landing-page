@@ -23,7 +23,7 @@
  */
 
 import { useState } from "react";
-import { CaretDown, Trash, WarningCircle } from "@phosphor-icons/react";
+import { CaretDown, Trash } from "@phosphor-icons/react";
 import { Btn, Sheet } from "../ui";
 import { Section, Surface } from "./kit";
 import { AutonomyView } from "./AutonomyView";
@@ -33,6 +33,8 @@ import {
   ROLES, setRole, useRole } from "../../lib/store";
 import { track } from "../../lib/track";
 import { useT } from "../../lib/i18n";
+import { BusinessProfile } from "./BusinessProfile";
+import { InvoicesView } from "./InvoicesView";
 import { getRead } from "../../lib/agent/registry";
 
 const INDUSTRIES = [
@@ -100,13 +102,16 @@ function Picker({ label, value, onChange, options, placeholder }: {
 const TABS = [
   { key: "brand", label: "Brand" },
   { key: "team", label: "Team" },
-  { key: "billing", label: "Billing" },
+  /* Was "Billing" (VAT, licence, address). Now the launch's business profile step, in the design of 21 Oct. */
+  { key: "business", label: "Business profile" },
+  /* The invoices themselves, one per paid phase (21 Oct). */
+  { key: "invoices", label: "Invoices" },
   { key: "account", label: "Account" },
   { key: "autonomy", label: "Autonomy" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
-export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
+export function SettingsView({ initialTab = "brand", onBack }: { initialTab?: Tab; onBack?: () => void }) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const { locale } = useT();
   const account = useAccount();
@@ -124,7 +129,6 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
   const logo = read?.identity?.logo;
   const eligible = read?.eligibility?.state === "ok";
 
-  const billingDone = !!profile.vat.trim() && !!profile.tradeLicence.trim() && !!profile.street.trim();
 
   return (
     <div className="space-y-6">
@@ -218,55 +222,10 @@ export function SettingsView({ initialTab = "brand" }: { initialTab?: Tab }) {
 
       {tab === "team" && <TeamView host={url} brandName={brandName || url} />}
 
-      {tab === "billing" && (
-      <Section
-        title="Business and billing"
-        aside={
-          <span
-            className={`rounded-pill border px-2.5 py-1 text-[11px] font-semibold ${
-              billingDone
-                ? "border-good/25 bg-good/[0.07] text-good-deep"
-                : "border-danger/25 bg-danger/[0.07] text-danger"
-            }`}
-          >
-            {billingDone ? "Complete" : "Incomplete"}
-          </span>
-        }
-      >
-        <Surface className="p-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="VAT or TRN number"
-              dir="ltr"
-              value={profile.vat}
-              placeholder="300000000000003"
-              onChange={(vat) => setProfile({ vat })}
-            />
-            <Field
-              label="Trade licence"
-              value={profile.tradeLicence}
-              placeholder="The name on the licence"
-              onChange={(tradeLicence) => setProfile({ tradeLicence })}
-            />
-            <Field
-              label="Office street"
-              value={profile.street}
-              placeholder="Building and street"
-              onChange={(street) => setProfile({ street })}
-            />
-            <Field
-              label="City"
-              value={profile.city}
-              placeholder="City"
-              onChange={(city) => setProfile({ city })}
-            />
-          </div>
-          <div className="mt-4 flex items-start gap-2 rounded-control bg-wash p-3">
-            <WarningCircle size={14} weight="fill" aria-hidden className="mt-0.5 shrink-0 text-ink-faint" />
-            <p className="text-[11px] leading-4 text-ink-soft">Needed for your invoices.</p>
-          </div>
-        </Surface>
-      </Section>
+      {tab === "invoices" && <InvoicesView onOpenProfile={() => setTab("business")} />}
+
+      {tab === "business" && (
+        <BusinessProfile onBack={() => (onBack ? onBack() : setTab("brand"))} onDone={() => (onBack ? onBack() : setTab("brand"))} />
       )}
 
       {tab === "account" && (

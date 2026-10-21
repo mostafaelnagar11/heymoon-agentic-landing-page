@@ -39,7 +39,7 @@ import { useT } from "../../lib/i18n";
 
 const VIEW_LABEL: Record<DashboardView, string> = {
   home: "Dashboard", campaign: "Campaign", creators: "Creators", inbox: "Needs you",
-  ads: "Ads", activity: "Activity", autonomy: "Settings", settings: "Settings",
+  ads: "Ads", activity: "Activity", autonomy: "Settings", settings: "Settings", business: "Business profile",
 };
 
 /** One thing the panel shows: what was asked (if anything), the answer, and what it prepared. */

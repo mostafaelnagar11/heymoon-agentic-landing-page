@@ -33,7 +33,9 @@ export type DashboardView =
      it: the activity log and the inbox both link straight to a rule,
      and settings is where that rule now lives. Both keys open the same
      page; autonomy scrolls it to the table. */
-  | "autonomy" | "settings";
+  | "autonomy" | "settings"
+  /* Settings on its Business profile tab: where the launch tracker's profile step is done (21 Oct). */
+  | "business";
 
 export type DashboardIntent =
   /** Open a view. The assistant answers in a sentence and the page moves. */
