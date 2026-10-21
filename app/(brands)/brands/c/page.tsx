@@ -211,6 +211,7 @@ function ChatInner() {
   /* What waits on the sign-in: the read of the store the brand just confirmed, or (signed out later) the payment. */
   const gateRef = useRef<{ host: string; go: () => void; nudge?: string } | null>(null);
   const [gateHost, setGateHost] = useState<string | null>(null);
+  const justSignedIn = useRef(false);
   /* The chips the thread offers once Phase 1 is paid for. */
   /* Until the brief is approved the brand's next step leads and the dashboard is the last choice (PRD v0.2, H1). */
   const postChips = launching && nextBrandStep(camp)
@@ -421,7 +422,7 @@ function ChatInner() {
         afterRead(storedRead);
         return;
       }
-      push({ kind: "say", text: `Reading ${readUrl} now. It takes about 15 seconds.` });
+      push({ kind: "say", text: `On it. Reading ${readUrl} now, give me about 15 seconds.` });
       push({ kind: "read", url: readUrl });
       return;
     }
@@ -472,7 +473,7 @@ function ChatInner() {
          submission. Reacting to the work rather than to the shop keeps
          it true for every store: nobody's catalogue is being flattered,
          the agent is just pleased with what it has to work with. */
-      ask(`There's plenty to work with here. Does this look right?`, ["Looks right", "Something's off"]);
+      ask(`Done. There's a lot to work with here. Does this look right to you?`, ["Looks right", "Something's off"]);
     } else {
       /* What did not clear is on the block below, in the words the
          read itself used. Repeating it here would put someone else's
@@ -586,20 +587,20 @@ function ChatInner() {
     /* Every figure — the total, the VAT, what Phase 1 guarantees against
        the plan's own multiple — is on the card below. The sentence
        introduces it and gets out of the way. */
-    say("Here's exactly what you're agreeing to.");
+    say("Here's everything you're agreeing to. Add your company details and you're set.");
     push({ kind: "funding", requestId: req.id });
   };
 
   const revealReady = () => {
     setWait(null);
-    ask("Shall we start Phase 1?", READY_CHIPS);
+    ask("Ready to kick off Phase 1?", READY_CHIPS);
   };
 
   /** Everything is settled: build the plan. */
   const buildNow = (r: BrandRead) => {
     setPendingRead(null);
     setWait(null);
-    say("Great, building your plan now.");
+    say("Great. Building your plan now…");
     startBuild(r);
   };
 
@@ -675,9 +676,9 @@ function ChatInner() {
            three phases and what the $1,000 includes are a chip away, not printed by default: Phase 1 was explained
            before the build. */
         const crew = v.creators.value.length;
-        say(`Here's your plan: ${fmtUSD(v.budget.value)} in, ${fmtUSD(v.price.revenueTarget.value)} in guaranteed sales, from ${countWord(crew)} creator${crew === 1 ? "" : "s"}.`);
+        say(`Here's your plan. ${capFirst(countWord(crew))} creator${crew === 1 ? "" : "s"} to start, ${fmtUSD(v.budget.value)} in and ${fmtUSD(v.price.revenueTarget.value)} in sales guaranteed.`);
         push({ kind: "plan-card" });
-        ask("How does it look?", ["Looks right", "Change something"]);
+        ask("How does that look?", ["Looks right", "Change something"]);
         setWait("reveal-plan");
       }
     );
@@ -715,21 +716,24 @@ function ChatInner() {
       never what the plan is. */
   const askRole = (r: BrandRead) => {
     const name = r.identity?.name.value;
-    say(`Good. What's your role${name ? ` at ${name}` : ""}?`);
+    /* "You're in" only straight after signing in; a brand already signed in just gets the question. */
+    const fresh = justSignedIn.current;
+    justSignedIn.current = false;
+    say(`${fresh ? "You're in. So, w" : "Great. W"}hat's your role${name ? ` at ${name}` : ""}?`);
     setAsking({ q: "", options: ROLES.map((x) => x.label) });
   };
 
   const onRole = (r: BrandRead, key: (typeof ROLES)[number]["key"]) => {
     setRole(key);
     roleRef.current = key;
-    say(salesFirst(key) ? "Got it, I'll keep this about sales." : "Got it, I'll show you the creators and what they'll post.");
+    say(salesFirst(key) ? "Perfect, I'll keep this focused on sales." : "Perfect, I'll focus on the creators and what they'll post.");
     nextStep(r);
   };
 
   /** Their goal, in their words (brand flows, P0). */
   const askGoal = (r: BrandRead) => {
     const name = r.identity?.name.value;
-    ask(`What would you like this campaign to do for ${name ?? "you"}?`, [...GOALS]);
+    ask(`What's the main thing you want this campaign to do for ${name ?? "you"}?`, [...GOALS]);
     setWait("goal");
   };
 
@@ -741,14 +745,14 @@ function ChatInner() {
       setWait("launch-note");
       return;
     }
-    askFocus(r, text === GOALS[2] ? "Then let's start where it's safest: what already sells." : "Then let's start with what already sells.");
+    askFocus(r, text === GOALS[2] ? "Then let's play it safe and lean on what already sells." : "Then let's lean on what already sells.");
   };
 
   /** What it pushes, asked in words (19 Oct review: "in conversation instead of the picker"). */
   const askFocus = (r: BrandRead, lead: string) => {
     const top = (r.bestsellers?.value ?? []).slice(0, 3).map((p) => p.name);
     if (!top.length) { setScope({ ...scopeRef.current, focus: { kind: "bestsellers" } }); nextStep(r); return; }
-    ask(`${lead ? `${lead} ` : ""}Your bestsellers are the ${listOf(top)}. Should creators push those, or something else?`, ["Push the bestsellers", "Something else"]);
+    ask(`${lead ? `${lead} ` : ""}Your bestsellers right now are the ${listOf(top)}. Want creators to push those, or something else?`, ["Push the bestsellers", "Something else"]);
     setWait("focus");
   };
 
@@ -760,7 +764,7 @@ function ChatInner() {
 
   /** Where it runs: the markets the read found (MarketsPick), with the regional-store note. */
   const askMarkets = (r: BrandRead) => {
-    say("And where should it run?");
+    say("Good call. Which markets should we run in?");
     push({ kind: "pick-markets", readId: r.id });
     setAsking({ q: "", options: [] });
   };
@@ -786,11 +790,11 @@ function ChatInner() {
     const [b1, b2, b3] = PHASE_BUDGETS;
     const [, m2, m3] = PHASE_MULTIPLES;
     say(
-      `Before I build it, here's how it works:\n\n` +
-      `• Phase 1: ${fmtUSD(b1)}, with ${fmtUSD(b1)} in sales guaranteed.\n` +
-      `• At 80%, Phase 2 opens: ${fmtUSD(b2)} at ${m2}x. Then Phase 3: ${fmtUSD(b3)} at ${m3}x.\n` +
-      `• Fall short, and you get back the same share of what you paid.\n\n` +
-      `That's ${k(t.budget)} in, for ${k(t.revenue)} in guaranteed sales.`
+      `Quick heads-up on how it works before I build it:\n\n` +
+      `• You start with ${fmtUSD(b1)}, and we guarantee ${fmtUSD(b1)} in sales.\n` +
+      `• Hit 80% and Phase 2 unlocks: ${fmtUSD(b2)} for ${m2}x. Then Phase 3: ${fmtUSD(b3)} for ${m3}x.\n` +
+      `• If we fall short, you get the missed share back.\n\n` +
+      `All in, that's ${k(t.budget)} for ${k(t.revenue)} in guaranteed sales.`
     );
     setAsking({ q: "", options: PHASE1_CHIPS });
     setWait("phase1");
@@ -944,7 +948,7 @@ function ChatInner() {
   /** A store link: read it. No sign-in first (21 Oct): the read is the wow moment, so it runs before any ask. */
   const readStore = (url: string) => {
     setScope({});
-    say(`Reading ${url} now. It takes about 15 seconds.`);
+    say(`On it. Reading ${url} now, give me about 15 seconds.`);
     push({ kind: "read", url });
     runRead(url);
   };
@@ -961,7 +965,7 @@ function ChatInner() {
     setSignIn(true);
   };
   /** The save-it ask after the read: the brand has seen the value, and is about to answer questions and get a plan. */
-  const SAVE_ASK = "Great, let's sign you in so I can save this.";
+  const SAVE_ASK = "Great, let's sign you in so I can save all this.";
   const SAVE_NUDGE = "No problem. Sign in whenever you're ready, and I'll save this and build your plan.";
 
   /** A brand name: find its store, and ask which when there are several. */
@@ -1900,6 +1904,7 @@ function ChatInner() {
         onVerified={(name) => {
           setSignIn(false);
           push({ kind: "user", text: `Signed in as ${name}` });
+          justSignedIn.current = true;
           const g = gateRef.current;
           gateRef.current = null;
           setGateHost(null);
@@ -1912,6 +1917,8 @@ function ChatInner() {
 
 /** The landing entry (`?read=`/`?q=`) this page load has already used. */
 let usedEntry: string | null = null;
+
+const capFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** After the brief, while the business profile is still to do: the dashboard step leads. */
 const PROFILE_CHIPS = ["Complete business profile", "What happens next?", "Go to the dashboard"];
