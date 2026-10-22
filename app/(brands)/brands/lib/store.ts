@@ -700,6 +700,15 @@ export const correctRead = (readId: string, c: Correction, apply: (r: BrandRead)
     return { reads: { ...s.reads, [readId]: next } };
   });
 
+/** A plan id this conversation can own. Plan ids are deterministic (the same read and answers rebuild the same plan,
+    which deep links rely on), so a second campaign for the same store came out with the first one's id, shared its
+    confirmed payment, and lost its "Start Phase 1". Taken by another conversation's campaign, the id gets this
+    conversation's suffix. */
+export const uniquePlanId = (id: string) => {
+  const taken = Object.values(state.campaigns).some((c) => c.planId === id && c.threadId !== state.activeThreadId);
+  return taken ? `${id}-${state.activeThreadId}` : id;
+};
+
 export const putPlan = (p: Plan, makeActive = true) =>
   set((s) => ({ plans: { ...s.plans, [p.id]: p }, activePlanId: makeActive ? p.id : s.activePlanId }));
 

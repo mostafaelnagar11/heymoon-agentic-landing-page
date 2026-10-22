@@ -45,7 +45,7 @@ import {
   ROLES, accessFor, claimBrand, requestAccess, salesFirst, setRole, useRole,
   push, putApproval, putCampaign, putFunding, putPlan, putRead, threadIsEmpty,
   useActivePlan, useAds, useCampaigns, useActiveThreadId, useCan, useLivePhase, usePaid, usePhaseRequested,
-  accountLive, activeCampaignLive, isLaunching, markSent, profilePending, startConversation, teamRoleFor,
+  accountLive, activeCampaignLive, isLaunching, markSent, profilePending, uniquePlanId, startConversation, teamRoleFor,
   connectStore, nextBrandStep, patchLaunch, recordCheck, useActiveCampaign, useStore, type Campaign, type PanelView,
 } from "../lib/store";
 import { fmtUSD } from "../lib/mock/campaigns";
@@ -634,7 +634,8 @@ function ChatInner() {
           ? { ...v1.brief.value, mustSay: { ...v1.brief.value.mustSay, value: v1.brief.value.mustSay.value.map((l) => (/^Cover one of:/.test(l) ? lead : l)) } }
           : v1.brief.value;
         if (lead) v1 = { ...v1, brief: { ...v1.brief, value: b0 } };
-        const v: Plan = sc.focus ? { ...v1, focus: sc.focus } : v1;
+        const v2: Plan = sc.focus ? { ...v1, focus: sc.focus } : v1;
+        const v: Plan = { ...v2, id: uniquePlanId(v2.id) };
         /* A half-built plan is not a plan. The build assembles in
            order — markets, audience, crew, price, brief, ladder — so a
            run stopped early has real figures in the fields it reached
