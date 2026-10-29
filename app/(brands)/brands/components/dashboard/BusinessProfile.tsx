@@ -247,7 +247,7 @@ export function BusinessProfile({ onBack, onDone }: { onBack: () => void; onDone
         <div className="flex flex-col gap-3 rounded-card border border-hairline bg-white px-5 py-4 shadow-pop sm:flex-row sm:items-center">
           <p className="min-w-0 flex-1 text-meta leading-5 text-ink-faint">
             {canSave
-              ? <span className="inline-flex items-center gap-1.5 text-good-deep"><CheckCircle size={14} weight="fill" aria-hidden />Ready to save. Moontech starts matching your creators once it&apos;s in.</span>
+              ? <span className="inline-flex items-center gap-1.5 text-good-deep"><CheckCircle size={14} weight="fill" aria-hidden />Ready to save. HeyMoon starts matching your creators once it&apos;s in.</span>
               : `VAT number, legal name, city and street address are the minimum we need, ${by}.`}
           </p>
           <div className="flex shrink-0 items-center gap-2">

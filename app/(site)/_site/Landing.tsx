@@ -27,6 +27,9 @@ const RunStage = dynamic(() => import("./run/RunStage").then((m) => m.RunStage))
 const NumberSection = dynamic(() => import("./number/NumberSection").then((m) => m.NumberSection));
 const AgentsBand = dynamic(() => import("./agents/AgentsBand").then((m) => m.AgentsBand));
 const Connects = dynamic(() => import("./close/Connects").then((m) => m.Connects));
+/* 29 Oct review, brands only: the brand references under the hero, and the three things to know before paying. */
+const LogoStrip = dynamic(() => import("./proof/LogoStrip").then((m) => m.LogoStrip));
+const BeforeYouStart = dynamic(() => import("./proof/BeforeYouStart").then((m) => m.BeforeYouStart));
 const Close = dynamic(() => import("./close/Close").then((m) => m.Close));
 const Footer = dynamic(() => import("./close/Footer").then((m) => m.Footer));
 /* Client-only: the launcher shows after 4s or a first scroll and does nothing without JS, so its markup
@@ -60,7 +63,20 @@ export function Landing({ initial }: { initial: Audience }) {
                 <Hero />
               </LiftTrack>
               <Sheet>
-                <Swap>{(a) => (
+                {/* 29 Oct review: on brands the seven agents move up under the brand references ("I would move
+                    this visual further up the page"), and the ROAS ladder is followed by the three things to
+                    know before paying. Creators keep the original order. */}
+                <Swap>{(a) => a === "brands" ? (
+                  <>
+                    <Suspense fallback={null}><LogoStrip /></Suspense>
+                    <Suspense fallback={null}><AgentsBand audience={a} /></Suspense>
+                    <Suspense fallback={null}><RunStage audience={a} /></Suspense>
+                    <Suspense fallback={null}><WorkSection audience={a} /></Suspense>
+                    <Suspense fallback={null}><NumberSection audience={a} /></Suspense>
+                    <Suspense fallback={null}><BeforeYouStart /></Suspense>
+                    <Suspense fallback={null}><Connects audience={a} /></Suspense>
+                  </>
+                ) : (
                   <>
                     <Suspense fallback={null}><WorkSection audience={a} /></Suspense>
                     <Suspense fallback={null}><RunStage audience={a} /></Suspense>

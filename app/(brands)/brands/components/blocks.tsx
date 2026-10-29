@@ -20,7 +20,7 @@ import { Btn, Card, Eyebrow, Pill } from "./ui";
 import { EvidenceRow, Figure } from "./Evidence";
 import { READ_ORDER, ReadValue, readValueTree, srcFor } from "./ReadValue";
 import { TypeOn } from "./TypeOn";
-import { PHASE1_BUDGET, PHASE1_ROAS, READ_TASKS } from "../lib/agent/tools";
+import { PHASE1_BUDGET, PHASE1_ROAS, PHASE_BUDGETS, PHASE_MULTIPLES, READ_TASKS } from "../lib/agent/tools";
 import { shortfallLine } from "../lib/agent/guarantee";
 import { BILLING_COUNTRIES, vatOnBudget, vatRateFor } from "../lib/agent/billing";
 import {
@@ -75,6 +75,35 @@ export function ChangesBlock({ changes }: { changes: PlanChange[] }) {
 /* ------------------------------------------------------------------ */
 /* Starting a phase — the payment confirmation, inside the thread      */
 /* ------------------------------------------------------------------ */
+
+/* What a brand must know before it pays (Roula, 29 Oct, agreed with Alex and Phill): the ROAS path is fixed,
+   every creator gets a unique code that has to beat any site-wide discount, and HeyMoon chooses the creators.
+   On the payment card, above Pay, because every way to start a phase ends here: the "Start Phase 1" chip opens
+   this card without the phases card ever being shown. One line each. The landing says the same three things in
+   "Before you start" (app/(site)/_site/proof/BeforeYouStart.tsx). The path is read from the fixed phases. */
+function BeforeYouPay() {
+  const path = PHASE_BUDGETS.map((b, i) => `${fmtUSD(b)} at ${PHASE_MULTIPLES[i]}x`).join(", then ");
+  const rows: [string, string][] = [
+    ["A fixed ROAS path.", `${path}. The same for every brand; you don't set the ROAS.`],
+    ["A unique code per creator.", "It tracks every sale, so it has to beat any site-wide discount you run."],
+    ["HeyMoon chooses the creators.", "You don't select them. That is what lets the return be guaranteed."],
+  ];
+  return (
+    <div className="mt-3 rounded-control border border-hairline p-3">
+      <p className="text-meta font-semibold text-ink">Before you start</p>
+      <ul className="mt-2 space-y-1.5">
+        {rows.map(([title, body]) => (
+          <li key={title} className="flex gap-2">
+            <Check size={12} weight="bold" className="mt-1 shrink-0 text-brand" aria-hidden />
+            <span className="min-w-0 text-meta leading-5 text-ink-soft">
+              <span className="font-semibold text-ink">{title}</span> {body}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function FundingBlock({ req, onConfirmed, onCancelled }: {
   req: FundingRequest;
@@ -152,6 +181,8 @@ export function FundingBlock({ req, onConfirmed, onCancelled }: {
             </span>
           </li>
         </ul>
+
+        <BeforeYouPay />
 
         {/* Who it is billed to. All three are needed before Pay, and the UAE answer sets the VAT (billing.ts). */}
         <div className="mt-3 grid gap-3 rounded-control bg-brand/[0.02] p-3 sm:grid-cols-2">

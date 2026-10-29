@@ -1004,7 +1004,7 @@ export const advanceLaunch = (campaignId: string, at: number) =>
     const l = c?.launch;
     if (!c || !l || !l.briefApprovedAt || (!c.connectedStore && !l.legacyAt)) return {};
     if (!l.coupon) {
-      const coupon: CouponRules = { discount: 15, limits: { minOrder: true, onePerCustomer: true, endsWithPhase: true }, minOrder: 200, bestOfferBy: "the Moontech team, with the brand", at };
+      const coupon: CouponRules = { discount: 15, limits: { minOrder: true, onePerCustomer: true, endsWithPhase: true }, minOrder: 200, bestOfferBy: "the HeyMoon team, with the brand", at };
       return patchCampaignIn(s, campaignId, { launch: { ...l, coupon } });
     }
     if (!l.checkPassedAt) return patchCampaignIn(s, campaignId, { launch: { ...l, checkPassedAt: at } });

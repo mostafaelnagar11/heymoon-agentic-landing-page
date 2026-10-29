@@ -5,7 +5,7 @@
      6b Set discount rules    with the limits this platform can and cannot enforce, and the best-offer confirmation
      6c Store check           test code, free order, about two minutes, cancel, delete; one retry, then the team
      6d Approve the brief     MoonWriter drafts it; approving sets direction, not content
-   Then Moontech prepares and launches, and the dashboard shows the launch tracker until the first sale.
+   Then HeyMoon prepares and launches, and the dashboard shows the launch tracker until the first sale.
 
    Everything here is data the screens draw. In the product it comes from Orbit; the prototype keeps it here. */
 
@@ -41,8 +41,8 @@ export const PLATFORMS: Record<PlatformKey, PlatformInfo> = {
   },
   shopify: SHOPIFY_IN_REVIEW
     ? {
-        key: "shopify", name: "Shopify", route: "legacy", cta: "Have the team connect it", how: "Our Shopify app isn't listed yet, so the Moontech team sets your store up with you.",
-        ar: { name: "Shopify", cta: "اطلب من الفريق ربطه", how: "تطبيقنا على Shopify لم يُدرج بعد، لذا يجهّز فريق مون تك متجرك معك." },
+        key: "shopify", name: "Shopify", route: "legacy", cta: "Have the team connect it", how: "Our Shopify app isn't listed yet, so the HeyMoon team sets your store up with you.",
+        ar: { name: "Shopify", cta: "اطلب من الفريق ربطه", how: "تطبيقنا على Shopify لم يُدرج بعد، لذا يجهّز فريق هاي مون متجرك معك." },
       }
     : {
         key: "shopify", name: "Shopify", route: "app", cta: "Install on Shopify", how: "Install the HeyMoon app on Shopify.",
@@ -53,8 +53,8 @@ export const PLATFORMS: Record<PlatformKey, PlatformInfo> = {
     ar: { name: "Adobe Commerce", cta: "اربط Adobe Commerce", how: "أضف تكامل HeyMoon من لوحة إدارة Adobe Commerce." },
   },
   custom: {
-    key: "custom", name: "something else", route: "legacy", cta: "Have the team connect it", how: "HeyMoon has no connector for it yet, so the Moontech team connects it with you.",
-    ar: { name: "منصة أخرى", cta: "اطلب من الفريق ربطه", how: "لا يوجد لدى HeyMoon ربط لها بعد، لذا يربطها فريق مون تك معك." },
+    key: "custom", name: "something else", route: "legacy", cta: "Have the team connect it", how: "HeyMoon has no connector for it yet, so the HeyMoon team connects it with you.",
+    ar: { name: "منصة أخرى", cta: "اطلب من الفريق ربطه", how: "لا يوجد لدى HeyMoon ربط لها بعد، لذا يربطها فريق هاي مون معك." },
   },
 };
 export const PLATFORM_ORDER: PlatformKey[] = ["salla", "zid", "magento", "shopify", "custom"];

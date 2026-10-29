@@ -19,6 +19,8 @@ import { useIsoLayoutEffect } from "../lib/iso";
 import { useIsPhone, useMediaQuery, useReducedMotionPref } from "../lib/prefs";
 import { Headline } from "./Headline";
 import { Chips } from "./Chips";
+import { COPY } from "../copy";
+import { useAudience } from "../lib/audience";
 import s from "./hero.module.css";
 
 /** Which hero ships. "centered": white, the switch, the H1, the field and the chips centred, and nothing behind
@@ -68,7 +70,8 @@ function CenteredHero({}: HeroProps) {
               <AudienceSwitch placement="hero" surface="paper" />
             </div>
           </div>
-          <Headline stacked tone="paper" className={s.eHeadline} />
+          <Headline tone="paper" className={s.eHeadline} />
+          <HeroSub className={s.eSub} />
         </m.div>
         <m.div className={s.eField} data-lift="" data-probe-scroll="" style={content}>
           <Field id="hero" placement="hero" tone="paper" />
@@ -86,6 +89,15 @@ function CenteredHero({}: HeroProps) {
       />
     </section>
   );
+}
+
+/** The line under the H1 that says what HeyMoon does (29 Oct review). Brands only for now: an audience without
+    `heroSub` renders nothing. Keyed by audience so a switch fades the new line in. */
+function HeroSub({ className = "" }: { className?: string }) {
+  const { audience } = useAudience();
+  const sub = (COPY[audience] as { heroSub?: string }).heroSub;
+  if (!sub) return null;
+  return <p key={audience} className={`dawn-fade motion-safe:animate-fade-up [animation-delay:260ms] ${className}`}>{sub}</p>;
 }
 
 function HorizonHero({}: HeroProps) {

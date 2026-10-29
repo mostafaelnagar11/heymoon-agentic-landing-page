@@ -1068,7 +1068,7 @@ function ChatInner() {
   /** The answer to "what happens next?", from wherever the brand is. */
   const whatNext = () => {
     if (!paid)
-      return "You pay for Phase 1. Then, here: connect your store, set the discount, a quick store check, and the brief. Moontech matches the creators and launches, within 14 days of paying.";
+      return "You pay for Phase 1. Then, here: connect your store, set the discount, a quick store check, and the brief. HeyMoon matches the creators and launches, within 14 days of paying.";
     if (launching) {
       const c = activeCampaignLive();
       const l = c?.launch;

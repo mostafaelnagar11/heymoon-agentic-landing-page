@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import type { MotionStyle } from "motion/react";
 import type { Audience, CampaignPick, Platform } from "./data/types";
 
-export type Slot = "hero" | "work" | "run" | "number" | "agents" | "connects" | "close";
+export type Slot = "hero" | "logos" | "work" | "run" | "number" | "before" | "agents" | "connects" | "close";
 export type Surface = "night" | "paper" | "deep";
 export type SwitchPlacement = "hero" | "nav" | "close";
 export type Phase = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;

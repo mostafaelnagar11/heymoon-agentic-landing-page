@@ -18,9 +18,22 @@ export const SHARED = {
   close: "Close",                                                                                           // [NEW] launcher name while open
   reading: "Reading",                                                                                       // [A1][A5]
   waiting: "Waiting",                                                                                       // [PRODUCT]
-  signature: "HeyMoon.AI, a Saudi company",                                                                 // [A4][A7] gate G1
+  signature: "HeyMoon.AI",                                                                                 // [CHANGE] 29 Oct (Mostafa): HeyMoon only
   stages: ["Intake", "Matching", "Safety", "Creative", "Activation", "Optimization", "Learning"],            // [A4]
   footerNav: "Site",                                                                                        // [v1]
+  /* The footer's details (29 Oct review: "with zero information the page feels a bit scammy"). HeyMoon only
+     (Mostafa, 29 Oct): what it is, a phone number and the
+     legal pages. No email until there is a HeyMoon address. */
+  footer: {
+    about: "HeyMoon.AI runs creator campaigns for e‑commerce brands across the GCC, with the return guaranteed on every phase.",
+    contactLabel: "Contact", phone: "+971 4 440 3815", phoneHref: "tel:+97144403815",
+    legalLabel: "Legal", terms: "Terms and Conditions", privacy: "Privacy Policy",
+  },
+  /* The /terms and /privacy pages (29 Oct). [NEW] */
+  legal: {
+    back: "Back to HeyMoon.AI",
+    updated: "Last updated",
+  },
   footerLinks: { brands: "Brands", creators: "Creators", dashboard: "Login" },                              // [CHANGE] Mostafa 5 Oct: "Login", as in the nav
   /* The login dialog (Mostafa, 6 Oct: "login by country code + phone number and OTP"). [NEW] throughout, in the
      product's own words where it has them (the creators AccountSheet). */
@@ -50,26 +63,30 @@ export const COPY = {
   brands: {
     meta: {
       title: "HeyMoon.AI for brands",                                                                       // [NEW]
-      description: "Paste your store link. HeyMoon builds a complete creator campaign around what you sell, and guarantees the sales.", // [A4]
+      description: "Creator campaigns with a guaranteed ROAS. Seven AI agents match your bestsellers with creators across the GCC, run the campaign and guarantee the return on every phase.", // [CHANGE] 29 Oct review
     },
-    h1: {                                                                                                   // [A1]
-      sentence: "A campaign in fifteen seconds. Sales, guaranteed.",
-      desktop: ["A campaign in fifteen seconds.", "Sales, guaranteed."], gradDesktop: 1,
-      phone: ["A campaign in", "fifteen seconds.", "Sales, guaranteed."], gradPhone: 2,
+    /* 29 Oct review: say what HeyMoon is above the fold (creator campaigns), lead with the two selling points
+       (the creators and the guaranteed ROAS), and drop "fifteen seconds" (not true, and not a selling point). */
+    h1: {
+      sentence: "Creator campaigns, with the ROAS guaranteed.",
+      desktop: ["Creator campaigns,", "with the ROAS guaranteed."], gradDesktop: 1,
+      phone: ["Creator campaigns,", "with the ROAS", "guaranteed."], gradPhone: 2,
     },
+    heroSub: "Seven AI agents match your bestsellers with creators across the GCC and guarantee the return.", // [NEW] 29 Oct; cut to one line (Mostafa: "too much")
     field: {                                                                                                // [A1]
       label: "Your store link or brand name", placeholder: "yourstore.com", cta: "Start", going: "Reading", // [CHANGE] 19 Oct review: a name or a question goes to the chat
       invalid: "Type your store link or your brand's name.", icon: "globe", action: "/brands/c", param: "read", inputMode: "url",
     },
-    chips: ["No forms to fill in", "No brief to write", "No agency to manage"],                              // [A1]
+    chips: ["Creators across the GCC", "Guaranteed ROAS on every phase", "No agency to manage"],              // [CHANGE] 29 Oct: the two USPs first; no creator count until it is confirmed
     nav: { dashboard: "Login", dashboardHref: "/brands/dashboard", start: "Start" },                          // [CHANGE] Mostafa 5 Oct: "Login"; Start [NEW on brands]
     work: {
       h2: "One link. The whole campaign.",                                                                  // [A2]
       sub: "Paste your store link. HeyMoon builds a complete creator campaign around what you sell, and guarantees the sales.", // [A2]
       acts: [                                                                                               // [A2] cards, as the act rail
-        { title: "HeyMoon reads your store", body: (_: DemoData) => "Catalogue, prices, voice and markets. In about fifteen seconds." },
-        { title: "See everything. Before you pay anything.", body: (_: DemoData) => "The whole campaign, built and priced before you approve it: the markets, the creators, the budget and the brief." },
-        { title: "Start small. Scale on results.", body: (d: DemoData) => `Your first campaign is ${d.brands.plan.pay.text}, the same for every brand. The next is offered only when this one reaches ${d.brands.unlockPct}% of its target.` },
+        { title: "HeyMoon reads your store", body: (_: DemoData) => "Catalogue, prices, voice and the markets you already ship to." },
+        /* 29 Oct: brands do not see or pick the creators before paying (Roula: "brands cannot select creators"). */
+        { title: "See the plan before you pay.", body: (_: DemoData) => "The markets, the products, the budget and the sales it guarantees. HeyMoon's agents choose the creators; brands don't pick them." },
+        { title: "Start at $1,000. Scale on results.", body: (d: DemoData) => `Phase 1 is ${d.brands.plan.pay.text} for every brand, at 1x. Phase 2 (2x) and Phase 3 (3x) are offered when the phase before reaches ${d.brands.unlockPct}% of its target.` },
       ],
       stamp: "Store details in",                                                                            // [NEW] + read.totalText
       try: "Try it with your store",                                                                        // [INPUTS]
@@ -82,7 +99,7 @@ export const COPY = {
       creditLabel: "Done by",                                                                               // [CHANGE C2]
       steps: [                                                                                              // [A3]
         { title: "Paste your store link", body: "HeyMoon reads the catalogue, the prices, the voice and the markets it already ships to.", credit: (_: DemoData) => "MoonShot AI" },
-        { title: "The plan arrives, priced", body: "Markets, creators, products and the brief, with the sales figure it guarantees. Change anything.", credit: (_: DemoData) => "MoonMatch AI" },
+        { title: "The plan arrives, priced", body: "Markets, products and the brief, with the sales it guarantees. MoonMatch AI picks the creators.", credit: (_: DemoData) => "MoonMatch AI" },
         { title: "You start Phase 1", body: "One payment, the same for every brand. Nothing after it is charged or committed.", credit: (_: DemoData) => "You" }, // [CHANGE C2] gate G9
         { title: "The sales land on the number", body: "Three phases run to the sales HeyMoon guaranteed on your budget: 1x, then 2x, then 3x.", credit: (_: DemoData) => "MoonScore AI" }, // [CHANGE] Mostafa 18 Oct: fixed phase multiples
       ],
@@ -94,8 +111,11 @@ export const COPY = {
       figureNote: (budget: string, multiples: string) => `${budget} across three phases, at ${multiples}`,  // [CHANGE] Mostafa 18 Oct: "at 1x, 2x and 3x", not one blended figure
       // No ladderLine (C14): Phases 2 and 3 are indicative (D4) and never stated beside "Guaranteed sales".
       // Mostafa, 18 Oct: "the new roas is phase 1 x1 phase 2 x2 phase 3x". The multiples are set, not picked.
-      roasH2: "1x, 2x, 3x. HeyMoon signs every phase.",                                                     // [CHANGE] Mostafa 18 Oct
-      roasBody: "Every phase carries its own guarantee, the same for every brand: $1,000 at 1x, $2,000 at 2x and $3,000 at 3x. Nothing to size, and nothing to negotiate.", // [CHANGE] Mostafa 18 Oct: "1x 1000 = 1000$, 2x $2000 = 4000$"
+      /* 29 Oct review: the dial read as a ROAS you choose ("You set the ROAS"); the ladder shows the climb instead. */
+      roasH2: "1x, then 2x, then 3x. The return climbs.",
+      roasBody: "Three fixed phases, the same for every brand. Phase 1 proves the creators sell at 1x. Phase 2 doubles the return and Phase 3 triples it.",
+      roasFixed: (pct: number) => `You don't set the ROAS. Each phase is offered when the one before reaches ${pct}% of its target, and each carries its own guarantee.`,
+      ladderPay: "You pay", ladderSales: "Sales, guaranteed",
       climb: "It climbs as the campaign earns it",                                                          // [A4]
       chip: (r: Rung) => `P${r.phaseNo} ${r.multipleText}`,                                                 // [A4]
       dialLabel: "Guaranteed ROAS", dialNote: "1x, 2x and 3x, blended",                                    // [CHANGE] Mostafa 18 Oct
@@ -112,6 +132,17 @@ export const COPY = {
       shortExample: "An example, not a forecast.",                                                          // [CHANGE] Mostafa 6 Oct
     },
     agents: { h2: "Seven agents run the campaign.", body: "Each one owns a stage, and each one signs the work it did." }, // [A4]
+    /* 29 Oct: the three things a brand must know before paying (Roula, with Alex and Phill). */
+    before: {
+      eyebrow: "Before you start",
+      h2: "Three things to know before you pay.",
+      items: [
+        { title: "The ROAS path is fixed", body: "$1,000 at 1x, then $2,000 at 2x, then $3,000 at 3x. The same three phases for every brand, so you know the return before you commit." },
+        { title: "Every creator gets a unique discount code", body: "It is how every sale is tracked to the creator who made it, so it has to be higher than any site-wide discount you run." },
+        { title: "HeyMoon's agents choose the creators", body: "MoonMatch AI matches creators to your products and markets. Brands don't select creators, and that is what lets HeyMoon guarantee the return." },
+      ],
+    },
+    logos: { eyebrow: "Brands on HeyMoon" },          // [NEW] 29 Oct: placeholder tiles until the approved logos arrive
     connects: { h2: "Connects to the store you already have.", body: "One tap, after you pay. It reads the orders that use a creator's code, and nothing else." }, // [A4] gate G4
     close: {
       h2: "Paste your store link.", h2Phone: ["Paste your", "store link."],                                // [A4]

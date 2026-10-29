@@ -1,0 +1,37 @@
+/* The brand ticker (LogoStrip.tsx; Mostafa, 29 Oct: "make it carousel"). Full bleed, faded at both
+   edges, one slow linear loop. The track holds COPIES identical sets; it moves by one set (100% / COPIES), where
+   the next set sits exactly where the first began, so the loop has no seam. Each set ends with the gap as
+   padding, so the gap between sets equals the gap inside one. Four sets keep a 2560px screen covered while the
+   track is a whole set along (a set is about 1,100px).
+   Motion follows rule 2.4.8 through useActive: it runs only while in view, the page is visible, the nav's pause
+   is off and motion is not reduced (data-on). It also holds while pointed at. Reduced motion is pure CSS, so the
+   server HTML is already right: one centred, wrapping row, the copies hidden. */
+.marquee {
+  --gap: 64px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.track {
+  display: flex; width: max-content;
+  animation: marquee 36s linear infinite;
+  animation-play-state: paused;
+}
+.marquee[data-on] .track { animation-play-state: running; }
+.marquee[data-on]:hover .track { animation-play-state: paused; }
+.set {
+  display: flex; flex: none; align-items: center;
+  gap: var(--gap); padding-inline-end: var(--gap);
+}
+@keyframes marquee { to { transform: translateX(-25%); } }       /* 100% / COPIES */
+@keyframes marquee-rtl { to { transform: translateX(25%); } }
+:global([dir="rtl"]) .track { animation-name: marquee-rtl; }
+
+@media (max-width: 639px) { .marquee { --gap: 44px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee { -webkit-mask-image: none; mask-image: none; padding-inline: var(--gutter); }
+  .track { animation: none; width: auto; }
+  .set { flex: 1 1 auto; flex-wrap: wrap; justify-content: center; column-gap: 40px; row-gap: 28px; padding-inline-end: 0; }
+  .set ~ .set { display: none; }
+}
