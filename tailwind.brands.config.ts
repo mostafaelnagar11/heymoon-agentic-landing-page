@@ -68,20 +68,21 @@ const config: Config = {
           500: "#7C5CE0",
           400: "#9B7BF0",
           300: "#A78BFA",
-          100: "#F3EFFC",
-          50: "#F6F4FC",
+          100: "#F5F3FD",
+          50: "#FBFAFE",
         },
         main: { DEFAULT: "#4D2FB0", 10: "rgba(77,47,176,0.10)", 80: "rgba(77,47,176,0.80)" },
         /* Surfaces. `lilac` is the tinted tile and the active rail row;
            `canvas` the ground a page rests on; `paper` the landing's
            warm ground, which the creator app calls `ground`. */
-        lilac: "#F3EFFC",
-        wash: "#F3EFFC",
-        canvas: "#F6F4FC",
+        /* Lightened on 27 Oct: the ground reads near-white with a trace of violet, the tints one step paler. */
+        lilac: "#F5F3FD",
+        wash: "#F8F7FD",                 /* read-only fields, hint boxes, empty states, hovers */
+        canvas: "#FBFAFE",
         paper: "#FCFBF8",
         ground: "#FCFBF8",
         rail: "#FFFFFF",
-        track: "#EFEBFA",
+        track: "#F1EEFB",
         deep: "#141229",
         night: "#161722",
         line: { DEFAULT: "#EBEBEB", soft: "#EEEEEE" },
