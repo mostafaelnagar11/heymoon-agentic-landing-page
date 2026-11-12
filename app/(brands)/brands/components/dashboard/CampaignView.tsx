@@ -20,7 +20,7 @@
 import { CaretRight, Lightning, TrendUp, Warning } from "@phosphor-icons/react";
 import { pace, phaseTitle, UNLOCK_AT, type Phase } from "../../lib/mock/campaigns";
 import { adOfCampaign,
-  campaignLabel, openCampaign, openPhase, showCampaignList, useActiveCampaign, useActivity, useAds,
+  campaignLabel, openCampaign, openPhase, showCampaignList, simulateDays, useActiveCampaign, useActivity, useAds,
   useCampaignPhases, useDrill, useLivePhase, type Campaign,
 } from "../../lib/store";
 import { CampaignsList } from "./CampaignsList";
@@ -160,6 +160,7 @@ function Crumbs({ campaign, phase }: { campaign: Campaign; phase: Phase | null }
 }
 
 function OneCampaign() {
+  const camp = useActiveCampaign();
   const phase = useLivePhase();
   const phases = useCampaignPhases();
   const ads = useAds();
@@ -198,6 +199,16 @@ function OneCampaign() {
       <section className="glass p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <TileHead icon={TrendUp} label="Sales by day" />
+          {/* The prototype's clock, dashed like the launch tracker's demo steps, and said to be one. */}
+          {phase.dayOfPhase !== null && phase.plannedDays !== null && phase.dayOfPhase < phase.plannedDays && camp && (
+            <button
+              type="button"
+              onClick={() => simulateDays(camp.id)}
+              className="rounded-pill border border-dashed border-brand/40 bg-white/60 px-3 py-1 text-meta font-semibold text-brand transition hover:bg-white"
+            >
+              Demo: jump to day {Math.min(phase.plannedDays, (Math.floor(phase.dayOfPhase / 10) + 1) * 10)}
+            </button>
+          )}
           <span className={`ms-auto inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-meta font-semibold ${
             crossed ? "bg-good/10 text-good-deep" : "bg-brand/10 text-brand"
           }`}>

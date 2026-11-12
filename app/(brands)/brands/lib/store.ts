@@ -23,7 +23,7 @@ import type {
 import { rememberRead } from "./agent/registry";
 import { withBilling, type Billing } from "./agent/billing";
 import { hash } from "./agent/rng";
-import { ADS, PHASES, draftsFor, fmtUSD, type Phase } from "./mock/campaigns";
+import { ADS, PHASES, UNLOCK_AT, draftsFor, fmtUSD, type Phase } from "./mock/campaigns";
 import { FIRST_SALE_DAYS, LAUNCH_BY_DAYS, PHASE_START_DAYS, STAGES, plusDays, type CouponRules, type Stage, type StageKey } from "./agent/connect";
 
 /* ------------------------------------------------------------------ */
@@ -1036,6 +1036,30 @@ export const recordFirstSale = (campaignId: string, amount: number, at: number) 
     const phases = c.phases.map((p, i) => (i === 0 ? { ...p, rev: p.rev + amount } : p));
     const next = patchCampaignIn(s, campaignId, { phases, launch: { ...l, firstSaleAt: at } });
     return { ...next, activity: withPhaseActivity({ ...s, ...next }, at) };
+  });
+
+/** Prototype only, like the launch tracker's demo steps: the running phase moves on to its next tenth day (1 → 10 →
+    20 → 30) at a steady daily rate a little over the straight run at target, so the sales chart, the pace and the
+    tiles have days to show (12 Nov: "simulate 10 days in this chart"). Crossing 80% of the target opens the next
+    phase, as the ladder says it does. */
+export const simulateDays = (campaignId: string) =>
+  set((s) => {
+    const c = s.campaigns[campaignId];
+    if (!c) return {};
+    const i = c.phases.findIndex((p) => p.status === "live");
+    const p = c.phases[i];
+    if (!p || !p.revTarget || !p.plannedDays || !p.dayOfPhase) return {};
+    const to = Math.min(p.plannedDays, (Math.floor(p.dayOfPhase / 10) + 1) * 10);
+    const step = to - p.dayOfPhase;
+    if (step <= 0) return {};
+    const perDay = (p.revTarget / p.plannedDays) * 1.6;
+    const rev = Math.round(p.rev + perDay * step);
+    const phases = c.phases.map((x, k) => (k === i ? { ...x, dayOfPhase: to, rev } : x));
+    if (rev >= p.revTarget * UNLOCK_AT) {
+      const n = phases.findIndex((x, k) => k > i && x.status === "locked");
+      if (n >= 0) phases[n] = { ...phases[n], status: "ready" as const };
+    }
+    return patchCampaignIn(s, campaignId, { phases });
   });
 
 /** A plan emailed before paying (brand flows, P0 "leaves" and P1 "someone else decides"). */

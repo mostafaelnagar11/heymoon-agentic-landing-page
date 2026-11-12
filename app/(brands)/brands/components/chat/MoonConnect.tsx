@@ -4,7 +4,7 @@
 
    Four cards, one per step, each answered once and then folded to a line that says what was done:
      ConnectBlock      the route for the platform the read found; a team route for Shopify (app in review) and custom
-     DiscountBlock     the code's discount and limits, what this platform can't enforce, the best-offer confirmation,
+     DiscountBlock     the code's discount and limits, what this platform can't enforce,
                        then a preview to Confirm or Cancel
      StoreCheckBlock   a test order: test code, free order, about two minutes, cancel, delete; one retry, then the team
      BriefReviewBlock  MoonWriter's brief, files, Approve. Approving sets direction, not content
@@ -242,7 +242,6 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
   const [customText, setCustomText] = useState(PRESETS.includes(start) ? "" : String(start));
   const [limits, setLimits] = useState<Partial<Record<LimitKey, boolean>>>({ minOrder: true, onePerCustomer: true, endsWithPhase: true });
   const [minOrder, setMinOrder] = useState(200);
-  const [best, setBest] = useState(false);
   const [preview, setPreview] = useState(false);
   useStepViewed(camp, "6b", !camp.launch?.coupon);
 
@@ -294,7 +293,7 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
             key={d}
             type="button"
             aria-pressed={!custom && discount === d}
-            onClick={() => { setCustom(false); setCustomText(""); setDiscount(d); setBest(false); }}
+            onClick={() => { setCustom(false); setCustomText(""); setDiscount(d); }}
             className={`num grid h-14 place-items-center rounded-[14px] text-[18px] font-bold tracking-[-0.02em] transition ${chipOn(!custom && discount === d)}`}
           >
             {d}%
@@ -306,7 +305,7 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
             aria-label={t("mc.otherDiscount")}
             type="text" inputMode="numeric" value={customText}
             onFocus={() => setCustom(true)}
-            onChange={(e) => { setCustom(true); setCustomText(e.target.value.replace(/\D/g, "").slice(0, 2)); setBest(false); }}
+            onChange={(e) => { setCustom(true); setCustomText(e.target.value.replace(/\D/g, "").slice(0, 2)); }}
             onBlur={() => { if (Number(customText) > 90) setCustomText("90"); }}
             placeholder="—"
             className="num w-12 bg-transparent text-center text-[15px] font-bold text-ink outline-none placeholder:text-ink-faint"
@@ -355,13 +354,9 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
         })}
       </ul>
 
-      <label className="grad-ws mt-3 flex cursor-pointer items-start gap-2.5 rounded-[14px] px-3.5 py-3 text-body text-ink ring-1 ring-inset ring-brand/[0.1]">
-        <input type="checkbox" checked={best} onChange={(e) => setBest(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#4D2FB0]" />
-        <span>{custom && !typed ? t("mc.bestOfferAny") : tf("mc.bestOffer", { n: value })}</span>
-      </label>
-
+      {/* No "best offer on my site" tick any more (12 Nov: removed at the owner's ask). */}
       <div className="mt-4 flex gap-2">
-        <Btn disabled={!best || (custom && !typed)} onClick={() => setPreview(true)}>{t("mc.preview")}</Btn>
+        <Btn disabled={custom && !typed} onClick={() => setPreview(true)}>{t("mc.preview")}</Btn>
         <Btn variant="ghost" onClick={() => { clicked(camp, "NOT_NOW", "6b"); onCancel(); }}>{t("mc.notNow")}</Btn>
       </div>
     </Card>
