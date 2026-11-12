@@ -19,7 +19,7 @@
 
 import { CaretRight, Lightning, TrendUp, Warning } from "@phosphor-icons/react";
 import { pace, phaseTitle, UNLOCK_AT, type Phase } from "../../lib/mock/campaigns";
-import {
+import { adOfCampaign,
   campaignLabel, openCampaign, openPhase, showCampaignList, useActiveCampaign, useActivity, useAds,
   useCampaignPhases, useDrill, useLivePhase, type Campaign,
 } from "../../lib/store";
@@ -66,7 +66,7 @@ export function CampaignView({ tab = "campaign", onTab }: {
   const phases = useCampaignPhases();
   const ads = useAds();
   const waiting = campaign
-    ? ads.filter((a) => a.state === "waiting" && campaign.adIds.includes(a.id)).length
+    ? ads.filter((a) => a.state === "waiting" && adOfCampaign(campaign, a)).length
     : 0;
 
   /* The list only answers for the Phases tab. Asking for Ads from

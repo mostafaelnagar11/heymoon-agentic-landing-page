@@ -134,8 +134,10 @@ export function RevenueChart({ phase, projection, height = 360 }: {
                 {pace.off
                   ? <path d={`M${pace.ex - 4} ${pace.ey + 6} L${pace.ex} ${pace.ey} L${pace.ex + 4} ${pace.ey + 6}`} fill="none" stroke="#7A47CE" strokeOpacity="0.8" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
                   : <circle cx={pace.ex} cy={pace.ey} r="3.5" fill="#7A47CE" fillOpacity="0.6" />}
-                <text x={pace.off ? pace.ex + 9 : pace.ex - 8} y={pace.off ? pace.ey + 11 : pace.ey + 15} textAnchor={pace.off ? "start" : "end"} className="fill-main text-[10.5px] font-semibold tabular-nums">
-                  on pace · {fmtUSD(projection.onPace)}
+                {/* Off the scale, the figure goes in the top corner rather than beside an arrow that can sit at the
+                    chart's left edge, where a label beside it was cut off. */}
+                <text x={pace.off ? W - PAD.r : pace.ex - 8} y={pace.off ? PAD.t + 10 : pace.ey + 15} textAnchor="end" className="fill-main text-[10.5px] font-semibold tabular-nums">
+                  {pace.off ? "↑ " : ""}on pace · {fmtUSD(projection.onPace)}
                 </text>
               </g>
               {moved && lift && (
@@ -143,9 +145,9 @@ export function RevenueChart({ phase, projection, height = 360 }: {
                   {moved.off
                     ? <path d={`M${moved.ex - 4} ${moved.ey + 6} L${moved.ex} ${moved.ey} L${moved.ex + 4} ${moved.ey + 6}`} fill="none" stroke={MOVES_HUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     : <circle cx={moved.ex} cy={moved.ey} r="4" fill={MOVES_HUE} />}
-                  {/* Off the top it reads to the left of its own arrow, so it never meets "on pace", which reads to the right. */}
-                  <text x={moved.ex - 9} y={moved.off ? moved.ey + 11 : moved.ey - 9} textAnchor="end" fill={MOVES_HUE} className="text-[10.5px] font-semibold tabular-nums">
-                    with the moves · {fmtUSD(lift)}
+                  {/* Off the scale, stacked under "on pace" in the same corner. */}
+                  <text x={moved.off ? W - PAD.r : moved.ex - 8} y={moved.off ? PAD.t + 24 : moved.ey - 9} textAnchor="end" fill={MOVES_HUE} className="text-[10.5px] font-semibold tabular-nums">
+                    {moved.off ? "↑ " : ""}with the moves · {fmtUSD(lift)}
                   </text>
                 </g>
               )}

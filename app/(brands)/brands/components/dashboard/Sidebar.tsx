@@ -39,7 +39,7 @@ import {
 } from "@phosphor-icons/react";
 import { useT } from "../../lib/i18n";
 import type { DashboardView } from "../../lib/agent/dashboard";
-import {
+import { adOfCampaign,
   campaignLabel, isLaunching, openCampaign, openPhase, renameCampaign, resetAll, setActiveCampaign, showCampaignList,
   startConversation, useAds, useCampaigns, useReadyPhase, useStore, type Campaign,
 } from "../../lib/store";
@@ -319,7 +319,7 @@ function Content({ collapsed, view, onView, brandName, onMobileClose }: Props) {
             </p>
             {campaigns.map((c) => {
               const here = view !== "home" && view !== "settings" && c.id === activeId;
-              const owed = ads.filter((a) => a.state === "waiting" && c.adIds.includes(a.id)).length;
+              const owed = ads.filter((a) => a.state === "waiting" && adOfCampaign(c, a)).length;
               return (
                 <button
                   key={c.id}
@@ -348,7 +348,7 @@ function Content({ collapsed, view, onView, brandName, onMobileClose }: Props) {
           <div className="mb-1 ms-[22px] flex flex-col gap-0.5 border-s-[1.5px] border-[#ECE8F8] ps-2.5">
             {campaigns.map((c) => {
               const here = view !== "home" && view !== "settings" && c.id === activeId;
-              const owed = ads.filter((a) => a.state === "waiting" && c.adIds.includes(a.id)).length;
+              const owed = ads.filter((a) => a.state === "waiting" && adOfCampaign(c, a)).length;
               return (
                 <button
                   key={c.id}

@@ -19,7 +19,7 @@
 
 import { ArrowRight, Check, LockSimple, Warning } from "@phosphor-icons/react";
 import { fmtUSD, pace, phaseTitle, UNLOCK_AT } from "../../lib/mock/campaigns";
-import {
+import { adOfCampaign,
   campaignLabel, isLaunching, openCampaign, useAds, useCampaigns, type Campaign,
 } from "../../lib/store";
 import { Section } from "./kit";
@@ -46,7 +46,7 @@ export function CampaignsList() {
           figure is the whole point of the card. */}
       <div className="grid gap-3 md:grid-cols-2">
         {campaigns.map((c) => (
-          <Card key={c.id} c={c} waiting={ads.filter((a) => c.adIds.includes(a.id) && a.state === "waiting").length} />
+          <Card key={c.id} c={c} waiting={ads.filter((a) => adOfCampaign(c, a) && a.state === "waiting").length} />
         ))}
       </div>
     </Section>

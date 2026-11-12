@@ -34,7 +34,7 @@ import { ArrowRight, Check, Images, LockSimple, TrendUp, Wallet } from "@phospho
 import {
   fmtUSD, phasePct, phaseTitle, revenueSeries, UNLOCK_AT, type Phase,
 } from "../../lib/mock/campaigns";
-import {
+import { adOfCampaign,
   campaignLabel, openPhase, useAccount, useActiveCampaign, useActivity, useAds, useCampaignPhases, useCampaigns,
   useLivePhase, useReadyPhase, type Campaign,
 } from "../../lib/store";
@@ -298,7 +298,7 @@ export function HomeView() {
   const funded = allPhases.filter(isFunded);
   const revenue = sumBy(funded, (p) => p.rev);
   const spend = sumBy(funded, (p) => p.budget);
-  const waiting = camp ? ads.filter((a) => a.state === "waiting" && camp.adIds.includes(a.id)) : [];
+  const waiting = camp ? ads.filter((a) => a.state === "waiting" && adOfCampaign(camp, a)) : [];
   const onBrief = waiting.filter((a) => a.compliance.verdict !== "hold").length;
 
   const open = (id: string) => {

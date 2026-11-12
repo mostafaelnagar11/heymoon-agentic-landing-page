@@ -275,6 +275,12 @@ export interface Launch {
 }
 
 /** Paid and no first sale yet: the dashboard shows the launch tracker rather than results. */
+/** Whether an ad is this campaign's: listed on it, or drafted on one of its phases (a campaign built in the
+    conversation gets its drafts from its own phases, generatedAds, and lists none). Every count of a campaign's ads
+    goes through this, so the home tile, the list, the rail and the Ads tab agree. */
+export const adOfCampaign = (c: Campaign, a: { id: string; campaignId: string }) =>
+  c.adIds.includes(a.id) || c.phases.some((p) => p.id === a.campaignId);
+
 export const isLaunching = (c: Campaign | null | undefined) => !!c?.paid && !!c.launch && !c.launch.firstSaleAt;
 
 /** Where each tracker stage stands (H5): when its fact was recorded, or null while it is open. On the team route the
