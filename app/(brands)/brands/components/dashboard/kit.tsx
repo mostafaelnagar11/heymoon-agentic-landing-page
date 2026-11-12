@@ -33,20 +33,20 @@ export function Tile({
   foot?: ReactNode;
 }) {
   const skin =
-    tone === "hero" ? "g-header border-transparent"
-    : tone === "alert" ? "bg-white border-danger/25"
-    : "bg-white border-hairline";
+    tone === "hero" ? "grad-promo rounded-glass"
+    : tone === "alert" ? "glass ring-1 ring-inset ring-danger/25"
+    : "glass";
   const labelInk =
-    tone === "hero" ? "text-white/70"
+    tone === "hero" ? "text-white/75"
     : tone === "alert" ? "text-danger"
-    : "text-main";
+    : "text-ink-60";
   const valueInk = tone === "hero" ? "text-white" : tone === "alert" ? "text-danger" : "text-ink";
   const subInk = tone === "hero" ? "text-white/75" : tone === "good" ? "text-good-deep" : "text-ink-60";
 
   return (
-    <div className={`min-w-0 rounded-tile border p-5 shadow-card ${skin}`}>
-      <p className={`text-meta font-semibold ${labelInk}`}>{label}</p>
-      <p className={`mt-2 truncate text-display font-semibold tabular-nums ${valueInk}`}>{value}</p>
+    <div className={`min-w-0 p-5 ${skin}`}>
+      <p className={`text-[13px] font-medium ${labelInk}`}>{label}</p>
+      <p className={`mt-2.5 truncate text-[30px] font-bold leading-none tracking-[-0.03em] tabular-nums ${valueInk}`}>{value}</p>
       {sub && <p className={`mt-1.5 truncate text-meta ${subInk}`}>{sub}</p>}
       {foot && <div className="mt-3">{foot}</div>}
     </div>
@@ -66,9 +66,9 @@ export function Section({
 }) {
   return (
     <section>
-      <div className="mb-2.5 flex flex-wrap items-center gap-3">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
         {typeof title === "string"
-          ? <h2 className="text-section font-semibold text-ink">{title}</h2>
+          ? <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">{title}</h2>
           : <h2>{title}</h2>}
         {aside && <div className="ms-auto shrink-0">{aside}</div>}
       </div>
@@ -81,7 +81,7 @@ export function Section({
 
 export function Surface({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`overflow-hidden rounded-card border border-hairline bg-white shadow-card ${className}`}>
+    <div className={`glass overflow-hidden ${className}`}>
       {children}
     </div>
   );
@@ -113,7 +113,7 @@ export function DataRow({
   );
   if (!onClick) return <div className="flex items-center gap-3 px-4 py-3">{body}</div>;
   return (
-    <button onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-start transition hover:bg-brand/[0.03]">
+    <button onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-start transition hover:bg-white/60">
       {body}
     </button>
   );
@@ -130,14 +130,14 @@ export function ActionBar({
 }) {
   if (!count) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card border border-danger/25 bg-danger/[0.04] px-4 py-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[18px] border border-danger/20 bg-danger/[0.04] px-4 py-3">
       <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-danger text-[11px] font-bold text-white">
         {count}
       </span>
       <span className="min-w-0 flex-1 text-body text-ink">{text}</span>
       <button
         onClick={onCta}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-control bg-danger px-3 py-1.5 text-meta font-semibold text-white transition hover:bg-danger-deep"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-pill bg-danger px-3.5 text-meta font-semibold text-white transition hover:bg-danger-deep"
       >
         {cta} <ArrowRight size={12} weight="bold" aria-hidden className="rtl:rotate-180" />
       </button>

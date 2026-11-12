@@ -14,8 +14,8 @@
    Cancelling is still never destructive: stopping keeps everything
    that arrived. */
 
+import { MoonLoop } from "../../../_shared/MoonLoop";
 import { useEffect, useRef, useState } from "react";
-import { Sparkle } from "@phosphor-icons/react";
 import type { StreamStatus } from "../lib/agent/useStream";
 
 export function WorkingLine({
@@ -31,7 +31,7 @@ export function WorkingLine({
 
   if (status === "cancelled") {
     return (
-      <div className={`flex flex-wrap items-center gap-3 rounded-inner border border-line bg-lilac/60 px-3 py-2.5 ${className}`}>
+      <div className={`glass flex flex-wrap items-center gap-3 !rounded-[16px] px-4 py-2.5 ${className}`}>
         <p className="flex-1 text-meta text-ink-60">
           Stopped after {done} of {total}. Everything found so far is below and still usable.
         </p>
@@ -41,15 +41,23 @@ export function WorkingLine({
 
   if (status === "done") return null;
 
+  /* The brand's working line exactly (12 Nov: "every component in the creator should act similar to its similar one
+     in the brand"): a frosted pill, the count in a chip, and how far as a line along its foot. */
   return (
-    <div
-      aria-live="polite"
-      className={`flex flex-wrap items-center gap-3 rounded-inner border border-main/20 bg-lilac px-3 py-2.5 ${className}`}
-    >
-      <span aria-hidden className="working-ring h-3.5 w-3.5 shrink-0" />
-      <p className="min-w-0 flex-1 truncate text-meta font-medium text-main">{note || "Working"}</p>
-      <span className="shrink-0 text-meta tabular-nums text-main/70">
-        {done}/{total}
+    <div aria-live="polite" className={`glass relative overflow-hidden !rounded-[16px] px-4 py-2.5 ${className}`}>
+      <div className="flex items-center gap-3">
+        <span aria-hidden className="working-ring h-3.5 w-3.5 shrink-0" />
+        <p className="min-w-0 flex-1 truncate text-meta font-semibold text-main">{note || "Working"}</p>
+        <span className="num shrink-0 rounded-pill bg-haze px-2 py-0.5 text-[11px] font-semibold text-main">
+          {done}/{total}
+        </span>
+      </div>
+      {/* How far, as a line along the foot of the pill: units done of units found, never a percentage claimed. */}
+      <span aria-hidden className="absolute inset-x-0 bottom-0 h-[3px] bg-main/[0.06]">
+        <span
+          className="block h-full bg-[linear-gradient(90deg,#6848D1,#A65FED,#F4A8D8)] transition-[width] duration-500"
+          style={{ width: `${total ? Math.min(100, (done / total) * 100) : 0}%` }}
+        />
       </span>
     </div>
   );
@@ -101,9 +109,11 @@ function pace(words: number) {
 }
 
 export function Typed({
-  text, onTick, onDone,
+  text, onTick, onDone, className = "",
 }: {
   text: string;
+  /** Passed to the line, for a place that sets its own size (the opening line of a fresh conversation). */
+  className?: string;
   /** Fires as the text grows, so the thread can keep the scroll pinned. */
   onTick?: () => void;
   onDone?: () => void;
@@ -143,7 +153,8 @@ export function Typed({
   const typing = n < words.length;
 
   return (
-    <p className={`whitespace-pre-line text-body text-ink ${typing ? "stream-caret" : ""}`}>
+    /* The brand's reading size, 15/26 (its `text-prose`; this config has no such key). */
+    <p className={`whitespace-pre-line text-[15px] leading-[26px] text-ink ${typing ? "stream-caret" : ""} ${className}`}>
       {shown}
     </p>
   );
@@ -154,10 +165,13 @@ export function Typed({
 export function Thinking() {
   return (
     <div className="flex items-start gap-3">
-      <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-main text-white"><Sparkle size={14} weight="fill" /></span>
-      <span className="mt-2.5 flex gap-1" role="status" aria-label="HeyMoon is replying">
+      {/* The agent's mark, running the brand's logo loop while it composes. */}
+      <span aria-hidden className="mt-[2px] grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,#6848D1,#C2418B)] text-white shadow-[0_6px_14px_-6px_rgba(124,58,190,0.6)]">
+        <MoonLoop size={15} />
+      </span>
+      <span className="glass flex h-8 items-center gap-1 !rounded-full px-3" role="status" aria-label="HeyMoon is replying">
         {[0, 160, 320].map((d) => (
-          <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-main/45" style={{ animationDelay: `${d}ms` }} />
+          <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-orchid/60" style={{ animationDelay: `${d}ms` }} />
         ))}
       </span>
     </div>

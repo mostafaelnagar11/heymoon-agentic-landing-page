@@ -50,7 +50,7 @@ export function AgentMonitor({ phase, compact = false }: { phase: Phase; compact
         <span aria-hidden className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-[12px] text-white">✦</span>
         <p className="text-body font-semibold text-ink">Live monitor</p>
         <Pill tone={crossed ? "good" : "live"}>{crossed ? "Past the unlock line" : "Running"}</Pill>
-        <span className="ms-auto text-[11px] text-ink-faint">
+        <span className="ms-auto text-meta text-ink-faint">
           {phaseTitle(phase.phaseNo)} · day {phase.dayOfPhase} of {phase.plannedDays} · checked {ago(Date.now() - 4 * 60_000)}
         </span>
       </div>

@@ -148,7 +148,7 @@ export function AutonomyView() {
           </button>
         }
         aside={
-          <span className="inline-flex items-center gap-1 rounded-pill border border-danger/25 bg-danger/[0.07] px-2.5 py-1 text-[11px] font-semibold text-danger">
+          <span className="inline-flex items-center gap-1 rounded-pill border border-danger/25 bg-danger/[0.07] px-2.5 py-1 text-meta font-semibold text-danger">
             <LockSimple size={11} weight="fill" aria-hidden />
             {LOCKED_AGENTS} always ask
           </span>
@@ -161,7 +161,7 @@ export function AutonomyView() {
               <li key={p.agent} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
                 <span
                   aria-hidden
-                  className="w-3 shrink-0 text-[11px] font-semibold tabular-nums text-ink-faint"
+                  className="w-3 shrink-0 text-meta font-semibold tabular-nums text-ink-faint"
                 >
                   {i + 1}
                 </span>
@@ -226,7 +226,7 @@ export function AutonomyView() {
         aside={
           <button
             onClick={() => go("activity")}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand hover:underline"
+            className="inline-flex items-center gap-1 text-meta font-semibold text-brand hover:underline"
           >
             Log
             <ArrowRight size={11} weight="bold" aria-hidden className="rtl:rotate-180" />
@@ -276,7 +276,7 @@ function RuleRow({
           {used > 0 && onUsed && (
             <button
               onClick={onUsed}
-              className="rounded-pill bg-brand/[0.07] px-2 py-0.5 text-[11px] font-semibold text-brand hover:underline"
+              className="rounded-pill bg-brand/[0.07] px-2 py-0.5 text-meta font-semibold text-brand hover:underline"
             >
               Used {used}x this week
             </button>
@@ -298,7 +298,7 @@ function RuleRow({
     rather than in buttons: nothing to press, nothing to mistake for a
     switch someone left off. */
 function Segmented({ rule }: { rule: AutonomyRule }) {
-  const shell = "grid w-full shrink-0 grid-cols-3 gap-1 rounded-control border border-hairline bg-canvas p-1 sm:w-[228px]";
+  const shell = "grid w-full shrink-0 grid-cols-3 gap-1 glass !rounded-full p-1 sm:w-[228px]";
   const seat = "rounded-[9px] px-2 py-1.5 text-center text-meta font-semibold transition";
 
   if (rule.locked) {
@@ -309,8 +309,7 @@ function Segmented({ rule }: { rule: AutonomyRule }) {
             key={l.key}
             aria-hidden={rule.level !== l.key}
             className={`${seat} ${
-              rule.level === l.key
-                ? "inline-flex items-center justify-center gap-1 bg-white text-danger shadow-card"
+              rule.level === l.key ? "inline-flex items-center justify-center gap-1 bg-white text-danger shadow-card"
                 : "text-ink-faint/50"
             }`}
           >
@@ -336,11 +335,10 @@ function Segmented({ rule }: { rule: AutonomyRule }) {
           title={l.hint}
           onClick={() => setAutonomy(rule.key, l.key)}
           className={`${seat} ${
-            rule.level === l.key
-              ? l.key === "never"
+            rule.level === l.key ? l.key === "never"
                 ? "bg-white text-danger shadow-card"
                 : l.key === "ask"
-                  ? "bg-white text-ink shadow-card"
+                  ? "bg-white text-ink shadow-lift"
                   : "bg-brand text-white shadow-card"
               : "text-ink-faint hover:text-ink"
           }`}

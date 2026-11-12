@@ -318,3 +318,92 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 .hm-range::-moz-range-thumb { width: 24px; height: 24px; border-radius: 999px; background: #fff; border: 3px solid #4D2FB0; box-shadow: 0 2px 6px rgba(77, 47, 176, 0.35); }
 .hm-range::-moz-range-track { background: transparent; }
 .hm-range:focus-visible::-webkit-slider-thumb { outline: 3px solid rgba(77, 47, 176, 0.35); outline-offset: 2px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   AURORA: THE DASHBOARD'S LIGHT (Mostafa picked it, 11 Nov)
+   A near-white ground with a violet and a blush glow at the top, and
+   frosted white cards over it. The brands app's block, byte for byte,
+   so a brand and a creator are looking at one product. The glow is painted with radial
+   gradients rather than blurred blobs: the same light for none of the
+   paint cost, which matters behind a column that scrolls.
+   ══════════════════════════════════════════════════════════════════ */
+@layer components {
+.aurora {
+  background:
+    radial-gradient(36% 48% at 50% -6%, rgba(167,139,250,0.42), transparent 72%),
+    radial-gradient(32% 42% at 82% -4%, rgba(244,168,216,0.46), transparent 72%),
+    radial-gradient(26% 34% at 28% 96%, rgba(167,139,250,0.12), transparent 72%);
+}
+[dir="rtl"] .aurora { transform: scaleX(-1); }
+
+/* The frosted card. The white inner edge is what makes it read as glass
+   rather than as a white box; the violet hairline keeps it on the ground. */
+.glass {
+  background: rgba(255,255,255,0.72);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  border-radius: 24px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.95),
+    0 0 0 1px rgba(77,47,176,0.06),
+    0 1px 2px rgba(25,18,52,0.04),
+    0 30px 60px -40px rgba(77,47,176,0.35);
+}
+/* A ready phase: the same card with the gradient drawn round its edge. */
+.glass-edge {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(rgba(255,255,255,0.94), rgba(255,255,255,0.94)) padding-box,
+    linear-gradient(135deg, #6848D1, #F4A8D8) border-box;
+}
+
+/* The primary pill. Deeper than the creator app's g-button and with a
+   violet glow under it, so on glass it is the one thing that floats. */
+.btn-pri {
+  background: linear-gradient(135deg, #5B3BC4 0%, #4D2FB0 100%);
+  color: #fff;
+  box-shadow: 0 8px 20px -8px rgba(77,47,176,0.6), inset 0 1px 0 rgba(255,255,255,0.16);
+  transition: filter .15s ease, transform .15s ease;
+}
+.btn-pri:hover { filter: brightness(1.08); }
+.btn-pri:active { transform: scale(0.98); }
+/* The white pill beside it. */
+.btn-soft {
+  background: #fff;
+  color: #12151B;
+  box-shadow: 0 0 0 1px rgba(77,47,176,0.1), 0 2px 6px -2px rgba(25,18,52,0.08);
+  transition: box-shadow .15s ease, background .15s ease;
+}
+.btn-soft:hover { box-shadow: 0 0 0 1px rgba(77,47,176,0.22), 0 4px 12px -4px rgba(77,47,176,0.18); }
+@media (prefers-reduced-motion: reduce) { .btn-pri:active { transform: none; } }
+
+/* The gradient a figure or an icon tile is lit with. */
+.grad-text {
+  background: linear-gradient(90deg, #6848D1, #C2418B);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.grad-tile { background: linear-gradient(135deg, #6848D1, #A65FED); color: #fff; }
+.grad-promo { background: linear-gradient(140deg, #4D2FB0 0%, #7A47CE 55%, #C2418B 100%); color: #fff; }
+.grad-ws { background: linear-gradient(135deg, #F5F3FD, #FBF1F8); }
+}
+
+/* The eligibility result (12 Nov). It lands rather than appears: the panel rises, the seal settles in, the
+   traffic bar fills to the store's figure and its marker drops on. Once, on mount; still under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .verdict-in { animation: verdict-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .verdict-seal { animation: verdict-seal 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both; }
+  .verdict-fill { transform-origin: left center; animation: verdict-fill 1s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both; }
+  .verdict-dot { animation: verdict-dot 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 1.15s both; }
+}
+@keyframes verdict-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes verdict-seal { from { opacity: 0; transform: scale(0.55) rotate(-14deg); } to { opacity: 1; transform: none; } }
+@keyframes verdict-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes verdict-dot { from { opacity: 0; transform: scale(0.3); } to { opacity: 1; transform: none; } }
+
+/* The evidence popover (app/_shared/GlassPopover.tsx) opens from its pill: a short rise and settle, still under
+   reduced motion. Frosted a step more than a card, because it sits over the thread rather than on the ground. */
+.glass-pop { background: rgba(255, 255, 255, 0.82); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); }
+@media (prefers-reduced-motion: no-preference) {
+  .glass-pop { animation: glass-pop 0.16s cubic-bezier(0.22, 1, 0.36, 1) both; }
+}
+@keyframes glass-pop { from { opacity: 0; transform: translateY(4px) scale(0.98); } to { opacity: 1; transform: none; } }

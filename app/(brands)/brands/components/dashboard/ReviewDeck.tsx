@@ -63,7 +63,7 @@ export function ReviewDeck({ drafts, phase }: { drafts: AdRecord[]; phase: Phase
 
   if (!ad) {
     return (
-      <div className="rounded-tile border border-hairline bg-white p-8 text-center shadow-card">
+      <div className="glass p-8 text-center">
         <CheckCircle size={26} weight="fill" className="mx-auto text-good" aria-hidden />
         <p className="mt-2 text-body font-semibold text-ink">Every draft is decided</p>
       </div>
@@ -92,22 +92,22 @@ export function ReviewDeck({ drafts, phase }: { drafts: AdRecord[]; phase: Phase
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
         {/* The draft. */}
-        <article className="overflow-hidden rounded-tile border border-hairline bg-white shadow-card">
+        <article className="glass overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={ad.img} alt={`Still from ${ad.creatorName}'s ${ad.format.toLowerCase()}`} className="aspect-[4/5] w-full object-cover object-top" />
           <div className="p-4">
             <div className="flex items-center gap-2">
               <Avatar src={ad.avatar} name={ad.creatorName} size={22} />
               <p className="truncate text-body font-semibold text-ink">{ad.creatorName}</p>
-              <span className="ms-auto text-[11px] text-ink-faint">{ad.format}</span>
+              <span className="ms-auto text-meta text-ink-faint">{ad.format}</span>
             </div>
             <p className="mt-1 text-meta font-medium text-ink-soft">{ad.product}</p>
-            <p className="mt-1.5 line-clamp-2 text-[11px] leading-4 text-ink-faint">{ad.caption}</p>
+            <p className="mt-1.5 line-clamp-2 text-meta leading-4 text-ink-faint">{ad.caption}</p>
           </div>
         </article>
 
         {/* HeyMoon's call. */}
-        <section className="rounded-tile border border-brand/25 bg-white p-5 shadow-card ring-4 ring-brand/[0.05]">
+        <section className="glass p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-brand text-white">
               <Sparkle size={11} weight="fill" />
@@ -116,7 +116,7 @@ export function ReviewDeck({ drafts, phase }: { drafts: AdRecord[]; phase: Phase
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className={`rounded-pill px-3 py-1 text-meta font-semibold ${call.skin}`}>{call.word}</span>
-            <span className="text-[11px] text-ink-faint">checked against your brief</span>
+            <span className="text-meta text-ink-faint">checked against your brief</span>
           </div>
           {canApprove && <RecLine adId={ad.id} className="mt-2.5" />}
 
@@ -141,7 +141,7 @@ export function ReviewDeck({ drafts, phase }: { drafts: AdRecord[]; phase: Phase
           {/* The note to the creator: written by HeyMoon for a hold, blank for a change the brand wants. */}
           {note !== null && canApprove && (
             <div className="mt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-main">
+              <p className="text-meta font-semibold uppercase tracking-[0.06em] text-main">
                 {hold ? "Note to the creator, drafted for you" : "What should change?"}
               </p>
               <textarea

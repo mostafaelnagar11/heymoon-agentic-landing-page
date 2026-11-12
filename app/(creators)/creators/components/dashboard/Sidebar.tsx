@@ -63,11 +63,13 @@ export function DashboardSidebar({ view, onView, collapsed = false, onToggle }: 
   /* Every row is the same width at every state, so a label appearing on
      expand never shoves the icon sideways: the icon column is fixed and
      only the row's right-hand side grows. */
-  const row = collapsed ? "justify-center px-0 w-11 mx-auto" : "gap-3 px-3.5";
-
+  const row = collapsed ? "justify-center px-0 w-[42px] mx-auto" : "gap-3 px-2";
+  /* Each icon on its own small tile, lit with the gradient where you are (Aurora, 11 Nov): the brands rail's row. */
+  const tile = (on: boolean) =>
+    `grid h-7 w-7 shrink-0 place-items-center rounded-[9px] transition ${on ? "grad-tile" : "bg-haze text-ink-60 group-hover:text-ink"}`;
   return (
-    <aside className={`hidden shrink-0 flex-col overflow-hidden border-e border-line bg-white py-5 transition-[width] duration-200 motion-reduce:transition-none md:flex ${collapsed ? "w-[72px] px-2" : "w-[232px] px-3"}`}>
-      <div className={`flex ${collapsed ? "flex-col items-center gap-3" : "items-center justify-between ps-2"}`}>
+    <aside className={`glass relative z-[1] my-3.5 ms-3.5 hidden shrink-0 flex-col overflow-hidden py-4 transition-[width] duration-200 motion-reduce:transition-none md:flex ${collapsed ? "w-[72px] px-2" : "w-[248px] px-3"}`}>
+      <div className={`flex ${collapsed ? "flex-col items-center gap-3" : "items-center justify-between ps-2 pt-1"}`}>
         {collapsed ? (
           <span aria-hidden className="grid h-8 w-8 place-items-center text-ink"><Emblem size={20} /></span>
         ) : (
@@ -76,22 +78,23 @@ export function DashboardSidebar({ view, onView, collapsed = false, onToggle }: 
         {onToggle && (
           <button type="button" onClick={onToggle} aria-expanded={!collapsed}
             aria-label={collapsed ? "Expand the menu" : "Collapse the menu"} title={collapsed ? "Expand" : "Collapse"}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-inner text-ink-50 transition hover:bg-lilac/60 hover:text-main">
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink-50 transition hover:bg-white/70 hover:text-main">
             <SidebarSimple size={18} aria-hidden className="rtl:-scale-x-100" />
           </button>
         )}
       </div>
-
       <div title={collapsed ? `${name} · ${profile?.handle ?? ""}` : undefined}
-        className={`mt-5 flex items-center rounded-inner bg-lilac/60 ${collapsed ? "mx-auto justify-center p-1.5" : "gap-2.5 px-3 py-2.5"}`}>
-        <Avatar src={profile?.avatar} name={name === "Your account" ? "You" : name} size={32} />
+        className={`grad-ws mt-4 flex items-center rounded-[16px] ${collapsed ? "mx-auto justify-center p-1.5" : "gap-2.5 p-2.5"}`}>
+        {/* The brand rail's switcher tile: the mark on a white 11px tile with a 3px mat, 26px shut and 28px open. */}
+        <span className="grid shrink-0 place-items-center rounded-[11px] bg-white p-[3px] shadow-edge">
+          <Avatar src={profile?.avatar} name={name === "Your account" ? "You" : name} size={collapsed ? 26 : 28} className="!rounded-[9px]" />
+        </span>
         <span className={collapsed ? "sr-only" : "min-w-0 flex-1"}>
           <span className="block truncate text-body font-semibold text-ink">{name}</span>
           <span className="block truncate text-meta text-ink-50">{profile?.handle}</span>
         </span>
       </div>
-
-      <nav className="mt-6 flex flex-col gap-1" aria-label="Sections">
+      <nav className="mt-4 flex flex-col gap-1" aria-label="Sections">
         {NAV.map((item) => {
           const on = item.key === here;
           const I = item.icon;
@@ -99,13 +102,12 @@ export function DashboardSidebar({ view, onView, collapsed = false, onToggle }: 
           return (
             <button key={item.key} onClick={() => onView(item.key)} aria-current={on ? "page" : undefined}
               title={collapsed ? (n > 0 ? `${item.label} · ${n}` : item.label) : undefined}
-              className={`relative flex h-11 items-center rounded-pill text-body font-medium transition ${row} ${on ? "bg-lilac text-main" : "text-ink-60 hover:bg-lilac/50 hover:text-ink"}`}>
-              <I size={20} weight={on ? "fill" : "regular"} aria-hidden className="shrink-0" />
+              className={`group relative flex h-[42px] items-center rounded-row text-body font-medium transition ${row} ${on ? "bg-white text-ink shadow-lift" : "text-ink-60 hover:bg-white/70 hover:text-ink"}`}>
+              <span className={tile(on)}><I size={15} weight={on ? "fill" : "regular"} aria-hidden /></span>
               <span className={collapsed ? "sr-only" : "min-w-0 flex-1 truncate whitespace-nowrap text-start"}>{item.label}</span>
               {n > 0 && (
-                <span className={`grid h-5 min-w-5 place-items-center rounded-pill px-1.5 text-tiny font-semibold ${on ? "bg-main text-white" : "bg-main-10 text-main"} ${
-                  /* Shut, the count sits on the icon's corner. */
-                  collapsed ? "absolute -end-0.5 -top-0.5 ring-2 ring-white" : ""}`}>
+                <span className={`grid h-[18px] min-w-[18px] place-items-center rounded-pill bg-blush-deep px-1.5 text-[11px] font-semibold text-white ${
+                  collapsed ? "absolute -end-1 -top-1 ring-2 ring-white" : ""}`}>
                   {n}
                 </span>
               )}
@@ -113,12 +115,13 @@ export function DashboardSidebar({ view, onView, collapsed = false, onToggle }: 
           );
         })}
       </nav>
-
-      <div className="mt-auto border-t border-line pt-3">
-        <Link href="/creators" onClick={() => resetAll()} title={collapsed ? "Log out" : undefined}
-          className={`flex h-11 items-center rounded-pill text-body font-medium text-ink-50 transition hover:bg-danger/[0.06] hover:text-danger ${row}`}>
-          <SignOut size={20} aria-hidden className="shrink-0" />
-          <span className={collapsed ? "sr-only" : "whitespace-nowrap"}>Log out</span>
+      <div className="mt-auto pt-3">
+        <Link href="/creators" onClick={() => resetAll()} title={collapsed ? "Sign out" : undefined}
+          className={`group flex h-[42px] items-center rounded-row text-body font-medium text-ink-60 transition hover:bg-danger/[0.06] hover:text-danger ${row}`}>
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px] bg-haze transition group-hover:bg-danger/[0.08]">
+            <SignOut size={15} aria-hidden className="rtl:rotate-180" />
+          </span>
+          <span className={collapsed ? "sr-only" : "whitespace-nowrap"}>Sign out</span>
         </Link>
       </div>
     </aside>

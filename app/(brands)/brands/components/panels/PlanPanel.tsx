@@ -142,7 +142,7 @@ export function PlanPanel() {
       {plan.changes.length > 0 && (
         <section aria-label="What changed">
           <ChangesBlock changes={[...plan.changes].reverse()} />
-          <p className="mt-2 text-[11px] leading-4 text-ink-faint">
+          <p className="mt-2 text-meta leading-4 text-ink-faint">
             Every change since the plan was proposed, newest first, each with the reason it was made.
           </p>
         </section>

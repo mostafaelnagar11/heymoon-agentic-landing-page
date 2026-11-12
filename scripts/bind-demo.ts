@@ -265,11 +265,15 @@ async function bindCreators(): Promise<CreatorsDemo> {
   assert(readAgents.length === 5, `the creators read has 5 agents ("Five agents read your last thirty posts"), got ${readAgents.length}`);
   assert(C_READ_TASKS.find((x) => x.key === "niche")?.note.includes("last thirty posts"), `the niche note says "last thirty posts"`);
 
-  /* propose_profile: 4 units, no opener. */
+  /* propose_profile: opener + 4 units. The opener (12 Nov) lets the conversation draw the profile, every section still
+     being worked on, before the first task lands. The landing's demo has no opening line for the build, so it is set
+     aside here and the units are what they were. */
   const readValue: CreatorRead = read.value;
   const build = await drain(C_tools.propose_profile({ read: readValue }, ctx()));
-  assert(build.chunks.length === C_BUILD_TASKS.length, `creators build: ${C_BUILD_TASKS.length} units, no opener`);
-  const b = unitsFrom(C_BUILD_TASKS, build.chunks, "creators build");
+  const [cbOpener, ...buildChunks] = build.chunks;
+  assert(cbOpener.done === 0 && cbOpener.ms === 0, "creators build: chunk 0 is the opener");
+  assert(buildChunks.length === C_BUILD_TASKS.length, `creators build: opener + ${C_BUILD_TASKS.length} units`);
+  const b = unitsFrom(C_BUILD_TASKS, buildChunks, "creators build");
   const buildAgents = agentsOf(b.units);
   const creatorsBuild: Run = {
     title: C_rosterTitle(C_BUILD_TASKS, "building your profile"),

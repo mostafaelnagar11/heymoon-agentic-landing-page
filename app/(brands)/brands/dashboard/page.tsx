@@ -52,7 +52,7 @@ import type { DashboardView } from "../lib/agent/dashboard";
     will hold before they have anything to put in it. */
 function EmptyDashboard() {
   return (
-    <div className="rounded-card border border-dashed border-black/[0.12] bg-white p-10 text-center">
+    <div className="glass p-10 text-center">
       <p className="text-row font-semibold text-ink">No campaign yet</p>
       <p className="mx-auto mt-1.5 max-w-[420px] text-body leading-6 text-ink-soft">
         Build one and this fills in: what your creators earn you against the guarantee, the drafts waiting on your
@@ -60,7 +60,7 @@ function EmptyDashboard() {
       </p>
       <Link
         href="/brands/c"
-        className="mt-5 inline-flex items-center gap-2 rounded-control bg-brand px-4 py-2 text-body font-semibold text-white transition hover:bg-brand-hover"
+        className="btn-pri mt-5 inline-flex h-10 items-center gap-2 rounded-pill px-5 text-body font-semibold"
       >
         <Sparkle size={14} weight="fill" aria-hidden />
         Build a campaign
@@ -74,15 +74,15 @@ function EmptyDashboard() {
     welcomes them back with it and asks what held them. */
 function PlanWaiting({ brandName }: { brandName: string }) {
   return (
-    <div className="rounded-card border border-hairline bg-white p-8 shadow-card">
-      <p className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-brand-500">Not started yet</p>
+    <div className="glass p-8">
+      <p className="text-eyebrow font-semibold uppercase tracking-[0.12em] text-orchid">Not started yet</p>
       <p className="mt-1.5 text-row font-semibold text-ink">Your plan for {brandName} is saved</p>
       <p className="mt-1 max-w-[460px] text-body leading-6 text-ink-soft">
         Phase 1 starts when you&apos;re ready. Ask anything first, or change what you want.
       </p>
       <Link
         href="/brands/c?back=1"
-        className="mt-5 inline-flex items-center gap-2 rounded-control bg-brand px-4 py-2 text-body font-semibold text-white transition hover:bg-brand-hover"
+        className="btn-pri mt-5 inline-flex h-10 items-center gap-2 rounded-pill px-5 text-body font-semibold"
       >
         Pick up where you left off
         <ArrowRight size={13} weight="bold" aria-hidden className="rtl:rotate-180" />
@@ -186,7 +186,10 @@ export default function DashboardPage() {
     <HeyMoonProvider>
     <Frame>
     {(assistant) => (
-    <div dir={dir} className="flex h-[100dvh] overflow-hidden bg-canvas">
+    <div dir={dir} className="relative flex h-[100dvh] overflow-hidden bg-canvas">
+      {/* The page's light (Aurora, 11 Nov): a violet and a blush glow at the top, under everything. The frame
+          does not scroll, so it stays put while the column does. */}
+      <div aria-hidden className="aurora pointer-events-none absolute inset-0" />
       {/* The rail is the work, and settings is not the work. It steps
           aside here and the top bar carries a way back instead, so the
           page you came from is one press away and nothing else on
@@ -203,7 +206,7 @@ export default function DashboardPage() {
       />
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         <DashboardTopbar
           title={TITLE[view]}
           waiting={waiting}
@@ -225,10 +228,12 @@ export default function DashboardPage() {
               assistant takes the width and the dashboard steps aside
               rather than being dimmed behind it. */}
           <main
-            className={`flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6 sm:py-7 lg:px-8 ${
+            className={`flex-1 overflow-y-auto px-4 pb-10 pt-2 sm:px-6 lg:px-8 ${
               assistant ? "hidden md:block" : "block"
             }`}
           >
+            {/* Capped, so a wide screen gets margins rather than a row of cards a metre long. */}
+            <div className="mx-auto w-full max-w-[1320px] space-y-5">
             {/* Above every view, not inside one: the store is connected
                 once for the account, so the ask does not belong to the
                 page that happens to be open. */}
@@ -263,6 +268,7 @@ export default function DashboardPage() {
             )}
               </>
             )}
+            </div>
           </main>
 
           {/* A column, not an overlay, and closed until it has something
@@ -270,7 +276,7 @@ export default function DashboardPage() {
               reflows beside it, so nothing is dimmed or covered. */}
           {assistant && (
             <aside
-              className="animate-slide-in-end flex w-full shrink-0 flex-col border-s border-hairline md:w-[clamp(320px,30vw,400px)]"
+              className="animate-slide-in-end flex w-full shrink-0 flex-col overflow-hidden max-md:bg-white md:glass md:mb-3.5 md:me-3.5 md:w-[clamp(320px,30vw,400px)]"
               aria-label="HeyMoon"
             >
               <HeyMoonPanel />

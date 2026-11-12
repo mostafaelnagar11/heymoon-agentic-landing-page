@@ -156,12 +156,12 @@ export function CreatorsView() {
       <Section
         title={campaign ? `Creators for ${campaignLabel(campaign)}` : "Creators"}
         aside={
-          <span className="text-[11px] text-ink-faint">
+          <span className="text-meta text-ink-faint">
             {decided} of {pool.length} reviewed
           </span>
         }
       >
-        <div className="flex flex-wrap gap-1 rounded-control border border-hairline bg-canvas p-1">
+        <div className="flex flex-wrap gap-1 glass !rounded-full p-1">
           {TABS.map((t) => {
             const n = pool.filter((c) => signalFor(signals, c.id).status === t.key).length;
             const on = t.key === tab;
@@ -170,8 +170,8 @@ export function CreatorsView() {
                 key={t.key}
                 onClick={() => { setTab(t.key); setSearch(""); setSelectedId(null); }}
                 aria-current={on}
-                className={`rounded-[9px] px-3 py-1.5 text-meta font-semibold transition ${
-                  on ? "bg-white text-ink shadow-card" : "text-ink-faint hover:text-ink"
+                className={`rounded-full px-3.5 py-1.5 text-meta font-semibold transition ${
+                  on ? "bg-white text-ink shadow-lift" : "text-ink-faint hover:text-ink"
                 }`}
               >
                 {t.label} <span className={on ? "opacity-60" : "opacity-50"}>{n}</span>
@@ -217,7 +217,7 @@ export function CreatorsView() {
                     <img src={c.avatar} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded-full bg-brand-100 object-cover" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-body font-semibold text-ink">{c.name}</span>
-                      <span className="block truncate text-[11px] text-ink-faint">{c.niche}</span>
+                      <span className="block truncate text-meta text-ink-faint">{c.niche}</span>
                     </span>
                     {st === "liked" && <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-good" />}
                     {st === "passed" && <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-300" />}
@@ -296,7 +296,7 @@ function Profile({
                 href={P.url(c.handle.replace("@", ""))}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-md border border-hairline bg-wash px-2 py-0.5 text-[11px] font-medium text-ink-soft no-underline transition hover:border-brand/30 hover:text-brand"
+                className="inline-flex items-center gap-1 rounded-md border border-hairline bg-wash px-2 py-0.5 text-meta font-medium text-ink-soft no-underline transition hover:border-brand/30 hover:text-brand"
               >
                 <P.Icon size={13} weight="fill" aria-hidden /> {c.platform}
                 <ArrowUpRight size={10} weight="bold" aria-hidden className="opacity-60 rtl:-scale-x-100" />
@@ -314,8 +314,8 @@ function Profile({
               of. In the current app this is a typed integer that never
               moves; here it is the sum of the signals. */}
           <div
-            className={`grid h-[96px] w-[96px] shrink-0 place-items-center rounded-card text-center ${
-              strong ? "bg-good" : "bg-brand"
+            className={`grid h-[96px] w-[96px] shrink-0 place-items-center rounded-[22px] text-center shadow-pri ${
+              strong ? "bg-[linear-gradient(140deg,#2DB53C,#1C7A26)]" : "grad-promo"
             }`}
           >
             <span>
@@ -331,7 +331,7 @@ function Profile({
             <p className="min-w-0 flex-1 text-meta text-good-deep">
               Liked. MoonMatch AI will bring you more profiles like hers.
             </p>
-            <button onClick={onPass} className="shrink-0 text-[11px] font-semibold text-ink-soft hover:underline">
+            <button onClick={onPass} className="shrink-0 text-meta font-semibold text-ink-soft hover:underline">
               Pass instead
             </button>
           </div>
@@ -343,28 +343,28 @@ function Profile({
               <p className="min-w-0 flex-1 text-meta text-ink-soft">
                 Passed. MoonMatch AI will ease off profiles like hers.
               </p>
-              <button onClick={onUndo} className="shrink-0 text-[11px] font-semibold text-brand hover:underline">
+              <button onClick={onUndo} className="shrink-0 text-meta font-semibold text-brand hover:underline">
                 Undo
               </button>
             </div>
             {info.reasons?.length ? (
               <ul className="mt-2 flex flex-wrap gap-1.5">
                 {info.reasons.map((r) => (
-                  <li key={r} className="rounded-pill bg-white px-2 py-0.5 text-[11px] text-ink-soft">
+                  <li key={r} className="rounded-pill bg-white px-2 py-0.5 text-meta text-ink-soft">
                     {passReasonLabel(r)}
                   </li>
                 ))}
               </ul>
             ) : null}
-            {info.note && <p className="mt-2 text-[11px] italic leading-4 text-ink-faint">“{info.note}”</p>}
-            <p className="mt-2 text-[11px] text-ink-faint">
+            {info.note && <p className="mt-2 text-meta italic leading-4 text-ink-faint">“{info.note}”</p>}
+            <p className="mt-2 text-meta text-ink-faint">
               This only shapes who comes next. Nobody is told, and you can undo it any time.
             </p>
           </div>
         )}
 
         <div className="mt-5 rounded-card border border-brand/[0.12] bg-brand/[0.04] p-4">
-          <p className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-brand">
+          <p className="mb-2.5 flex items-center gap-1.5 text-meta font-semibold uppercase tracking-wide text-brand">
             <span aria-hidden>✶</span> Why she was matched
           </p>
           <div className="space-y-2">
@@ -378,7 +378,7 @@ function Profile({
                 >
                   {k.ok ? <Check size={10} weight="bold" /> : <Minus size={10} weight="bold" />}
                 </span>
-                <span className="w-[74px] shrink-0 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                <span className="w-[74px] shrink-0 text-meta font-semibold uppercase tracking-wide text-ink-faint">
                   {k.label}
                 </span>
                 {/* The figure only; the tick says whether it clears. The reason is on hover. */}
@@ -389,7 +389,7 @@ function Profile({
             ))}
           </div>
           {c.conflict && (
-            <p className="mt-2.5 border-t border-brand/[0.12] pt-2.5 text-[11px] text-ink-soft">
+            <p className="mt-2.5 border-t border-brand/[0.12] pt-2.5 text-meta text-ink-soft">
               <span className="font-semibold">Declared:</span> {c.conflict}
             </p>
           )}
@@ -410,16 +410,16 @@ function Profile({
       </div>
 
       {status === "waiting" && (
-        <div className="flex shrink-0 gap-2 border-t border-hairline p-3">
+        <div className="flex shrink-0 gap-2 border-t border-brand/[0.07] p-3">
           <button
             onClick={onPass}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-control border border-hairline bg-white px-4 py-2.5 text-body font-semibold text-ink-soft transition hover:bg-wash"
+            className="btn-soft inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-pill px-4 text-body font-semibold"
           >
             <ThumbsDown size={14} weight="fill" aria-hidden /> Pass
           </button>
           <button
             onClick={onLike}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-control bg-brand px-4 py-2.5 text-body font-semibold text-white transition hover:bg-brand-hover"
+            className="btn-pri inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-pill px-4 text-body font-semibold"
           >
             <ThumbsUp size={14} weight="fill" aria-hidden /> Like
           </button>
@@ -455,7 +455,7 @@ function PassDialog({
         <div className="flex items-start gap-3 border-b border-hairline p-4">
           <div className="min-w-0 flex-1">
             <p className="text-body font-semibold text-ink">Passing on {c.name.split(" ")[0]}</p>
-            <p className="mt-0.5 text-[11px] text-ink-faint">
+            <p className="mt-0.5 text-meta text-ink-faint">
               Tell me why and the next batch shifts. She is never told, and nothing is cancelled.
             </p>
           </div>
@@ -505,15 +505,15 @@ function PassDialog({
         <div className="flex gap-2 border-t border-hairline p-3">
           <button
             onClick={onClose}
-            className="flex-1 rounded-control border border-hairline bg-white px-4 py-2 text-body font-semibold text-ink-soft transition hover:bg-wash"
+            className="btn-soft h-10 flex-1 rounded-pill px-4 text-body font-semibold"
           >
             Cancel
           </button>
           <button
             onClick={() => onSend(reasons, note.trim() || undefined)}
             disabled={reasons.length === 0}
-            className={`flex-1 rounded-control px-4 py-2 text-body font-semibold text-white transition ${
-              reasons.length ? "bg-brand hover:bg-brand-hover" : "bg-neutral-200"
+            className={`h-10 flex-1 rounded-pill px-4 text-body font-semibold ${
+              reasons.length ? "btn-pri" : "bg-neutral-200 text-white"
             }`}
           >
             Pass

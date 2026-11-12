@@ -27,14 +27,16 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "@phosphor-icons/react";
 import { ChatShell } from "../components/chat/ChatShell";
+import { OnboardingSteps, type Step } from "../components/chat/Steps";
 import { PanelHost } from "../components/chat/PanelHost";
-import { AgentTurn, BlockRow, UserTurn } from "../components/chat/Turn";
+import { AgentProse, AgentTurn, BlockRow, UserTurn } from "../components/chat/Turn";
 import { Composer } from "../components/chat/Composer";
-import { WorkingLine, Typed } from "../components/Stream";
-import { Btn } from "../components/ui";
+import { Thinking, WorkingLine, Typed } from "../components/Stream";
+import { Emblem } from "../../../_shared/Emblem";
+import { MoonLoop } from "../../../_shared/MoonLoop";
 import { AccountSheet, dialFor } from "../components/AccountSheet";
 import { ToastHost } from "../components/campaign/Toasts";
 import {
@@ -49,7 +51,7 @@ import { BUILD_TASKS, offersFor, tools } from "../lib/agent/tools";
 import { byStrength, MATCH_WORD } from "../lib/agent/model";
 import { chatPicks, wantsYou, type CreatorRead, type Offer, type Profile } from "../lib/agent/types";
 import {
-  claimOnce, confirmAccept, cancelAccept, decideOffer, dropThread, liveThread, markDecisionSeen, openCampaign, openPanel, push,
+  claimOnce, confirmAccept, cancelAccept, correctRead, decideOffer, dropThread, liveThread, markDecisionSeen, openCampaign, openPanel, push,
   closeSignIn, putAccept, putOffers, putProfile, putRead, selectOffer, setAccount, setOfferState, threadIsEmpty,
   useActiveProfile, useDecisions, useOffers, useReviewClock, useSignInFor, useStore, useThread, type NewThreadItem,
 } from "../lib/store";
@@ -78,6 +80,7 @@ export default function Page() {
 
 function Conversation() {
   const params = useSearchParams();
+  const router = useRouter();
   /* Normalised again here, for anybody arriving with a link rather than
      from the landing: the agent says "Reading @name", never a URL.
      Whatever arrives is read. A handle that is not seeded comes back as
@@ -94,99 +97,111 @@ function Conversation() {
   const accepts = useStore((s) => s.accepts);
   const [text, setText] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
+  /* The connection handler, the brand's (PRD v0.2, H7): offline blocks the chat with one line and no error page; back
+     online, it says so for three seconds and carries on where it was. */
+  const [online, setOnline] = useState(true);
+  const [backOnline, setBackOnline] = useState(false);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const off = () => { setOnline(false); setBackOnline(false); };
+    const on = () => { setOnline(true); setBackOnline(true); clearTimeout(t); t = setTimeout(() => setBackOnline(false), 3000); };
+    window.addEventListener("offline", off);
+    window.addEventListener("online", on);
+    if (!navigator.onLine) off();
+    return () => { window.removeEventListener("offline", off); window.removeEventListener("online", on); clearTimeout(t); };
+  }, []);
 
   const readRun = useStream<CreatorRead>();
   const buildRun = useStream<Profile>();
   const offerRun = useStream<Offer[]>();
 
-  /* ONE THING ARRIVES AT A TIME.
-   *
-   * The agent pushes a burst — a sentence, the block it is about, then
-   * the sentence after it — and every one of them used to mount in the
-   * same frame, so three messages appeared at once and the middle one
-   * was a component nobody had been told about yet. A conversation does
-   * not work that way.
-   *
-   * So the thread is REVEALED rather than rendered: the item arriving
-   * reports when it has finished, and only then does the next appear. A sentence reports
-   * when it has finished typing; a block reports after a beat; a line
-   * the creator typed themselves reports immediately, because they
-   * already know what it says.
-   *
-   * `landed` counts the items that have FINISHED arriving, and the
-   * thread always shows those plus the ONE that is arriving now. This
-   * used to count what was visible and reveal the next item when the
-   * newest visible one reported — which deadlocked from zero: nothing
-   * visible, so nothing to report, so nothing ever appeared. It hit
-   * exactly the path every real creator takes, arriving from the
-   * landing page, and was invisible when the conversation was opened by
-   * URL, which is how every check had opened it.
-   *
-   * `null` until the first effect, so a RESTORED conversation reveals
-   * whole: history should not replay itself. What counts as history is
-   * read from the STORE, once — not from this render's snapshot, which
-   * can be the empty server one on a full page load, and not twice,
-   * which in development would count the conversation's own first
-   * pushes as history and skip typing them. */
-  const [landed, setLanded] = useState<number | null>(null);
-  const [restored, setRestored] = useState(0);
+  /* HOW THE THREAD ARRIVES, as the brand's does (12 Nov: "every component in the creator should act similar to its
+     similar one in the brand"). Only the newest agent message types; everything above it is history and renders whole.
+     While it types, nothing below it is shown, because a card that lands before the sentence introducing it reads as
+     two things happening at once. A conversation restored from an earlier visit renders whole: what was already in
+     the store when this page opened counts as typed. Read from the store once, before this page pushes anything. */
+  const [typedDone, setTypedDone] = useState<Record<string, true>>({});
+  const finish = useCallback((id: string) => setTypedDone((d) => (d[id] ? d : { ...d, [id]: true })), []);
   const initialised = useRef(false);
   useEffect(() => {
     if (initialised.current) return;
     initialised.current = true;
-    const n = liveThread().length;
-    setLanded(n);
-    setRestored(n);
+    const done: Record<string, true> = {};
+    for (const it of liveThread()) if (it.kind === "say") done[it.id] = true;
+    if (Object.keys(done).length) setTypedDone((d) => ({ ...done, ...d }));
   }, []);
-  const advance = useCallback(() => setLanded((n) => (n === null ? n : n + 1)), []);
+  const lastSay = [...thread].reverse().find((i) => i.kind === "say");
+  const isTyping = !!lastSay && !typedDone[lastSay.id];
+  const visible = isTyping ? thread.slice(0, thread.findIndex((i) => i.id === lastSay!.id) + 1) : thread;
+  /* The answer a step is waiting on, when it is not one of the standing chips (a stopped read or build). */
+  const [pending, setPending] = useState<string[] | null>(null);
+  /* "Not quite" was pressed: the next thing the creator types is the correction. */
+  const [awaitingCorrection, setAwaitingCorrection] = useState(false);
 
-  const visible = landed === null ? [] : thread.slice(0, landed + 1);
-  const cursor = landed !== null && landed < thread.length ? thread[landed] : null;
-
-  /* SCROLL THE THREAD, AND ONLY THE THREAD. This was
-     `bottom.scrollIntoView()`, which scrolls every ancestor that has any
-     overflow to reach the target — including the app shell. The shell is
-     `overflow: hidden`, which stops a person scrolling it but not a
-     script, so after a join the whole app slid up 304px on a phone,
-     the composer floated mid-screen over white space, and nothing could
-     scroll it back. Setting the one scroller's `scrollTop` cannot touch
-     anything outside it. */
-  const pin = useCallback(() => {
-    const el = scroller.current;
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  /* SCROLL THE THREAD, AND ONLY THE THREAD: the one scroller's own scrollTop, never scrollIntoView, which also moves
+     the app shell. And park the TOP of the newest turn under the header, as the brand does, rather than jumping to
+     the bottom: on a long answer that meant watching the last line being written and never seeing the first. */
+  const park = useCallback((smooth: boolean) => {
+    const box = scroller.current;
+    if (!box) return;
+    const last = box.querySelector<HTMLElement>("[data-last-turn]");
+    if (!last) return;
+    /* 76, not 16: the header (the mark and where they are in getting started) floats over the top of the thread. */
+    const top = box.scrollTop + (last.getBoundingClientRect().top - box.getBoundingClientRect().top) - 76;
+    box.scrollTo({ top: Math.max(0, top), behavior: smooth ? "smooth" : "auto" });
   }, []);
-  /* On `landed`, not `visible.length`: the step that finishes the thread
-     (and brings the dashboard button in under it) does not change how
-     many items are visible, so keyed on the length it never scrolled,
-     and on a phone the button landed below the fold. */
-  useEffect(() => { pin(); }, [landed, readRun.progress.done, buildRun.progress.done, pin]);
+  useEffect(() => { park(true); }, [thread.length, park]);
+  /* And again when the blocks a sentence was holding back appear (`visible` grows when the typing finishes). */
+  useEffect(() => { if (!isTyping) park(true); }, [visible.length, isTyping, park]);
 
   /* ── 1. The read ──────────────────────────────────────────────── */
+  /* WHAT A PERSON WOULD SAY WITH YOUR PROFILE ON THEIR PHONE: you are a fit and why, then what HeyMoon is — and only
+     then the question. Alex, 28 Sep: "the conversation and experience need to mimic a little bit of that." */
+  const afterRead = (value: CreatorRead) => {
+    /* A read stopped before the check ran has no answer yet, so it is not a fit by default (the brand's read treats
+       a missing result the same way). */
+    if (!value.standing) {
+      push({ kind: "say", text: "The check on whether brands here want you did not finish, so I cannot tell you yet. Let me read it again." });
+      setPending(["Read it again"]);
+      return;
+    }
+    /* Nothing for this person, said where it happens, with the way on, as the brand's "One thing didn't clear". */
+    if (value.standing.state !== "ok") {
+      push({ kind: "say", text: "One thing didn't clear. Everything I read stands, and it is checked again whenever you ask." });
+      push({ kind: "rejected", readId: value.id });
+      setPending(["Read it again", "When do I get paid?"]);
+      return;
+    }
+    push({ kind: "say", text: tools.welcome_line({ read: value }) });
+    push({ kind: "intro" });
+    push({ kind: "say", text: CHECK });
+  };
+  const lastRead = useRef<CreatorRead | null>(null);
+  const runRead = () => {
+    readRun.start(
+      (ctx) => tools.read_profile({ handle }, ctx),
+      (value, cancelled) => {
+        if (!value) return;
+        /* A stopped run carries the same id as the finished read, so storing it would replace a complete read with a
+           partial one (the brand's read guards the same way). */
+        if (!cancelled || !reads[value.id]?.standing) putRead(value);
+        lastRead.current = value;
+        /* Stopped: said, and the choice offered, as the brand's read does. Nothing found is thrown away. */
+        if (cancelled) {
+          push({ kind: "say", text: "Stopped there. What I found is above, and I can finish the job if you want it." });
+          setPending(["Read it again", "Work with this"]);
+          return;
+        }
+        afterRead(value);
+      }
+    );
+  };
   useEffect(() => {
     if (!threadIsEmpty()) return;
     if (!claimOnce(`read:${handle}`)) return;
     push({ kind: "say", text: `Hi! Let me have a look at ${handle}.` });
     push({ kind: "read", handle });
-    readRun.start(
-      (ctx) => tools.read_profile({ handle }, ctx),
-      (value, cancelled) => {
-        if (!value) return;
-        putRead(value);
-        /* Nothing for this person, said where it happens. */
-        if ((value.standing?.state ?? "ok") !== "ok") { push({ kind: "rejected", readId: value.id }); return; }
-        /* The result is the strip at the foot of the read block, so it
-           is not said again here — it used to be, word for word, in the
-           next bubble down. Only a stopped read needs a sentence. */
-        if (cancelled) push({ kind: "say", text: "Stopped there. What arrived is enough to build on." });
-        /* WHAT A PERSON WOULD SAY WITH YOUR PROFILE ON THEIR PHONE: you
-           are a fit and why, then what HeyMoon is — and only then the
-           question. Alex, 28 Sep: "the conversation and experience need
-           to mimic a little bit of that." */
-        push({ kind: "say", text: tools.welcome_line({ read: value }) });
-        push({ kind: "intro" });
-        push({ kind: "say", text: CHECK });
-      }
-    );
+    runRead();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handle]);
 
@@ -195,8 +210,14 @@ function Conversation() {
     push({ kind: "say", text: "Great. I am building your profile now." });
     buildRun.start(
       (ctx) => tools.propose_profile({ read }, ctx),
-      (value) => {
+      (value, cancelled) => {
         if (!value) return;
+        /* Stopped: nothing half-built is saved as if it were finished (the brand's build does the same). */
+        if (cancelled) {
+          push({ kind: "say", text: "Stopped too early to show you anything. Say “build my profile” to run it again." });
+          setPending(["Build my profile"]);
+          return;
+        }
         putProfile(value);
         /* ONLY WHERE THE PANEL SITS BESIDE THE CHAT. Above 768px this
            puts the profile next to the sentence about it. Below, the
@@ -290,10 +311,23 @@ function Conversation() {
   };
 
   /* ── 6. Free text ─────────────────────────────────────────────── */
-  const send = () => {
-    const t = text.trim(); if (!t) return;
+  const send = (said?: string) => {
+    const t = (said ?? text).trim(); if (!t) return;
     setText("");
+    setPending(null);
     push({ kind: "user", text: t });
+    /* The answer to "Not quite": kept beside the read as the creator's correction, and the profile is built on it, as
+       the brand's "Something's off" does. */
+    if (awaitingCorrection && !profile) {
+      setAwaitingCorrection(false);
+      const read = Object.values(reads)[0];
+      if (read) {
+        correctRead(read.id, { layer: "identity", field: "note", was: "what HeyMoon found", now: t, at: Date.now() }, (r) => r);
+        push({ kind: "say", text: "Fixed. Building your profile on that." });
+        build(read);
+        return;
+      }
+    }
     const i = tools.interpret({ text: t, profile: profile ?? undefined, joined: offers.some((o) => o.state === "approved") });
 
     if (i.kind === "edit" && profile && i.patch) {
@@ -334,51 +368,116 @@ function Conversation() {
 
   const busy = readRun.status === "running" || buildRun.status === "running" || offerRun.status === "running";
   const stopAll = () => { readRun.cancel(); buildRun.cancel(); offerRun.cancel(); };
-  const chips = !profile ? [] : offers.some((o) => o.state === "approved")
-    ? ["How is it doing?", "When do I get paid?", "Show me my profile"]
-    : ["When do I get paid?", "Why did this match me?", "No gambling or vaping"];
+  const looksRight = () => { setPending(null); const read = Object.values(reads)[0]; push({ kind: "user", text: "Yes, that's me" }); if (read) build(read); };
+  const somethingOff = () => {
+    setPending(null);
+    push({ kind: "user", text: "Not quite" });
+    /* Beside the chat only: below 768px the panel is a full-screen takeover that would hide the reply. */
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches) openPanel("read");
+    push({ kind: "say", text: "No problem. Tell me what I got wrong, or change it in the panel, and I will build on your version." });
+    setAwaitingCorrection(true);
+  };
+  /* "Did I get you right?" is answered from the chips, as the brand's "Does this look right?" is, while it is the
+     last thing said. */
+  const checkOpen = !profile && buildRun.status === "idle" && !!lastSay && isCheck(lastSay.text) && thread[thread.length - 1]?.id === lastSay.id;
+  const chips = pending ?? (checkOpen ? ["Yes, that's me", "Not quite"] : !profile ? [] : offers.some((o) => o.state === "approved")
+    ? ["Go to the dashboard", "When do I get paid?", "Show me my profile"]
+    : ["When do I get paid?", "Why did this match me?", "No gambling or vaping"]);
+  /* A chip is an answer, so it sends, as in the brand's conversation; it used to only fill the box. */
+  const onChip = (c: string) => {
+    if (c === "Yes, that's me") return looksRight();
+    if (c === "Go to the dashboard") { router.push("/creators/dashboard"); return; }
+    if (c === "Not quite") return somethingOff();
+    if (c === "Read it again") { setPending(null); push({ kind: "user", text: c }); push({ kind: "say", text: "Picking it back up." }); push({ kind: "read", handle }); runRead(); return; }
+    if (c === "Work with this") { setPending(null); push({ kind: "user", text: c }); push({ kind: "say", text: "Working with what arrived." }); if (lastRead.current) afterRead(lastRead.current); return; }
+    send(c);
+  };
+  /* The read item the live card belongs to: a read run again draws a new card, and the earlier one stays as it was. */
+  const liveReadId = [...thread].reverse().find((i) => i.kind === "read")?.id;
+  /* The build roster waits for the sentence introducing it, as the brand's does. */
+  const rosterReady = buildRun.status === "running" && !isTyping;
 
+
+  const steps: Step[] = [
+    /* Ticked when the read cleared, not merely when it ran, as the brand's "Your store". */
+    { key: "read", label: "Read", done: Object.values(reads).some((r) => r.standing?.state === "ok") || !!profile },
+    { key: "profile", label: "Profile", done: !!profile },
+    { key: "matches", label: "Matches", done: offers.length > 0 },
+    { key: "join", label: "Join", done: offers.some((o) => o.state === "approved") },
+  ];
 
   return (
-    <ChatShell panel={<PanelHost />}>
-      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-16">
+    /* Getting started, ticked by what is true rather than by the scroll (Steps.tsx). */
+    <ChatShell panel={<PanelHost />} top={<OnboardingSteps steps={steps} />}>
+      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-16">
         {/* THE CONTAINER. Every block in the thread sizes itself by
             this column's width (`@lg:` = 512px), not the viewport's:
             with the panel open at 768px this column is 361px, which is
             a phone, and it should be laid out like one. */}
-        <div className="@container mx-auto w-full max-w-[720px] space-y-5">
-          {visible.map((item, i) => (
-            <Item key={item.id} item={item} last={i === thread.length - 1} readRun={readRun} onJoined={joined}
-              instant={i < restored}
-              onTyped={item.kind === "say" && cursor?.id === item.id ? advance : undefined}
-              onLooksRight={() => { const read = Object.values(reads)[0]; push({ kind: "user", text: "Yes, that's me" }); if (read) build(read); }}
-              onSomethingOff={() => { push({ kind: "user", text: "Not quite" }); openPanel("read"); push({ kind: "say", text: "No problem. Tell me what I got wrong, or change it in the panel, and I will build on your version." }); }} />
+        {/* Offline, the cards can be read and scrolled but not pressed: a Join made offline would record a step the server
+            never saw. */}
+        <div
+          aria-disabled={!online || undefined}
+          className={`@container mx-auto w-full max-w-[720px] space-y-7 transition-opacity ${online ? "" : "pointer-events-none select-none opacity-60"}`}
+        >
+          {/* The brand's rhythm: prose and the creator's own words start a new group, the cards a sentence produced join
+              its group. 28px between turns, 20px between a turn and the blocks it introduced. The last group is
+              where the view parks. */}
+          {groupRows(visible.map((item, i) => ({
+            id: item.id,
+            block: item.kind !== "say" && item.kind !== "user",
+            node: (
+              <Item key={item.id} item={item} readRun={readRun} onJoined={joined}
+                mark={!(i > 0 && visible[i - 1].kind === "say")}
+                typing={item.kind === "say" && item.id === lastSay?.id && !typedDone[item.id]}
+                centered={visible.length === 1 && !profile}
+                liveRead={item.id === liveReadId}
+                onTyped={() => finish(item.id)}
+                onTick={() => park(false)} />
+            ),
+          }))).map((g, i, all) => (
+            <div key={g[0].id} data-last-turn={i === all.length - 1 ? "" : undefined} className="space-y-5">
+              {g.map((r) => r.node)}
+            </div>
           ))}
-          {/* Anything that is not a sentence lands on a beat rather than
-              reporting for itself. A line the creator typed needs no
-              beat at all — they know what it says. */}
-          {cursor && cursor.kind !== "say" && (
-            <Landed key={`landed-${cursor.id}`} after={cursor.kind === "user" ? 0 : 480} onArrived={advance} />
+          {/* The dots, for the gap between "I will do that" and the first thing appearing; once the roster is up they
+              would be a second spinner beside a real one. */}
+          {(readRun.status === "running" || buildRun.status === "running") && !isTyping && !rosterReady && <Thinking />}
+          {/* Building the profile, as the brand's plan build: the agents' tiles and the working line under them. */}
+          {rosterReady && (
+            <BlockRow>
+              <TaskRoster tasks={BUILD_TASKS} done={BUILD_TASKS.slice(0, buildRun.progress.done).map((t) => t.key)} live title={rosterTitle(BUILD_TASKS, "building your profile")} />
+              <WorkingLine className="mt-2" note={buildRun.note} done={buildRun.progress.done} total={buildRun.progress.total} status={buildRun.status} />
+              {/* The profile filling in as it is built, as the brand's plan does under its roster. */}
+              {buildRun.partial && (
+                <div className="mt-3">
+                  <ProfileBlock profile={buildRun.partial} building={{ landed: BUILD_TASKS.slice(0, buildRun.progress.done).map((t) => t.key) }} />
+                </div>
+              )}
+            </BlockRow>
           )}
-          {/* ONE LIVE COMPONENT PER RUN, never two reporting the same
-              work. The read reports itself: every row names the agent
-              filling it (ReadBlock). Building the profile is the roster.
-              Matching has nothing else on screen, so it is the line. */}
-          {buildRun.status === "running" && <BlockRow><TaskRoster tasks={BUILD_TASKS} done={BUILD_TASKS.slice(0, buildRun.progress.done).map((t) => t.key)} live title={rosterTitle(BUILD_TASKS, "building your profile")} /></BlockRow>}
-          {offerRun.status === "running" && <BlockRow><WorkingLine note={offerRun.note} done={offerRun.progress.done} total={offerRun.progress.total} status="running" /></BlockRow>}
+          {offerRun.status === "running" && !isTyping && <BlockRow><WorkingLine note={offerRun.note} done={offerRun.progress.done} total={offerRun.progress.total} status="running" /></BlockRow>}
           {/* Held back until the thread has finished arriving. It is not
               a thread item, so nothing gated it, and it turned up beside
               a sentence that was still being typed. */}
-          {offers.some((o) => o.state === "approved") && landed !== null && landed >= thread.length && (
+          {offers.some((o) => o.state === "approved") && !isTyping && (
             <BlockRow>
-              <Link href="/creators/dashboard" className="g-button inline-flex h-12 items-center gap-2 rounded-pill px-5 text-body font-semibold text-white">
+              <Link href="/creators/dashboard" className="btn-pri inline-flex h-12 items-center gap-2 rounded-pill px-5 text-body font-semibold">
                 Go to your dashboard <ArrowRight size={14} weight="bold" aria-hidden />
               </Link>
             </BlockRow>
           )}
         </div>
       </div>
-      <Composer value={text} onChange={setText} onSend={send} chips={chips} onChip={(c) => setText(c)}
+      {(!online || backOnline) && (
+        <div role={online ? "status" : "alert"} className="mx-auto w-full max-w-[720px] px-4 pb-2">
+          <p className={`flex items-center gap-2 rounded-[12px] px-3.5 py-2.5 text-meta font-semibold ${online ? "bg-green/[0.08] text-[#1C7A26]" : "bg-amber-soft text-amber"}`}>
+            <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${online ? "bg-green" : "animate-pulse bg-amber"}`} />
+            {online ? "Back online." : "You're offline. Reconnecting. Nothing here is lost."}
+          </p>
+        </div>
+      )}
+      <Composer disabled={!online} value={text} onChange={setText} onSend={() => send()} chips={isTyping || !online ? [] : chips} onChip={onChip}
         placeholder="Ask anything, or change your profile" note="HeyMoon cannot post to your accounts, join a campaign or sign anything."
         busy={busy} onStop={stopAll} />
       {/* THE FIRST JOIN MAKES THE ACCOUNT — see beginJoin. Over the
@@ -393,35 +492,39 @@ function Conversation() {
           closeSignIn();
           if (signInFor) askCadence(signInFor);
         }} />
-      <ToastHost onOpen={(id) => { openCampaign(id, "content"); openPanel("offers"); }} />
+      {/* Above the message box, which the dashboard does not have. */}
+      <ToastHost offset="bottom-40" onOpen={(id) => { openCampaign(id, "content"); openPanel("offers"); }} />
     </ChatShell>
   );
 }
 
 /* ------------------------------------------------------------------ */
 
-/** Reveals whatever comes next, once this one has landed. A safety net
-    as much as a beat: if an item never reported, the conversation would
-    stop dead, and a thread that stalls is worse than one that hurries. */
-function Landed({ after, onArrived }: { after: number; onArrived: () => void }) {
-  useEffect(() => {
-    const id = setTimeout(onArrived, after);
-    return () => clearTimeout(id);
-  }, [after, onArrived]);
-  return null;
+type Row = { id: string; block: boolean; node: React.ReactNode };
+/** Rows into turns: a sentence or the creator's words starts one, the blocks after it join it. */
+function groupRows(rows: Row[]): Row[][] {
+  const groups: Row[][] = [];
+  for (const r of rows) {
+    if (!r.block || !groups.length) groups.push([r]);
+    else groups[groups.length - 1].push(r);
+  }
+  return groups;
 }
 
-function Item({ item, last, readRun, onLooksRight, onSomethingOff, onJoined, instant, onTyped }: {
+function Item({ item, readRun, onJoined, typing, centered, liveRead, onTyped, onTick, mark = true }: {
   item: ReturnType<typeof useThread>[number];
-  last: boolean;
+  /** Consecutive agent lines share one mark: the speaker is named once and then keeps talking. */
+  mark?: boolean;
   readRun: ReturnType<typeof useStream<CreatorRead>>;
-  onLooksRight: () => void;
-  onSomethingOff: () => void;
   onJoined: (o: Offer) => void;
-  /** Restored from a previous session: render it, do not replay it. */
-  instant?: boolean;
-  /** Set on the newest sentence. Fires when it has finished typing. */
+  /** The newest sentence, still being written. Everything else renders whole. */
+  typing?: boolean;
+  /** The conversation is only its opening line: it opens like a page, as the brand's does. */
+  centered?: boolean;
+  /** This is the read the running read belongs to. */
+  liveRead?: boolean;
   onTyped?: () => void;
+  onTick?: () => void;
 }) {
   const profile = useActiveProfile();
   const offers = useOffers();
@@ -436,23 +539,41 @@ function Item({ item, last, readRun, onLooksRight, onSomethingOff, onJoined, ins
     case "user": return <UserTurn text={item.text} />;
 
     case "say":
-      return (
-        <AgentTurn>
-          {instant
-            ? <p className="whitespace-pre-line text-body text-ink">{item.text}</p>
-            : <Typed text={item.text} onDone={onTyped} />}
-          {isCheck(item.text) && last && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Btn size="sm" onClick={onLooksRight}>Yes, that&apos;s me</Btn>
-              <Btn size="sm" variant="quiet" onClick={onSomethingOff}>Not quite</Btn>
+      /* A conversation that is only its opening line opens like a page, not like a log, as the brand's does: the mark
+         large, and the same words in the middle of the screen, still typed out. The first card turns it back into the
+         thread. */
+      if (centered) {
+        return (
+          <div className="flex min-h-[calc(100dvh-260px)] flex-col items-center justify-center text-center">
+            <span aria-hidden className="grid h-16 w-16 place-items-center rounded-full bg-[linear-gradient(135deg,#6848D1,#C2418B)] text-white shadow-pri">
+              {typing ? <MoonLoop size={30} /> : <Emblem size={30} />}
+            </span>
+            <div className="mt-6 max-w-[34ch] text-[24px] font-semibold leading-[1.3] tracking-[-0.02em] text-ink @lg:text-[28px]">
+              {typing
+                ? <Typed text={item.text} className="!text-[length:inherit] !leading-[inherit]" onDone={onTyped} />
+                : <p>{item.text}</p>}
             </div>
-          )}
+          </div>
+        );
+      }
+      return (
+        <AgentTurn mark={mark} live={typing}>
+          {typing ? <Typed text={item.text} onTick={onTick} onDone={onTyped} /> : <AgentProse text={item.text} />}
         </AgentTurn>
       );
 
     case "read": {
-      const read = readRun.partial ?? Object.values(reads)[0] ?? null;
-      return <BlockRow><ReadBlock read={read} live={readRun.status === "running"} onOpen={() => openPanel("read")} /></BlockRow>;
+      const running = !!liveRead && readRun.status === "running";
+      const read = (liveRead ? readRun.partial : null) ?? Object.values(reads)[0] ?? null;
+      /* As the brand's read: the card, and the working line under it while it runs. */
+      return (
+        <BlockRow>
+          <ReadBlock read={read} live={running} onOpen={() => openPanel("read")} />
+          {running && (
+            <WorkingLine className="mt-2" note={readRun.note} done={readRun.progress.done} total={readRun.progress.total} status={readRun.status} />
+          )}
+        </BlockRow>
+      );
     }
     case "rejected": { const read = reads[item.readId]; return read ? <BlockRow><RejectedBlock read={read} /></BlockRow> : null; }
 

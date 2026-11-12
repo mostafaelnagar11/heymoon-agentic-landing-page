@@ -10,25 +10,25 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  ArrowRight, Check, CheckCircle, Lightning, LockSimple, Receipt as ReceiptIcon,
-  ShieldCheck, WarningCircle,
+  ArrowRight, Check, CheckCircle, EnvelopeSimple, Lightning, LockSimple, Path, TrendUp,
+  ShieldCheck, Ticket, UsersThree, WarningCircle,
 } from "@phosphor-icons/react";
 import type { ApprovalRequest, BrandRead, Eligibility, FundingRequest, Plan, PlanChange, ReadLayerKey, Report } from "../lib/agent/types";
 import { UNLOCK_AT, fmtUSD, phaseTitle } from "../lib/mock/campaigns";
-import { confirmFunding, cancelFunding, focusReadLayer, openPanel, usePhaseRequested, setAdState, setApprovalState, useAds, useCan, usePaid, useStore } from "../lib/store";
+import { confirmFunding, cancelFunding, openPanel, usePhaseRequested, setAdState, setApprovalState, useAds, useCan, usePaid, useStore } from "../lib/store";
 import { Btn, Card, Eyebrow, Pill } from "./ui";
-import { EvidenceRow, Figure } from "./Evidence";
-import { READ_ORDER, ReadValue, readValueTree, srcFor } from "./ReadValue";
-import { TypeOn } from "./TypeOn";
+import { Figure } from "./Evidence";
 import { PHASE1_BUDGET, PHASE1_ROAS, PHASE_BUDGETS, PHASE_MULTIPLES, READ_TASKS } from "../lib/agent/tools";
 import { shortfallLine } from "../lib/agent/guarantee";
-import { BILLING_COUNTRIES, vatOnBudget, vatRateFor } from "../lib/agent/billing";
+import { BILLING_COUNTRIES, invoiceNo, vatOnBudget, vatRateFor } from "../lib/agent/billing";
 import {
   CONFIDENCE_HIGH_RATIO, CONFIDENCE_MEDIUM_RATIO, getConfidence, type ConfidenceLevel,
 } from "../lib/agent/model";
 import { PlanCard, ConfidenceMeter } from "./PlanCard";
 import { CreatorNames, CreatorSummary } from "./CreatorCard";
 import { ApprovalCard } from "./AdCards";
+import { StoreReadCard, StoreReadLive } from "./chat/StoreRead";
+import { Emblem } from "../../../_shared/Emblem";
 import { OnlyAdmins } from "./dashboard/Roles";
 import { useT } from "../lib/i18n";
 
@@ -62,9 +62,9 @@ export function ChangesBlock({ changes }: { changes: PlanChange[] }) {
             <ArrowRight size={11} weight="bold" className="text-ink-faint rtl:rotate-180" aria-hidden />
             <span className="text-meta font-semibold text-brand">{c.to}</span>
             {paid && c.detail && (
-              <span className="w-full text-[11px] leading-4 text-ink-soft">{c.detail}</span>
+              <span className="w-full text-meta leading-4 text-ink-soft">{c.detail}</span>
             )}
-            <span className="w-full text-[11px] leading-4 text-ink-faint">{c.because}</span>
+            <span className="w-full text-meta leading-4 text-ink-faint">{c.because}</span>
           </li>
         ))}
       </ul>
@@ -83,21 +83,22 @@ export function ChangesBlock({ changes }: { changes: PlanChange[] }) {
    "Before you start" (app/(site)/_site/proof/BeforeYouStart.tsx). The path is read from the fixed phases. */
 function BeforeYouPay() {
   const path = PHASE_BUDGETS.map((b, i) => `${fmtUSD(b)} at ${PHASE_MULTIPLES[i]}x`).join(", then ");
-  const rows: [string, string][] = [
-    ["A fixed ROAS path.", `${path}. The same for every brand; you don't set the ROAS.`],
-    ["A unique code per creator.", "It tracks every sale, so it has to beat any site-wide discount you run."],
-    ["HeyMoon chooses the creators.", "You don't select them. That is what lets the return be guaranteed."],
+  const rows: { icon: typeof Path; title: string; body: string }[] = [
+    { icon: Path, title: "A fixed ROAS path", body: `${path}. The same for every brand; you don't set the ROAS.` },
+    { icon: Ticket, title: "A unique code per creator", body: "It tracks every sale, so it has to beat any site-wide discount you run." },
+    { icon: UsersThree, title: "HeyMoon chooses the creators", body: "You don't select them. That is what lets the return be guaranteed." },
   ];
   return (
-    <div className="mt-3 rounded-control border border-hairline p-3">
-      <p className="text-meta font-semibold text-ink">Before you start</p>
-      <ul className="mt-2 space-y-1.5">
-        {rows.map(([title, body]) => (
-          <li key={title} className="flex gap-2">
-            <Check size={12} weight="bold" className="mt-1 shrink-0 text-brand" aria-hidden />
-            <span className="min-w-0 text-meta leading-5 text-ink-soft">
-              <span className="font-semibold text-ink">{title}</span> {body}
+    <div>
+      <p className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-orchid">Before you start</p>
+      <ul className="mt-2.5 grid gap-2.5 sm:grid-cols-3">
+        {rows.map(({ icon: I, title, body }) => (
+          <li key={title} className="rounded-[16px] bg-haze/70 p-3.5">
+            <span aria-hidden className="grid h-8 w-8 place-items-center rounded-[10px] bg-white text-brand shadow-edge">
+              <I size={15} weight="bold" />
             </span>
+            <p className="mt-2.5 text-meta font-semibold leading-4 text-ink">{title}</p>
+            <p className="mt-1 text-[11.5px] leading-4 text-ink-soft">{body}</p>
           </li>
         ))}
       </ul>
@@ -122,9 +123,9 @@ export function FundingBlock({ req, onConfirmed, onCancelled }: {
      show the same payment twice in a row. */
   if (live.state === "confirmed") {
     return (
-      <Card className="flex items-center gap-2 px-3.5 py-2.5">
-        <CheckCircle size={14} weight="fill" className="shrink-0 text-good-deep" aria-hidden />
-        <p className="text-meta text-ink-soft">Paid. The receipt is below.</p>
+      <Card className="flex items-center gap-2.5 !rounded-full px-3 py-2">
+        <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-good text-white"><Check size={12} weight="bold" /></span>
+        <p className="text-meta font-medium text-ink-soft">Paid. The receipt is below.</p>
       </Card>
     );
   }
@@ -146,112 +147,132 @@ export function FundingBlock({ req, onConfirmed, onCancelled }: {
   const total = amount + (vat ?? 0);
   const pct = uae === null ? null : Math.round(vatRateFor(uae) * 100);
   const ready = !!brandName.trim() && !!country && uae !== null;
-  const field = "h-10 w-full rounded-control border border-hairline bg-white px-3 text-body text-ink outline-none transition focus:border-brand/50";
+  const field = "h-11 w-full rounded-[14px] border border-transparent bg-haze/70 px-3.5 text-body text-ink outline-none transition placeholder:text-ink-faint hover:bg-haze focus:border-brand/30 focus:bg-white";
 
   return (
-    <Card className="overflow-hidden border-brand/30">
-      <div className="flex items-center gap-2 border-b border-hairline bg-brand/[0.05] px-4 py-3">
-        <ShieldCheck size={16} weight="fill" className="text-brand" aria-hidden />
-        <p className="text-body font-semibold text-ink">{phaseTitle(live.phaseNo)}</p>
-        <Pill tone="brand" className="ms-auto">Phase {live.phaseNo} only</Pill>
+    <Card className="overflow-hidden">
+      {/* The sum, said once and large, on the gradient: this is the one card in the product that moves money. */}
+      <div className="grad-promo relative overflow-hidden px-5 pb-5 pt-4 sm:px-6">
+        <span aria-hidden className="pointer-events-none absolute -end-12 -top-16 h-48 w-48 rounded-full bg-white/10" />
+        <div className="relative flex items-center gap-2.5">
+          <span aria-hidden className="grid h-8 w-8 place-items-center rounded-[10px] bg-white/15 ring-1 ring-inset ring-white/25">
+            <ShieldCheck size={16} weight="fill" />
+          </span>
+          <p className="text-body font-semibold">{phaseTitle(live.phaseNo)}</p>
+          <span className="ms-auto rounded-pill bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ring-white/25">
+            Phase {live.phaseNo} only
+          </span>
+        </div>
+        <p className="num relative mt-4 flex items-baseline gap-2">
+          <span className="text-[40px] font-bold leading-none tracking-[-0.035em]">{fmtUSD(total)}</span>
+          <span className="text-body font-medium text-white/80">today</span>
+        </p>
+        <p className="num relative mt-1.5 text-meta text-white/80">
+          {vat === null ? "+ VAT, depending on where the company is registered" : vat ? `${fmtUSD(amount)} + ${fmtUSD(vat)} VAT (${pct}%)` : `${fmtUSD(amount)} · no VAT (0%)`}
+        </p>
+        <div className="relative mt-4 flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-pill bg-white/15 px-3 py-1 text-meta font-semibold ring-1 ring-inset ring-white/25">
+            <CheckCircle size={13} weight="fill" aria-hidden /> {fmtUSD(guaranteed)} in sales guaranteed
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-pill bg-white/15 px-3 py-1 text-meta font-semibold ring-1 ring-inset ring-white/25">
+            <CheckCircle size={13} weight="fill" aria-hidden /> Committed: Phase {live.phaseNo} only
+          </span>
+        </div>
       </div>
 
-      <div className="p-4">
-        {/* One total, said once and said large. The split underneath it
-            is the arithmetic, not a second price. */}
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <p className="text-figure font-bold text-ink tabular-nums">{fmtUSD(total)} today</p>
-          <p className="text-meta text-ink-faint tabular-nums">
-            {vat === null ? "+ VAT, depending on where the company is registered" : vat ? `${fmtUSD(amount)} + ${fmtUSD(vat)} VAT (${pct}%)` : `${fmtUSD(amount)} · no VAT (0%)`}
-          </p>
-        </div>
-
-        <ul className="mt-3 space-y-2">
-          <li className="flex gap-2 text-meta leading-5 text-ink-soft">
-            <CheckCircle size={13} weight="fill" className="mt-0.5 shrink-0 text-good" aria-hidden />
-            <span>
-              <span className="font-semibold text-ink">Guaranteed:</span> {fmtUSD(guaranteed)} in sales.{" "}
-              {shortfallLine(live.amount.value, guaranteed)}
-            </span>
-          </li>
-          <li className="flex gap-2 text-meta leading-5 text-ink-soft">
-            <CheckCircle size={13} weight="fill" className="mt-0.5 shrink-0 text-good" aria-hidden />
-            <span>
-              <span className="font-semibold text-ink">Committed:</span> Phase {live.phaseNo} only. Nothing after it.
-            </span>
-          </li>
-        </ul>
+      <div className="space-y-5 p-5 sm:p-6">
+        <p className="flex items-start gap-2.5 rounded-[14px] bg-good/[0.07] px-3.5 py-3 text-meta leading-5 text-good-deep">
+          <ShieldCheck size={15} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
+          <span><span className="font-semibold">Guaranteed:</span> {fmtUSD(guaranteed)} in sales. {shortfallLine(live.amount.value, guaranteed)}</span>
+        </p>
 
         <BeforeYouPay />
 
         {/* Who it is billed to. All three are needed before Pay, and the UAE answer sets the VAT (billing.ts). */}
-        <div className="mt-3 grid gap-3 rounded-control bg-brand/[0.02] p-3 sm:grid-cols-2">
-          <label className="grid gap-1 text-meta font-medium text-ink">
-            Brand name
-            <input
-              value={brandName}
-              onChange={(e) => setBrandName(e.target.value)}
-              placeholder="Enter brand name"
-              autoComplete="organization"
-              className={field}
-            />
-          </label>
-          <label className="grid gap-1 text-meta font-medium text-ink">
-            Country
-            <select value={country} onChange={(e) => setCountry(e.target.value)} className={`${field} ${country ? "" : "text-ink-faint"}`}>
-              <option value="" disabled>Choose a country</option>
-              {BILLING_COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </label>
-          <fieldset className="sm:col-span-2">
-            <legend className="text-meta font-medium text-ink">Is your company registered in the UAE?</legend>
-            <div role="radiogroup" aria-label="Is your company registered in the UAE?" className="mt-1.5 flex gap-2">
-              {([["Yes", true], ["No", false]] as const).map(([label, value]) => (
-                <button
-                  key={label}
-                  type="button"
-                  role="radio"
-                  aria-checked={uae === value}
-                  onClick={() => setUae(value)}
-                  className={`h-10 min-w-[88px] rounded-pill border px-4 text-body font-semibold transition ${
-                    uae === value ? "border-brand/40 bg-brand/[0.08] text-ink" : "border-hairline bg-white text-ink-soft hover:bg-wash"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
+        <div>
+          <p className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-orchid">Billed to</p>
+          <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-meta font-medium text-ink-60">
+              Brand name
+              <input
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+                placeholder="Enter brand name"
+                autoComplete="organization"
+                className={field}
+              />
+            </label>
+            <label className="grid gap-1.5 text-meta font-medium text-ink-60">
+              Country
+              <select value={country} onChange={(e) => setCountry(e.target.value)} className={`${field} ${country ? "" : "text-ink-faint"}`}>
+                <option value="" disabled>Choose a country</option>
+                {BILLING_COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+            <fieldset className="sm:col-span-2">
+              <legend className="text-meta font-medium text-ink-60">Is your company registered in the UAE?</legend>
+              <div role="radiogroup" aria-label="Is your company registered in the UAE?" className="mt-1.5 inline-flex gap-1 rounded-full bg-haze/70 p-1">
+                {([["Yes", true], ["No", false]] as const).map(([label, value]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    role="radio"
+                    aria-checked={uae === value}
+                    onClick={() => setUae(value)}
+                    className={`h-9 min-w-[96px] rounded-full px-4 text-body font-semibold transition ${
+                      uae === value ? "bg-white text-ink shadow-lift" : "text-ink-60 hover:text-ink"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          {/* Cancelling hands the turn back to the agent through
-              `onCancelled`, so declining is a step in the conversation
-              and not a dead card. */}
-          <Btn variant="quiet" className="sm:flex-1" onClick={() => { cancelFunding(live.id); onCancelled?.(); }}>
-            Cancel
-          </Btn>
-          <Btn
-            className="sm:flex-[1.6]"
-            disabled={busy || !ready}
-            onClick={() => {
-              if (!ready) return;
-              setBusy(true);
-              confirmFunding(live.id, { brandName: brandName.trim(), country, uaeRegistered: uae! });
-              onConfirmed(live.id);
-            }}
-          >
-            Pay {fmtUSD(total)}
-          </Btn>
+        {/* The arithmetic, as lines: what the phase costs, the VAT the answer above set, and the total. */}
+        <dl className="num rounded-[16px] bg-white/80 px-4 py-3 text-body ring-1 ring-brand/[0.07]">
+          <div className="flex justify-between py-1"><dt className="text-ink-soft">Phase {live.phaseNo} budget</dt><dd className="text-ink">{fmtUSD(amount)}</dd></div>
+          <div className="flex justify-between py-1">
+            <dt className="text-ink-soft">VAT{pct !== null ? ` (${pct}%)` : ""}</dt>
+            <dd className={vat === null ? "text-ink-faint" : "text-ink"}>{vat === null ? "—" : fmtUSD(vat)}</dd>
+          </div>
+          <div className="mt-1 flex justify-between border-t border-dashed border-brand/15 pt-2 font-semibold">
+            <dt className="text-ink">Total today</dt><dd className="text-ink">{fmtUSD(total)}</dd>
+          </div>
+        </dl>
+
+        <div>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+            {/* Cancelling hands the turn back to the agent through
+                `onCancelled`, so declining is a step in the conversation
+                and not a dead card. */}
+            <Btn variant="ghost" className="sm:w-auto" onClick={() => { cancelFunding(live.id); onCancelled?.(); }}>
+              Cancel
+            </Btn>
+            <Btn
+              className="h-12 sm:flex-1"
+              disabled={busy || !ready}
+              onClick={() => {
+                if (!ready) return;
+                setBusy(true);
+                confirmFunding(live.id, { brandName: brandName.trim(), country, uaeRegistered: uae! });
+                onConfirmed(live.id);
+              }}
+            >
+              <LockSimple size={15} weight="fill" aria-hidden /> Pay {fmtUSD(total)}
+            </Btn>
+          </div>
+          {!ready && <p className="mt-2 text-center text-meta leading-4 text-ink-faint sm:text-end">Add the brand name, country and UAE registration to pay.</p>}
+          <p className="mt-3 flex items-start gap-2 text-[11.5px] leading-4 text-ink-faint">
+            <LockSimple size={12} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
+            <span>
+              Paying starts Phase {live.phaseNo}. Nothing else is committed. This is the only action in the product that
+              moves money, and only you can take it. HeyMoon can prepare this block. It can never press the button.
+            </span>
+          </p>
         </div>
-        {!ready && <p className="mt-2 text-[11px] leading-4 text-ink-faint">Add the brand name, country and UAE registration to pay.</p>}
-        <p className="mt-2 text-[11px] leading-4 text-ink-faint">
-          Paying starts Phase {live.phaseNo}. Nothing else is committed.
-        </p>
-        <p className="mt-1 text-[11px] leading-4 text-ink-faint">
-          This is the only action in the product that moves money, and only you can take it. HeyMoon can prepare this
-          block. It can never press the button.
-        </p>
       </div>
     </Card>
   );
@@ -263,30 +284,102 @@ export function FundingBlock({ req, onConfirmed, onCancelled }: {
    either, because the one step left is connecting the store and a way
    out here would invite the brand to leave before it. */
 export function ReceiptBlock({ req }: { req: FundingRequest }) {
-  const { t, tf } = useT();
+  const { t, tf, locale } = useT();
+  /* Drawn as the invoice it is (Mostafa, 11 Nov: "let's be creative, this one can look like an invoice"): a sheet
+     of paper with the letterhead, the number Settings → Invoices files it under, who it is billed to, the line and
+     the VAT the payment card worked out, a total, and the stamp. The paper tears off at the bottom like a till
+     receipt. Every figure is the payment's own. */
+  const camp = useStore((s) => Object.values(s.campaigns).find((c) => c.planId === req.planId) ?? null);
+  const paidAt = camp?.launch?.paidAt ?? null;
+  const no = invoiceNo(req.id, paidAt);
+  const date = new Date(paidAt ?? Date.now()).toLocaleDateString(locale === "ar" ? "ar-AE" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const pct = req.billing ? Math.round(vatRateFor(req.billing.uaeRegistered) * 100) : Math.round((req.vat.value / Math.max(1, req.amount.value)) * 100);
+  const guaranteed = req.amount.value * PHASE1_ROAS;
+  const label = (k: string) => (
+    <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-faint">{t(k).replace(/:$/, "")}</p>
+  );
+
   return (
-    <Card className="overflow-hidden border-good/30">
-      <div className="flex items-center gap-2 border-b border-hairline bg-good/[0.06] px-4 py-3">
-        <ReceiptIcon size={16} weight="fill" className="text-good-deep" aria-hidden />
-        <p className="text-body font-semibold text-ink">{tf("receipt.title", { n: req.phaseNo })}</p>
-        <Pill tone="good" className="ms-auto">{t("receipt.paid")}</Pill>
-      </div>
-      <div className="p-4">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-body text-ink-soft">
-          <span className="font-semibold text-ink">{t("receipt.charged")}</span>
-          <Figure src={req.total} render={fmtUSD(req.total.value)} size="sm" />
-          {req.billing && <span>· {tf("receipt.vat", { pct: Math.round(vatRateFor(req.billing.uaeRegistered) * 100) })}</span>}
+    <div className="drop-shadow-[0_22px_36px_rgba(77,47,176,0.14)]">
+      <article className="relative overflow-hidden rounded-t-[20px] bg-white px-5 pb-5 pt-6 sm:px-7 sm:pt-7" aria-label={tf("receipt.title", { n: req.phaseNo })}>
+        <span aria-hidden className="hm-grad-rule absolute inset-x-0 top-0 h-1" />
+
+        {/* Letterhead */}
+        <div className="flex items-start justify-between gap-4">
+          <span className="flex items-center gap-2 text-ink">
+            <Emblem size={18} />
+            <span className="font-logo text-[15px] font-semibold tracking-[-0.01em]">HeyMoon<span className="text-brand">.AI</span></span>
+          </span>
+          <div className="text-end">
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-orchid">{t("receipt.invoice")}</p>
+            <p className="num mt-1 font-mono text-meta font-semibold text-ink">{no}</p>
+            <p className="num text-meta text-ink-faint">{date}</p>
+          </div>
         </div>
-        {req.billing && (
-          <p className="mt-1.5 text-body text-ink-soft">
-            <span className="font-semibold text-ink">{t("receipt.billed")}</span> {req.billing.brandName}, {req.billing.country}
-          </p>
-        )}
-        <p className="mt-1.5 text-body text-ink-soft">
-          <span className="font-semibold text-ink">{t("receipt.receipt")}</span> {t("receipt.emailed")}
+
+        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-dashed border-ink/10 pt-4">
+          <div className="min-w-0">
+            {label("receipt.billed")}
+            <p className="mt-1 truncate text-body font-semibold text-ink">{req.billing?.brandName ?? camp?.brandName ?? "—"}</p>
+            {req.billing && <p className="truncate text-meta text-ink-soft">{req.billing.country}</p>}
+          </div>
+          <div className="min-w-0">
+            {label("receipt.from")}
+            <p className="mt-1 truncate text-body font-semibold text-ink">HeyMoon.AI</p>
+          </div>
+        </div>
+
+        {/* The lines */}
+        <div className="mt-5">
+          <div className="flex items-center justify-between border-b border-ink/10 pb-2">
+            {label("receipt.item")}
+            {label("receipt.amount")}
+          </div>
+          <div className="flex items-start justify-between gap-4 py-3">
+            <div className="min-w-0">
+              <p className="text-body font-semibold text-ink">{req.phaseNo === 1 ? t("plan.phase1") : phaseTitle(req.phaseNo)}</p>
+              <p className="num text-meta text-ink-faint">{tf("receipt.guaranteed", { amount: fmtUSD(guaranteed), n: req.phaseNo })}</p>
+            </div>
+            <p className="num shrink-0 text-body font-medium text-ink">{fmtUSD(req.amount.value)}</p>
+          </div>
+          <div className="flex items-start justify-between gap-4 border-t border-ink/[0.06] py-3">
+            <div className="min-w-0">
+              <p className="num text-body text-ink">{tf("receipt.vat", { pct })}</p>
+              {req.billing && <p className="text-meta text-ink-faint">{req.billing.uaeRegistered ? t("receipt.uae") : t("receipt.notUae")}</p>}
+            </div>
+            <p className="num shrink-0 text-body font-medium text-ink">{fmtUSD(req.vat.value)}</p>
+          </div>
+          <div className="flex items-end justify-between gap-4 border-t-2 border-dashed border-ink/15 pt-3.5">
+            <p className="text-body font-semibold text-ink">{t("receipt.total")}</p>
+            <Figure src={req.total} render={fmtUSD(req.total.value)} size="display" />
+          </div>
+        </div>
+
+        <p className="mt-5 flex items-center gap-2 rounded-[12px] bg-haze/60 px-3 py-2 text-meta text-ink-soft">
+          <EnvelopeSimple size={14} weight="fill" className="shrink-0 text-brand" aria-hidden />
+          {t("receipt.emailed")}
         </p>
-      </div>
-    </Card>
+
+        {/* The stamp: inked, a little crooked, never in the way of a figure. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute bottom-[132px] start-[46%] -rotate-[12deg] rounded-[10px] border-[2.5px] border-good/70 px-3 py-1 text-center text-good/80 mix-blend-multiply"
+        >
+          <span className="block text-[17px] font-black uppercase leading-5 tracking-[0.22em]">{t("receipt.paid")}</span>
+          <span className="num block text-[9.5px] font-bold uppercase tracking-[0.14em]">{date}</span>
+        </span>
+        <p className="sr-only">{t("receipt.paid")}</p>
+      </article>
+      {/* The torn edge. */}
+      <div
+        aria-hidden
+        className="h-3"
+        style={{
+          background:
+            "linear-gradient(-45deg, transparent 8px, #fff 0) 0 0 / 16px 12px repeat-x, linear-gradient(45deg, transparent 8px, #fff 0) 0 0 / 16px 12px repeat-x",
+        }}
+      />
+    </div>
   );
 }
 
@@ -307,11 +400,11 @@ export function ReportBlock({ report }: { report: Report }) {
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {report.figures.map((f) => (
               <div key={f.key} className="rounded-control border border-hairline p-3">
-                <dt className="text-[11px] text-ink-faint">{f.label}</dt>
+                <dt className="text-meta text-ink-faint">{f.label}</dt>
                 <dd className="mt-1">
                   <Figure src={f.value} render={String(f.value.value)} size="sm" />
                 </dd>
-                <a href={`#${f.cardRef}`} className="mt-1.5 block text-[11px] font-medium text-brand hover:underline">
+                <a href={`#${f.cardRef}`} className="mt-1.5 block text-meta font-medium text-brand hover:underline">
                   See the card
                 </a>
               </div>
@@ -390,7 +483,7 @@ export function ApprovalBlock({ req }: { req: ApprovalRequest }) {
               <img src={a.img} alt="" className="h-10 w-8 shrink-0 rounded object-cover object-top" loading="lazy" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-meta font-semibold text-ink">{a.creatorName}</span>
-                <span className="block truncate text-[11px] text-ink-faint">{a.product}</span>
+                <span className="block truncate text-meta text-ink-faint">{a.product}</span>
               </span>
               <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
                 v === "hold" ? "bg-danger/[0.1] text-danger" : v === "approve" ? "bg-good/[0.1] text-good-deep" : "bg-brand/[0.08] text-brand"
@@ -421,7 +514,7 @@ export function ApprovalBlock({ req }: { req: ApprovalRequest }) {
           <OnlyAdmins what="approve and publish" className="sm:flex-[1.4] sm:justify-center" />
         )}
       </div>
-      <p className="px-3 pb-3 text-[11px] leading-4 text-ink-faint">
+      <p className="px-3 pb-3 text-meta leading-4 text-ink-faint">
         Approving publishes, and that is always your action. HeyMoon can rank these and recommend. That is all.
       </p>
     </Card>
@@ -444,7 +537,7 @@ export function PlanBlock({ plan, onOpenCreators }: { plan: Plan; onOpenCreators
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
         <button
           onClick={() => openPanel("plan")}
-          className="text-[11px] font-semibold text-brand hover:underline"
+          className="text-meta font-semibold text-brand hover:underline"
         >
           Change anything
         </button>
@@ -501,11 +594,11 @@ export function BriefBlock({ plan }: { plan: Plan }) {
       <p className="mt-2 text-body font-semibold text-ink">{b.headline.value}</p>
       <div className="mt-3 space-y-2.5">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-good-deep">Must</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-good-deep">Must</p>
           <ul className="mt-1 space-y-1">{b.mustSay.value.map((l, i) => <li key={i} className="text-meta text-ink-soft">· {briefLine(l)}</li>)}</ul>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-danger">Must not</p>
+          <p className="text-meta font-semibold uppercase tracking-wide text-danger">Must not</p>
           <ul className="mt-1 space-y-1">{b.mustNotSay.value.map((l, i) => <li key={i} className="text-meta text-ink-soft">· {briefLine(l)}</li>)}</ul>
         </div>
       </div>
@@ -581,11 +674,14 @@ export function TaskRoster({ tasks, done, live, title, framed = true }: {
 
   const body = (
     <>
-      <p className="flex items-center gap-2 px-4 pt-3 text-[10px] font-bold uppercase tracking-widest text-brand">
-        {live ? <span aria-hidden className="working-ring h-3 w-3" /> : <Check size={11} weight="bold" aria-hidden />}
+      <p className="flex items-center gap-2 px-4 pt-4 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-orchid sm:px-5">
+        {live ? <span aria-hidden className="working-ring h-3.5 w-3.5" /> : <Check size={12} weight="bold" aria-hidden />}
         {title}
+        <span className="num ms-auto rounded-pill bg-haze px-2 py-0.5 text-[11px] font-semibold normal-case tracking-normal text-brand">
+          {done.length}/{tasks.length}
+        </span>
       </p>
-      <ul className="divide-y divide-hairline">
+      <ul className="grid gap-2 p-3 sm:grid-cols-2 sm:p-4">
         {Object.entries(byAgent).map(([name, a]) => {
           const doneHere = a.tasks.filter((t) => finished.has(t.key));
           const current = a.tasks.find((t) => t.key === activeKey);
@@ -600,7 +696,9 @@ export function TaskRoster({ tasks, done, live, title, framed = true }: {
             ? "Waiting to start"
             : "Did not get to this";
           return (
-            <li key={name} className="flex items-start gap-3 px-4 py-2.5">
+            <li key={name} className={`flex items-start gap-3 rounded-[16px] px-3.5 py-3 transition ${
+              current ? "bg-white shadow-lift ring-1 ring-brand/20" : allDone ? "bg-white/70 ring-1 ring-brand/[0.06]" : "bg-haze/50"
+            }`}>
               {/* State, not identity. The initial in this circle was
                   the same letter for six of the seven agents, so it
                   identified nothing and read as an avatar for a person
@@ -610,20 +708,20 @@ export function TaskRoster({ tasks, done, live, title, framed = true }: {
                   empty outline for the ones still queued. */}
               <span
                 aria-hidden
-                className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full ${
-                  allDone ? "bg-good/15 text-good-deep" : current ? "" : "border border-dashed border-black/15"
+                className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[9px] ${
+                  allDone ? "bg-good text-white" : current ? "bg-haze" : "border border-dashed border-black/15"
                 }`}
               >
-                {allDone ? <Check size={12} weight="bold" /> : current ? <span className="working-ring h-4 w-4" /> : null}
+                {allDone ? <Check size={13} weight="bold" /> : current ? <span className="working-ring h-4 w-4" /> : null}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-baseline gap-x-2">
                   <span className="text-meta font-semibold text-ink">{name}</span>
-                  <span className="text-[11px] text-ink-faint">{a.role}</span>
+                  <span className="text-meta text-ink-faint">{a.role}</span>
                 </span>
-                <span className="mt-0.5 block truncate text-[11px] text-ink-soft">{line}</span>
+                <span className="mt-0.5 block truncate text-meta text-ink-soft">{line}</span>
               </span>
-              <span className="shrink-0 pt-0.5 text-[11px] tabular-nums text-ink-faint">
+              <span className="num shrink-0 pt-0.5 text-[11px] font-semibold text-ink-faint">
                 {doneHere.length}/{a.tasks.length}
               </span>
             </li>
@@ -655,143 +753,14 @@ export function TaskRoster({ tasks, done, live, title, framed = true }: {
    `doing` is the predicate only. The subject is the agent that owns the
    layer, looked up from READ_TASKS, so a row can never name an agent
    that is not the one working. */
-const PROGRESS_ROWS: { k: ReadLayerKey; label: string; doing: string }[] = [
-  { k: "category", label: "Catalogue", doing: "is extracting your catalogue" },
-  { k: "priceBand", label: "Prices", doing: "is calculating your median price" },
-  { k: "voice", label: "Voice", doing: "is learning how you write" },
-  { k: "markets", label: "Markets", doing: "is finding your markets" },
-];
 
 export function ReadBlock({ read, live }: { read: BrandRead | null; live: boolean }) {
-  const [open, setOpen] = useState<string | null>(null);
   if (!read) return null;
-  const has = (k: ReadLayerKey) => read.done.includes(k);
-
-  /* While the read is running the card is the four rows, in the order
-     they land. Each one says what is being looked at, and swaps to what
-     was found the moment its layer arrives, so the brand is watching
-     its own store fill in rather than watching a progress bar. */
-  if (live) {
-    return (
-      <Card className="overflow-hidden">
-        <div className="flex items-center gap-2.5 border-b border-hairline px-4 py-3">
-          <span aria-hidden className="working-ring h-4 w-4 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-body font-semibold text-ink">Reading your store</p>
-            <p className="truncate text-[11px] text-ink-faint" dir="ltr">{read.url}</p>
-          </div>
-        </div>
-        <dl className="divide-y divide-hairline">
-          {PROGRESS_ROWS.map(({ k, label, doing }) => (
-            <div key={k} className="flex items-start gap-3 px-4 py-2.5">
-              <dt className="w-[86px] shrink-0 pt-0.5 text-[11px] font-semibold text-ink-faint">{label}</dt>
-              <dd className="min-w-0 flex-1">
-                {has(k) ? (
-                  <TypeOn id={`${read.id}:${k}`}>{readValueTree(read, k, true)}</TypeOn>
-                ) : (
-                  <p className="flex items-start gap-2 text-body text-ink-faint">
-                    <span aria-hidden className="working-ring mt-1 h-3 w-3 shrink-0" />
-                    <span className="min-w-0">
-                      <span className="font-medium text-ink-soft">{agentForLayer(k)}</span> {doing}…
-                    </span>
-                  </p>
-                )}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="overflow-hidden">
-      <div className="flex items-center gap-2.5 border-b border-hairline px-4 py-3">
-        {read.identity?.logo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={read.identity.logo} alt="" className="h-7 w-7 shrink-0 rounded object-cover" />
-        ) : (
-          <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded bg-brand-100 text-[12px] font-bold text-brand">
-            {read.identity?.name.value?.[0] ?? "?"}
-          </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-body font-semibold text-ink">{read.identity?.name.value ?? read.url}</p>
-          <p className="truncate text-[11px] text-ink-faint" dir="ltr">{read.url}</p>
-        </div>
-        <button onClick={() => openPanel("read")} className="shrink-0 text-[11px] font-semibold text-brand hover:underline">
-          See everything found
-        </button>
-      </div>
-
-      <dl className="divide-y divide-hairline">
-        {READ_ORDER.map((k) => {
-          const src = has(k) ? srcFor(read, k) : undefined;
-          if (!has(k)) return null;
-          return (
-            /* Tapping a finding opens it in the panel, ready to
-               correct. The brand is already looking at the thing that
-               is wrong, so asking them to find it again in a list is
-               the slowest correction path we could have built. */
-            <div
-              key={k}
-              role="button"
-              tabIndex={0}
-              onClick={() => focusReadLayer(k)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); focusReadLayer(k); }
-              }}
-              aria-label={`${LAYER_LABEL[k]}. Open to correct.`}
-              className="cursor-pointer px-4 py-2.5 transition hover:bg-brand/[0.03] focus-visible:bg-brand/[0.04] focus-visible:outline-none"
-            >
-              <div className="flex items-start gap-3">
-                <dt className="w-[86px] shrink-0 pt-0.5 text-[11px] font-semibold text-ink-faint">
-                  {LAYER_LABEL[k]}
-                </dt>
-                <dd className="min-w-0 flex-1">
-                  <ReadValue read={read} k={k} compact />
-                  {src && (
-                    <>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setOpen(open === k ? null : k); }}
-                        aria-expanded={open === k}
-                        className="mt-1.5 text-[11px] font-medium text-brand hover:underline"
-                      >
-                        {open === k ? "Hide the evidence" : `Show the evidence · ${src.evidence.length}`}
-                      </button>
-                      {open === k && (
-                        <div className="mt-1.5 rounded-control border border-brand/15 bg-brand/[0.03] p-2.5">
-                          <p className="text-[11px] leading-4 text-ink-soft">
-                            {`Read off ${src.evidence[0]?.label ?? "your store"}. `}{src.why}
-                          </p>
-                          <ul className="mt-1 divide-y divide-hairline">
-                            {src.evidence.map((e) => <EvidenceRow key={e.id} e={e} />)}
-                          </ul>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </dd>
-              </div>
-            </div>
-          );
-        })}
-      </dl>
-
-      {read.eligibility && (
-        <div className={`flex items-start gap-2 border-t px-4 py-3 ${
-          read.eligibility.state === "ok" ? "border-good/20 bg-good/[0.05]" : "border-danger/20 bg-danger/[0.05]"
-        }`}>
-          {read.eligibility.state === "ok"
-            ? <CheckCircle size={14} weight="fill" className="mt-0.5 shrink-0 text-good-deep" aria-hidden />
-            : <WarningCircle size={14} weight="fill" className="mt-0.5 shrink-0 text-danger" aria-hidden />}
-          <p className={`text-meta font-semibold leading-5 ${read.eligibility.state === "ok" ? "text-good-deep" : "text-danger"}`}>
-            {eligibilityLine(read.eligibility)}
-          </p>
-        </div>
-      )}
-    </Card>
-  );
+  /* Drawn as tiles now (chat/StoreRead.tsx): while it runs, the four agents' tiles filling in as their layers land;
+     when it lands, the verdict first and each finding in its own kind. A tile still opens in the panel to be
+     corrected, and its evidence is still one press away. */
+  if (live) return <StoreReadLive read={read} agentFor={agentForLayer} />;
+  return <StoreReadCard read={read} verdict={read.eligibility ? eligibilityLine(read.eligibility) : undefined} />;
 }
 
 /* The eligibility row, said to the brand rather than filed about them.
@@ -817,16 +786,15 @@ function eligibilityLine(e: Eligibility): string {
       ? `You qualify for a guarantee. About ${visitors} visitors a month, well above the minimum.`
       : "You qualify for a guarantee. Your traffic is well above the minimum.";
   }
+  /* No store at all: the read's own line ("No online store at …"). The traffic sentence below would read
+     "None found monthly visitors against the Required". */
+  if (e.missing?.some((m) => /online store/i.test(m.label))) return e.line.value;
   const gap = e.missing?.[0];
   return gap
     ? `Not eligible yet. ${gap.have.value} monthly visitors against the ${gap.need} a guarantee needs.`
     : "Not eligible yet. Your traffic is below what a guarantee needs.";
 }
 
-const LAYER_LABEL: Record<ReadLayerKey, string> = {
-  identity: "Store", category: "Catalogue", priceBand: "Prices", bestsellers: "Bestsellers",
-  voice: "Voice", socials: "Social", markets: "Markets", seasonality: "Moments", eligibility: "Eligible",
-};
 
 /* ------------------------------------------------------------------ */
 /* Below the traffic floor                                             */
@@ -837,7 +805,9 @@ export function RejectedBlock({ read }: { read: BrandRead }) {
   if (!e || e.state !== "short") return null;
   return (
     <div className="space-y-2.5">
-      <Card className="p-4">
+      {/* What is missing, with the store's figure against the floor, is the verdict at the top of the read now
+          (StoreRead), so it is not said twice. */}
+      {(e.learned?.length ?? 0) > 0 && <Card className="p-4">
         <Eyebrow tone="good">What I learned anyway</Eyebrow>
         <ul className="mt-2 space-y-1.5">
           {(e.learned ?? []).map((l, i) => (
@@ -846,25 +816,7 @@ export function RejectedBlock({ read }: { read: BrandRead }) {
             </li>
           ))}
         </ul>
-      </Card>
-      <Card className="border-danger/25 p-4">
-        <Eyebrow tone="danger">What is missing</Eyebrow>
-        {(e.missing ?? []).map((m) => (
-          <div key={m.label} className="mt-2">
-            <p className="flex flex-wrap items-baseline gap-x-2 text-meta text-ink-soft">
-              <span className="font-medium text-ink">{m.label}</span>
-              <span className="text-figure font-bold tabular-nums text-danger">{m.have.value}</span>
-              <span>against <span className="font-semibold tabular-nums text-ink">{m.need}</span> needed</span>
-            </p>
-            <div className="mt-1.5 h-2 rounded-pill bg-track">
-              <div
-                className="keyline-grad h-full rounded-pill"
-                style={{ width: `${Math.min(100, (parseFloat(String(m.have.value).replace(/,/g, "")) / parseFloat(m.need.replace(/,/g, ""))) * 100)}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </Card>
+      </Card>}
       <Card className="p-4">
         <Eyebrow>The way back</Eyebrow>
         <ul className="mt-2 space-y-2.5">
@@ -907,123 +859,100 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
   const requested = usePhaseRequested(plan.id, rungs0PhaseNo(plan));
   const rungs = plan.ladder.value;
   const count = countWord(rungs.length);
-  const rowPad = compact ? "px-3 py-2.5" : "px-4 py-3.5";
-  const headPad = compact ? "px-3 py-2.5" : "px-4 py-3";
-  const circle = compact ? "h-6 w-6 text-[11px]" : "h-7 w-7 text-[12px]";
 
   return (
-    <Card className="overflow-hidden">
-      <div className={`border-b border-hairline ${headPad}`}>
-        {/* The count is derived, so a plan that ever carries two rungs or
-            four says so rather than keeping a number that used to be
-            true. */}
-        <p className="text-body font-semibold text-ink">
-          {`${count[0].toUpperCase()}${count.slice(1)} phases.`} {paid ? "You started one." : "You start one."}
-        </p>
-        {/* The offer is the price, so the price leads. There is nothing
-            to size and nothing to negotiate: the warm-up is the same
-            figure for every brand, and the two phases behind it are what
-            it earns rather than what it commits you to. */}
-        <p className={`mt-1.5 text-ink-soft ${compact ? "text-meta leading-5" : "text-body leading-6"}`}>
-          {compact
-            ? paid ? "Phase 1 has started. The others open as it reaches 80%." : "You start Phase 1. The others open as it reaches 80%."
-            : paid
-            ? `Phase 1 has started, at the ${fmtUSD(PHASE1_BUDGET)} it costs every brand. Phases 2 and 3 are what it leads to, and you decide on each one only when it is offered.`
-            : `Start at ${fmtUSD(PHASE1_BUDGET)}. Phases 2 and 3 are what it leads to. The warm-up is ${fmtUSD(PHASE1_BUDGET)} for every brand and whichever of the three plans you pick, so there is no budget to agree before you begin, and nothing beyond Phase 1 is charged or committed.`}
-        </p>
+    <Card className={compact ? "p-4" : "p-5"}>
+      <div className="flex items-start gap-3">
+        <span aria-hidden className="grad-tile grid h-10 w-10 shrink-0 place-items-center rounded-[12px] shadow-pri">
+          <TrendUp size={19} weight="bold" />
+        </span>
+        <div className="min-w-0">
+          {/* The count is derived, so a plan that ever carries two rungs or
+              four says so rather than keeping a number that used to be
+              true. */}
+          <p className="text-[16px] font-semibold leading-6 text-ink">
+            {`${count[0].toUpperCase()}${count.slice(1)} phases.`} {paid ? "You started one." : "You start one."}
+          </p>
+          {/* The offer is the price, so the price leads. There is nothing
+              to size and nothing to negotiate: the warm-up is the same
+              figure for every brand, and the two phases behind it are what
+              it earns rather than what it commits you to. */}
+          <p className={`mt-0.5 text-ink-soft ${compact ? "text-meta leading-5" : "text-body leading-6"}`}>
+            {compact
+              ? paid ? "Phase 1 has started. The others open as it reaches 80%." : "You start Phase 1. The others open as it reaches 80%."
+              : paid
+              ? `Phase 1 has started, at the ${fmtUSD(PHASE1_BUDGET)} it costs every brand. Phases 2 and 3 are what it leads to, and you decide on each one only when it is offered.`
+              : `Start at ${fmtUSD(PHASE1_BUDGET)}. Phases 2 and 3 are what it leads to. The warm-up is ${fmtUSD(PHASE1_BUDGET)} for every brand and whichever of the three plans you pick, so there is no budget to agree before you begin, and nothing beyond Phase 1 is charged or committed.`}
+          </p>
+        </div>
       </div>
 
-      <ol className="divide-y divide-hairline">
+      {/* The staircase itself: each rung a step higher than the last, the one being bought lit and the two behind it
+          locked until the one before reaches the unlock line. */}
+      <ol className="mt-4 grid items-end gap-2.5 sm:grid-cols-3">
         {rungs.map((r, i) => {
-          if (i === 0) {
-            /* Phase 1: full weight, full numbers. Each figure points at the
-               plan value it is, so "why this number" opens the same
-               arithmetic the plan card shows. */
-            return (
-              <li key={r.phaseNo} className="bg-brand/[0.04]">
-                <div className={`flex items-start gap-3 ${rowPad}`}>
-                  <span aria-hidden className={`mt-0.5 grid shrink-0 place-items-center rounded-full bg-brand font-bold text-white ${circle}`}>
-                    {r.phaseNo}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <p className="text-body font-semibold text-ink">{phaseTitle(r.phaseNo)}</p>
-                      <span className="text-meta text-ink-faint">·</span>
-                      <Figure src={plan.budget} render={fmtUSD(r.budget)} size="sm" />
-                      <span className="text-meta text-ink-faint">·</span>
-                      <span className="text-meta text-ink-faint">
-                        <Figure src={plan.price.revenueTarget} render={`${r.multiple}x`} size="sm" /> guaranteed
-                      </span>
-                      <span className="text-meta text-ink-faint">·</span>
-                      <span className="text-meta text-ink-faint">{paid ? "Paid" : "Due today"}</span>
-                    </div>
-                    {!compact && <p className="mt-1 text-[11px] leading-4 text-ink-faint">{r.note}</p>}
-                    {/* The refund rule on this phase's own figures (lib/agent/guarantee.ts). */}
-                    {!compact && <p className="mt-1 text-[11px] leading-4 text-ink-soft">{shortfallLine(r.budget, Math.round(r.budget * r.multiple))}</p>}
-                  </div>
-                </div>
-              </li>
-            );
-          }
-
-          /* Phases 2 and 3: faded, and on one line each, with the condition
-             that opens each on the same line as the money. The budgets are
-             fixed (PHASE_BUDGETS), so they are no longer prefixed "about". */
+          const first = i === 0;
           return (
-            <li key={r.phaseNo} className="opacity-60">
-              <div className={`flex items-start gap-3 ${rowPad}`}>
-                <span aria-hidden className={`mt-0.5 grid shrink-0 place-items-center rounded-full bg-neutral-100 text-ink-faint ${circle}`}>
-                  <LockSimple size={12} weight="fill" />
+            <li
+              key={r.phaseNo}
+              className={`flex flex-col rounded-[18px] p-4 ${first ? "grad-ws shadow-lift ring-2 ring-brand/25" : "bg-haze/70"}`}
+              style={{ minHeight: (compact ? 128 : 150) + i * 22 }}
+            >
+              <div className="flex items-center gap-2">
+                <span aria-hidden className={`grid h-7 w-7 shrink-0 place-items-center rounded-[9px] text-[12px] font-bold ${first ? "grad-tile" : "bg-white text-ink-faint"}`}>
+                  {first ? r.phaseNo : <LockSimple size={12} weight="fill" />}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <p className="text-body font-semibold text-ink-soft">{phaseTitle(r.phaseNo)}</p>
-                    <span className="text-meta text-ink-faint">·</span>
-                    <span className="text-meta text-ink-faint">
-                      <Figure src={plan.ladder} render={fmtUSD(r.budget)} size="sm" />
-                    </span>
-                    <span className="text-meta text-ink-faint">·</span>
-                    <span className="text-meta text-ink-faint">
-                      <Figure src={plan.ladder} render={`${r.multiple}x`} size="sm" /> guaranteed
-                    </span>
-                    <span className="text-meta text-ink-faint">·</span>
-                    <span className="text-meta text-ink-faint">
-                      Offered when Phase {r.phaseNo - 1} reaches {Math.round(UNLOCK_AT * 100)}% of target
-                    </span>
-                  </div>
-                  {!compact && <p className="mt-1 text-[11px] leading-4 text-ink-faint">{r.note}</p>}
-                  {/* The same rule at this phase's size: a share of what is paid comes back, not the sales gap. */}
-                  {!compact && <p className="mt-1 text-[11px] leading-4 text-ink-faint">{shortfallLine(r.budget, Math.round(r.budget * r.multiple))}</p>}
-                </div>
+                <p className={`min-w-0 truncate text-meta font-semibold ${first ? "text-ink" : "text-ink-soft"}`}>{phaseTitle(r.phaseNo)}</p>
               </div>
+              <div className="mt-3 flex flex-wrap items-baseline gap-x-1.5">
+                {/* The first rung's figures are the plan's own values, so "why this number" opens the same arithmetic
+                    the plan card shows; the rungs behind it read off the ladder. */}
+                <Figure src={first ? plan.budget : plan.ladder} render={fmtUSD(r.budget)} size="md" />
+                <span className="text-meta text-ink-faint">at</span>
+                <span className="num rounded-pill bg-white/80 px-2 py-0.5 text-meta font-semibold text-brand">
+                  <Figure src={first ? plan.price.revenueTarget : plan.ladder} render={`${r.multiple}x`} size="sm" />
+                </span>
+              </div>
+              <p className="num mt-1 text-meta text-ink-faint">{fmtUSD(Math.round(r.budget * r.multiple))} guaranteed</p>
+              {!compact && <p className="mt-2 text-[11.5px] leading-4 text-ink-faint">{r.note}</p>}
+              <p className={`mt-auto pt-3 text-[11.5px] font-semibold leading-4 ${first ? "text-brand" : "text-ink-faint"}`}>
+                {first ? (paid ? "Paid" : "Due today") : `Offered when Phase ${r.phaseNo - 1} reaches ${Math.round(UNLOCK_AT * 100)}% of target`}
+              </p>
             </li>
           );
         })}
       </ol>
 
-      {!compact && <div className={`border-t border-hairline ${headPad}`}>
-        {/* No three-phase totals here. Summing budgets the brand is not
-            being charged for, against guarantees that are not yet
-            priced, put the biggest pair of numbers on the card under
-            the one phase that is actually due. What is true today is
-            the only thing this footer says. */}
-        <p className="text-meta leading-5 text-ink-soft">
-          Only Phase 1 is due today. Each phase after it is offered on results, and you decide then. Every phase carries
-          the same guarantee: fall short and the same share of that phase&apos;s budget comes back to you.
-        </p>
-      </div>}
+      {!compact && (
+        /* No three-phase totals here. Summing budgets the brand is not
+           being charged for, against guarantees that are not yet
+           priced, put the biggest pair of numbers on the card under
+           the one phase that is actually due. What is true today is
+           the only thing this footer says. The refund rule is said once,
+           on Phase 1's own figures (lib/agent/guarantee.ts). */
+        <div className="mt-3 space-y-2">
+          <p className="flex items-start gap-2.5 rounded-[14px] bg-good/[0.07] px-3.5 py-2.5 text-meta leading-5 text-good-deep">
+            <ShieldCheck size={14} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
+            {shortfallLine(rungs[0].budget, Math.round(rungs[0].budget * rungs[0].multiple))}
+          </p>
+          <p className="text-meta leading-5 text-ink-soft">
+            Only Phase 1 is due today. Each phase after it is offered on results, and you decide then. Every phase carries
+            the same guarantee: fall short and the same share of that phase&apos;s budget comes back to you.
+          </p>
+        </div>
+      )}
 
       {/* Stood down once the payment card is on screen below. The
           brand reached it by pressing this, so leaving it live offers
           the same action twice, and the one further up the thread is
           the stale one. */}
       {onStart && !paid && !requested && (
-        <div className={`border-t border-hairline ${compact ? "p-3" : "p-4"}`}>
+        <div className="mt-4">
           <Btn className="w-full sm:w-auto" onClick={onStart}>
             Start Phase 1 for {fmtUSD(plan.price.total.value)}
           </Btn>
           {!compact && (
-            <p className="mt-2 text-[11px] leading-4 text-ink-faint">
+            <p className="mt-2 text-meta leading-4 text-ink-faint">
               You are committing to Phase 1 only. Nothing after it is charged, promised or scheduled, and you decide
               phase by phase whether to continue.
             </p>
@@ -1033,6 +962,7 @@ export function LadderBlock({ plan, onStart, paid = false, compact = false }: {
     </Card>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Integration, after payment                                          */
@@ -1162,7 +1092,7 @@ export function IntegrationBlock({ onConnect, compact = false }: {
           <span aria-hidden className="working-ring h-3.5 w-3.5" />
           <div className="min-w-0 flex-1">
             <p className="text-body font-semibold text-ink">Connect {platform.name}</p>
-            <p className="text-[11px] text-ink-faint">One tap. Disconnect any time.</p>
+            <p className="text-meta text-ink-faint">One tap. Disconnect any time.</p>
           </div>
           <button onClick={() => setAuth(null)} className="ms-auto text-meta font-semibold text-ink-faint hover:text-danger">
             Cancel
@@ -1184,7 +1114,7 @@ export function IntegrationBlock({ onConnect, compact = false }: {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className={`block text-meta font-semibold ${now ? "text-brand" : "text-ink"}`}>{st.label}</span>
-                  <span className="block text-[11px] leading-4 text-ink-faint">{st.detail}</span>
+                  <span className="block text-meta leading-4 text-ink-faint">{st.detail}</span>
                 </span>
               </li>
             );
@@ -1224,7 +1154,7 @@ export function IntegrationBlock({ onConnect, compact = false }: {
       {!compact && (
         <>
           <p className="text-body font-semibold text-ink">Connect your store</p>
-          <p className="text-[11px] text-ink-faint">One tap. Disconnect any time.</p>
+          <p className="text-meta text-ink-faint">One tap. Disconnect any time.</p>
           <p className="mt-2 text-meta leading-5 text-ink-soft">
             Your plan was built from what is public about your store, so this step does not decide whether you qualify. The{" "}
             {fmtUSD(PHASE1_BUDGET)} warm-up is already yours. Connecting is how HeyMoon counts the sales each creator earns
@@ -1249,9 +1179,9 @@ export function IntegrationBlock({ onConnect, compact = false }: {
                 <span className="min-w-0 flex-1">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={p.src} alt={p.name} style={{ height: p.h }} className="w-auto max-w-[120px] object-contain object-left rtl:object-right" />
-                  <span className="mt-1.5 block text-[11px] text-ink-faint">{p.note}</span>
+                  <span className="mt-1.5 block text-meta text-ink-faint">{p.note}</span>
                 </span>
-                <span className="shrink-0 rounded-control bg-brand px-2.5 py-1.5 text-[11px] font-semibold text-white">{p.cta}</span>
+                <span className="shrink-0 rounded-control bg-brand px-2.5 py-1.5 text-meta font-semibold text-white">{p.cta}</span>
               </button>
             ))}
           </div>
@@ -1267,7 +1197,7 @@ export function IntegrationBlock({ onConnect, compact = false }: {
           </p>
 
           <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-ink">Phone or WhatsApp, for a call within the hour</span>
+            <span className="mb-1 block text-meta font-semibold text-ink">Phone or WhatsApp, for a call within the hour</span>
             <input
               type="tel"
               dir="ltr"
@@ -1279,7 +1209,7 @@ export function IntegrationBlock({ onConnect, compact = false }: {
           </label>
 
           <div>
-            <p className="mb-1 text-[11px] font-semibold text-ink-soft">What is your store built on?</p>
+            <p className="mb-1 text-meta font-semibold text-ink-soft">What is your store built on?</p>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="What your store is built on">
               {SYSTEMS.map((s) => {
                 const on = form.system === s;
@@ -1306,7 +1236,7 @@ export function IntegrationBlock({ onConnect, compact = false }: {
             { k: "email" as const, label: "Work email, if you would rather be written to first", ph: "you@yourstore.com", type: "email" },
           ]).map((f) => (
             <label key={f.k} className="block">
-              <span className="mb-1 block text-[11px] font-semibold text-ink-soft">{f.label}</span>
+              <span className="mb-1 block text-meta font-semibold text-ink-soft">{f.label}</span>
               <input
                 type={f.type}
                 dir={f.k === "email" ? "ltr" : undefined}
@@ -1323,7 +1253,7 @@ export function IntegrationBlock({ onConnect, compact = false }: {
             <Btn size="sm" variant="ghost" onClick={() => setOther(false)}>Go back to the platforms</Btn>
           </div>
           {!ready && (
-            <p className="text-[11px] leading-4 text-ink-faint">
+            <p className="text-meta leading-4 text-ink-faint">
               Pick what your store is built on and leave a phone number or an email, and the button unlocks.
             </p>
           )}
@@ -1334,7 +1264,7 @@ export function IntegrationBlock({ onConnect, compact = false }: {
           a brand actually has: what does this thing do, and what can it
           reach. Both are on the card where the decision is made, not
           behind a link. */}
-      <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-4 text-ink-faint">
+      <p className="mt-3 flex items-start gap-1.5 text-meta leading-4 text-ink-faint">
         <LockSimple size={11} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
         <span>
           Read-only: one code per creator. Never your customers, prices or products. HeyMoon.AI is a Saudi company.
@@ -1367,7 +1297,7 @@ export function ConfidenceBar({ planBudget, roas }: { planBudget: number; roas: 
     <div className={`rounded-control border px-3.5 py-3 ${t.ring}`}>
       <div className="flex items-baseline justify-between gap-3">
         <p className={`text-body font-semibold ${t.text}`} role="status">{conf.label}</p>
-        <p className="text-[11px] tabular-nums text-ink-faint">
+        <p className="text-meta tabular-nums text-ink-faint">
           {fmtUSD(planBudget)} ÷ {roas}x = {Math.round(conf.ratio).toLocaleString("en-US")}
         </p>
       </div>

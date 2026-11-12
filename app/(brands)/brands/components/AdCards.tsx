@@ -70,13 +70,13 @@ export function ApprovalCard({
           <div className="flex items-center gap-2">
             <Avatar src={ad.avatar} name={ad.creatorName} size={20} />
             <p className="truncate text-body font-semibold text-ink">{ad.creatorName}</p>
-            <span className="ms-auto flex shrink-0 items-center gap-1 text-[11px] text-ink-faint">
+            <span className="ms-auto flex shrink-0 items-center gap-1 text-meta text-ink-faint">
               <P size={11} weight="fill" aria-hidden /> {ad.format}
             </span>
           </div>
           <p className="mt-1 text-meta font-medium text-ink-soft">{ad.product}</p>
           <p className="mt-1 line-clamp-2 text-meta leading-5 text-ink-faint">{ad.caption}</p>
-          <p className="mt-1.5 text-[11px] text-ink-faint">
+          <p className="mt-1.5 text-meta text-ink-faint">
             {ad.submitted} · {ad.track}
             {days !== null && ad.state === "waiting" && (
               <span className={days <= 2 ? " font-semibold text-danger" : ""}> · {days} days left to decide</span>
@@ -105,8 +105,8 @@ export function ApprovalCard({
                   {c.clean ? <CheckCircle size={10} weight="fill" /> : <Warning size={10} weight="fill" />}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[11px] font-semibold text-ink">{c.label}</span>
-                  <span className="block text-[11px] leading-4 text-ink-faint">{c.detail}</span>
+                  <span className="block text-meta font-semibold text-ink">{c.label}</span>
+                  <span className="block text-meta leading-4 text-ink-faint">{c.detail}</span>
                 </span>
               </li>
             ))}
@@ -155,7 +155,7 @@ export function ApprovalCard({
             placeholder="It doesn't follow the brief because…"
             className="mt-3 w-full resize-none rounded-control border border-black/[0.09] bg-rail p-3 text-body text-ink outline-none focus:border-ink/25"
           />
-          <p className="mt-1 text-end text-[11px] tabular-nums text-ink-faint">{reason.length}/280</p>
+          <p className="mt-1 text-end text-meta tabular-nums text-ink-faint">{reason.length}/280</p>
           <div className="mt-4 flex gap-2">
             <Btn variant="quiet" className="flex-1" onClick={() => setDeclining(false)}>Cancel</Btn>
             <Btn
@@ -187,7 +187,7 @@ export function LiveAdGrid({ ads }: { ads: AdRecord[] }) {
       {ads.map((a) => {
         const P = ICON[a.platform];
         return (
-          <article key={a.id} className="overflow-hidden rounded-card border border-hairline bg-white shadow-card">
+          <article key={a.id} className="glass overflow-hidden">
             <div className="relative aspect-[9/13] bg-neutral-200">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={a.img} alt={`${a.creatorName}, ${a.product}`} className="h-full w-full object-cover object-top" loading="lazy" />
@@ -198,7 +198,7 @@ export function LiveAdGrid({ ads }: { ads: AdRecord[] }) {
                 <CheckCircle size={11} weight="fill" aria-hidden />
               </span>
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2 pt-8">
-                <p className="ad-shadow truncate text-[11px] font-bold text-white">{a.creatorName.split(" ")[0]}</p>
+                <p className="ad-shadow truncate text-meta font-bold text-white">{a.creatorName.split(" ")[0]}</p>
                 <p className="ad-shadow flex items-center gap-1 text-[10px] text-white/80">
                   <P size={9} weight="fill" aria-hidden /> {a.track}
                 </p>

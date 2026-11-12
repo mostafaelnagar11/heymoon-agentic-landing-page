@@ -80,7 +80,7 @@ function Card({ c, waiting }: { c: Campaign; waiting: number }) {
   return (
     <button
       onClick={() => openCampaign(c.id)}
-      className="group flex flex-col rounded-card border border-hairline bg-white p-5 text-start shadow-card transition hover:border-brand/30 hover:shadow-float"
+      className="glass group flex flex-col p-6 text-start transition hover:-translate-y-0.5 hover:shadow-lift motion-reduce:hover:translate-y-0"
     >
       <span className="flex w-full items-start justify-between gap-3">
         <span className="min-w-0">
@@ -88,9 +88,9 @@ function Card({ c, waiting }: { c: Campaign; waiting: number }) {
             <span className="min-w-0 truncate text-row font-semibold text-ink">{campaignLabel(c)}</span>
             <StatusChip campaign={c} />
           </span>
-          <span className="mt-1 block truncate text-[11px] text-ink-faint">{c.url}</span>
+          <span className="mt-1 block truncate text-meta text-ink-faint">{c.url}</span>
         </span>
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-control px-2.5 py-1.5 text-body font-medium text-ink-faint transition-colors group-hover:bg-brand/[0.06] group-hover:text-brand">
+        <span className="btn-soft inline-flex h-8 shrink-0 items-center gap-1 rounded-pill px-3 text-meta font-semibold text-ink-60 group-hover:text-brand">
           View <ArrowRight size={12} weight="bold" aria-hidden className="rtl:rotate-180" />
         </span>
       </span>
@@ -100,7 +100,7 @@ function Card({ c, waiting }: { c: Campaign; waiting: number }) {
           what keeps two cards in a row sharing a footer line. */}
       <span className="mt-6 block grow">
         <span className="flex items-baseline justify-between gap-2">
-          <span className="text-[26px] font-semibold leading-none tracking-tight tabular-nums text-ink">
+          <span className="text-[32px] font-bold leading-none tracking-[-0.035em] tabular-nums text-ink">
             {fmtUSD(earned)}{" "}
             <span className="text-sm font-normal tracking-normal text-ink-faint">
               {promised > 0 ? `of ${fmtUSD(promised)} guaranteed` : "banked so far"}
@@ -111,8 +111,8 @@ function Card({ c, waiting }: { c: Campaign; waiting: number }) {
 
         {pct !== null && (
           <>
-            <span className="relative mt-3.5 block h-2 w-full rounded-full bg-track">
-              <span className="block h-full rounded-full bg-brand transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+            <span className="relative mt-4 block h-2.5 w-full rounded-full bg-track">
+              <span className="block h-full rounded-full bg-[linear-gradient(90deg,#6848D1,#A65FED_70%,#F4A8D8)] transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
               {/* 80% is the mark the whole ladder turns on: a phase that
                   reaches it unlocks the next one. Mark it rather than
                   imply it. */}
@@ -131,12 +131,12 @@ function Card({ c, waiting }: { c: Campaign; waiting: number }) {
         {(waiting > 0 || promised > earned) && (
           <span className="mt-2.5 flex items-baseline gap-2">
             {waiting > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-pill bg-danger/[0.07] px-2 py-1 text-[11px] font-semibold text-danger">
+              <span className="inline-flex items-center gap-1.5 rounded-pill bg-blush/25 px-2.5 py-1 text-meta font-semibold text-blush-deep">
                 <Warning size={11} weight="fill" aria-hidden /> {waiting} waiting on you
               </span>
             )}
             {promised > earned && (
-              <span className="ms-auto shrink-0 text-[11px] text-ink-faint">
+              <span className="ms-auto shrink-0 text-meta text-ink-faint">
                 {fmtUSD(promised - earned)} to go
               </span>
             )}
@@ -145,7 +145,7 @@ function Card({ c, waiting }: { c: Campaign; waiting: number }) {
       </span>
 
       {/* Three metrics, all of them this campaign's own. */}
-      <span className="mt-6 grid w-full grid-cols-3 gap-4 border-t border-hairline pt-4">
+      <span className="mt-6 grid w-full grid-cols-3 gap-4 border-t border-brand/[0.08] pt-4">
         {[
           {
             label: "Phases closed",
@@ -173,12 +173,12 @@ function Card({ c, waiting }: { c: Campaign; waiting: number }) {
           },
         ].map((m) => (
           <span key={m.label} className="block min-w-0">
-            <span className="block truncate text-[11px] font-medium text-ink-faint">{m.label}</span>
+            <span className="block truncate text-meta font-medium text-ink-faint">{m.label}</span>
             <span className="mt-1 block text-head font-semibold tracking-tight tabular-nums text-ink">
               {m.value}
               {m.suffix && <span className="text-body font-normal text-ink-faint">{m.suffix}</span>}
             </span>
-            <span className="mt-0.5 block truncate text-[11px] text-ink-faint">{m.note}</span>
+            <span className="mt-0.5 block truncate text-meta text-ink-faint">{m.note}</span>
           </span>
         ))}
       </span>

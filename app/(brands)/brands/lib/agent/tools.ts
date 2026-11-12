@@ -552,15 +552,17 @@ function priceOf(read: BrandRead, markets: string[], budget: number, crew: Creat
   const crewCost = crew.reduce((n, c) => n + c.rate, 0);
 
   /* The arrow runs the other way now: the $1,000 is fixed, and what it
-     leaves for fees is what decides the crew. Shown as one number,
-     never as a fee beside a person. */
-  const crewEv = ev("q-crew", "platform", `${crew.length} creator fees, in total`, `${fmtUSD(crewCost)} across the crew for one phase deliverable each.`);
-  const shareEv = ev("q-share", "policy", "budget split", `${Math.round(CREATOR_SHARE * 100)}% creator fees, ${Math.round((1 - CREATOR_SHARE) * 100)}% platform and guarantee reserve.`);
+     leaves for fees is what decides the crew. What creators are paid is
+     never shown to a brand, not per person, not as a total and not as a
+     share of the budget (12 Nov), so crewCost stays internal and the
+     evidence says what the budget covers, not what it pays. */
+  const crewEv = ev("q-crew", "platform", "the warm-up crew", `${crew.length} creators, one phase deliverable each.`);
+  const shareEv = ev("q-share", "policy", "what the budget covers", "Your creators, matching, the tracking codes, and the share held back to refund you if the guarantee misses.");
   const benchEv = ev("q-bench", "benchmark", "HeyMoon category benchmark", `$${(rpv * 1000).toFixed(0)} of sales per thousand views at your price band.`);
 
   return {
-    budget: S(budget, `Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand. It is not sized from your store or negotiated. It is the fixed price of the warm-up, and what it buys is ${fmtUSD(crewCost)} of creator fees plus the tracking and the share held back to refund you if the guarantee misses.`, [crewEv, shareEv]),
-    crewCost: S(crewCost, "What the whole crew is paid for one deliverable each, as one number. It is never split out per person. A price beside a creator is against the premise of the product.", [crewEv, shareEv], "Σ creator fees"),
+    budget: S(budget, `Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand. It is not sized from your store or negotiated. It is the fixed price of the warm-up, and what it buys is your warm-up crew, the tracking and the share held back to refund you if the guarantee misses.`, [crewEv, shareEv]),
+    crewCost: S(crewCost, "What the whole crew costs for one deliverable each. Internal: it decides who fits in the warm-up, and it is never shown to a brand.", [crewEv, shareEv], "Σ creator fees"),
     vat: S(vat, "VAT at 5%, on the budget only.", [ev("q-vat", "policy", "UAE VAT", `${Math.round(VAT_RATE * 100)}% standard rate.`)], "budget x 5%"),
     total: S(budget + vat, "Budget plus VAT. This is the figure you would be charged.", [ev("q-total", "policy", "what you pay", "One payment, for this phase only.")], "budget + VAT"),
     revenueTarget: S(target, `What the warm-up is metered against. Phase 1 is guaranteed at ${PHASE1_ROAS}x. ${fmtUSD(budget)} in, ${fmtUSD(target)} of sales out. No profit on this phase, deliberately: it is here to prove the crew on your real orders at no risk. The return is in the two phases it unlocks, at ${PHASE_MULTIPLES[1]}x and ${PHASE_MULTIPLES[2]}x.`, [ev("q-tgt", "policy", "the guarantee", `${fmtUSD(target)} is what HeyMoon guarantees on the warm-up.`), ev("q-blend", "policy", "where the guarantee climbs", `Phase 1 is ${PHASE_MULTIPLES[0]}x, Phase 2 ${PHASE_MULTIPLES[1]}x and Phase 3 ${PHASE_MULTIPLES[2]}x, the same for every brand.`)], `${fmtUSD(budget)} x ${PHASE1_ROAS}`),
@@ -704,9 +706,9 @@ function planBuild(read: BrandRead, strategy?: StrategyKey) {
         );
         p.creators = S(
           crewSeeds.map((c) => toMatch(c, read, markets, rpv)),
-          `The ${crewSeeds.length} best value of the ${poolSize} matched, because ${fmtUSD(PHASE1_BUDGET)} leaves ${fmtUSD(CREW_BUDGET)} for creator fees and that is what it buys.`,
+          `The ${crewSeeds.length} best value of the ${poolSize} matched: as many as the ${fmtUSD(PHASE1_BUDGET)} warm-up covers.`,
           [
-            ev("p-crew", "policy", "the warm-up crew", `${fmtUSD(PHASE1_BUDGET)} leaves ${fmtUSD(CREW_BUDGET)} for creator fees. The crew is whoever fits inside it, best value first.`),
+            ev("p-crew", "policy", "the warm-up crew", `The crew is whoever the ${fmtUSD(PHASE1_BUDGET)} warm-up covers, best value first.`),
           ]
         );
       },
@@ -935,10 +937,10 @@ function edit_plan(i: { plan: Plan; patch: PlanPatch; because: string; by: "agen
   }
   if (overBudget.length) {
     mk(
-      "creators", "creators over the fee pot",
+      "creators", "creators past the warm-up",
       overBudget.length === 1 ? "1 asked for" : `${overBudget.length} asked for`,
-      `past the ${fmtUSD(CREW_BUDGET)} the warm-up pays`,
-      `${overBudget.join(", ")}. The warm-up's fee pot is ${fmtUSD(CREW_BUDGET)}, and Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand. Phases 2 and 3 are what they are for.`
+      "past what the warm-up covers",
+      `${overBudget.join(", ")}. Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand, and this crew is what it covers. Phases 2 and 3 are what they are for.`
     );
   }
   /* The pool is recomputed here too. It used to live inside the crew's
@@ -960,7 +962,7 @@ function edit_plan(i: { plan: Plan; patch: PlanPatch; because: string; by: "agen
     ...plan.creators,
     value: crewSeeds.map((c) => toMatch(c, read, markets, rpv)),
     setBy: by,
-    why: `Ranked on value for money inside ${fmtMarkets(markets)}. The ${crewSeeds.length} best value of the ${poolSize} matched, because ${fmtUSD(PHASE1_BUDGET)} leaves ${fmtUSD(CREW_BUDGET)} for creator fees.`,
+    why: `Ranked on value for money inside ${fmtMarkets(markets)}. The ${crewSeeds.length} best value of the ${poolSize} matched: as many as the ${fmtUSD(PHASE1_BUDGET)} warm-up covers.`,
   };
 
   /* Budget: re-derived from the crew, unless the brand set it by hand. */
@@ -1328,7 +1330,7 @@ function interpret(i: { text: string; plan?: Plan; paid?: boolean }): Interpreta
   if (/why this budget|why that budget|where does the budget|how (did|do) you (get|reach|arrive at|come to) (this|that|the) budget/.test(lower))
     return {
       kind: "question", answerRef: "budget",
-      say: `Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand, and it is the same price whichever of the three plans you pick. It is deliberately not sized from your store: the warm-up exists to find out whether this works on your real orders, and a number you had to negotiate first would just be another thing standing between you and finding out.\n\nWhat the ${fmtUSD(PHASE1_BUDGET)} buys is the creator fees for your warm-up crew, the tracking codes that attribute every order, and the share held back to refund you if the guarantee misses. Press the budget on the plan and it shows all three.`,
+      say: `Phase 1 is ${fmtUSD(PHASE1_BUDGET)} for every brand, and it is the same price whichever of the three plans you pick. It is deliberately not sized from your store: the warm-up exists to find out whether this works on your real orders, and a number you had to negotiate first would just be another thing standing between you and finding out.\n\nWhat the ${fmtUSD(PHASE1_BUDGET)} buys is your warm-up crew, the tracking codes that attribute every order, and the share held back to refund you if the guarantee misses. Press the budget on the plan and it shows all three.`,
     };
 
   /* Budget, as a figure. */

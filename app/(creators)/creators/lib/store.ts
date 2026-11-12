@@ -782,6 +782,10 @@ export const setPanelView = (view: PanelView) => set((s) => ({ panel: { ...s.pan
 export const closePanel = () => set((s) => ({ panel: { ...s.panel, open: false } }));
 export const setDashboardView = (view: PanelView) => set({ dashboardView: view });
 export const focusRead = (layer: string | null) => set({ readFocus: layer });
+/** A tap on a finding in the conversation: the read panel opens on it, as the brand's does (focusReadLayer there). */
+export const focusReadLayer = (k: string) => set({ panel: { view: "read", open: true }, readFocus: k });
+export const clearReadFocus = () => set({ readFocus: null });
+export const useReadFocus = () => useStore((s) => s.readFocus);
 export const selectOffer = (id: string | null) => set({ selectedOfferId: id });
 export const useSelectedOfferId = () => useStore((s) => s.selectedOfferId);
 

@@ -27,7 +27,12 @@ import {
 import type { PanelView } from "../../lib/store";
 import { useT } from "../../lib/i18n";
 
-export function ChatShell({ children, panel }: { children: ReactNode; panel: ReactNode }) {
+export function ChatShell({ children, panel, top }: {
+  children: ReactNode;
+  panel: ReactNode;
+  /** The header's middle: where the brand is in getting started (OnboardingSteps). */
+  top?: ReactNode;
+}) {
   const { open } = usePanel();
   const campaigns = useCampaigns();
   const activeThreadId = useActiveThreadId();
@@ -38,10 +43,13 @@ export function ChatShell({ children, panel }: { children: ReactNode; panel: Rea
   const { dir } = useT();
 
   return (
-    <div dir={dir} className="flex h-[100dvh] overflow-hidden bg-white">
+    <div dir={dir} className="relative flex h-[100dvh] overflow-hidden bg-canvas">
+      {/* The dashboard's light (Aurora, 11 Nov): the conversation sits on the same glow, so signing up and coming
+          back to the dashboard are one place. */}
+      <div aria-hidden className="aurora pointer-events-none absolute inset-0" />
       {railed && (
         <aside
-          className="hidden w-[212px] shrink-0 flex-col border-e border-hairline bg-rail md:flex"
+          className="glass relative z-[1] my-3.5 ms-3.5 hidden w-[232px] shrink-0 flex-col md:flex"
           aria-label="Your campaigns"
         >
           <div className="px-4 pb-3 pt-4">
@@ -49,11 +57,11 @@ export function ChatShell({ children, panel }: { children: ReactNode; panel: Rea
           </div>
           <button
             onClick={() => startConversation()}
-            className="mx-3 mb-3 inline-flex items-center justify-center gap-1.5 rounded-control bg-brand px-3 py-2 text-meta font-semibold text-white transition hover:bg-brand-hover"
+            className="btn-pri mx-3 mb-3 inline-flex h-10 items-center justify-center gap-1.5 rounded-pill px-3 text-meta font-semibold"
           >
             <Plus size={12} weight="bold" aria-hidden /> New campaign
           </button>
-          <p className="px-4 pb-1.5 text-[9px] font-medium uppercase tracking-widest text-ink-faint">Campaigns</p>
+          <p className="px-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Campaigns</p>
           <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
             {campaigns.map((c) => (
               <CampaignRow key={c.id} c={c} here={c.threadId === activeThreadId} />
@@ -67,7 +75,7 @@ export function ChatShell({ children, panel }: { children: ReactNode; panel: Rea
           be three rows of furniture pretending to be navigation. The
           conversation and the panel are the whole product. */}
       <main
-        className={`relative flex min-w-0 flex-1 flex-col ${open ? "hidden md:flex" : "flex"}`}
+        className={`relative z-[1] flex min-w-0 flex-1 flex-col ${open ? "hidden md:flex" : "flex"}`}
         aria-label="Conversation"
       >
         {/* The mark, and nothing beside it. With no rail there is no
@@ -75,7 +83,8 @@ export function ChatShell({ children, panel }: { children: ReactNode; panel: Rea
             carrying only whose product this is — and the way back to a
             new read. It fades the conversation out underneath rather
             than sitting on top of it. */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-gradient-to-b from-white from-40% to-transparent" />
+        {/* A blur rather than a white fade, so the glow stays and only the words scrolling under the mark soften. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 backdrop-blur-md [mask-image:linear-gradient(to_bottom,black_45%,transparent)]" />
         {!railed && <Link
           href="/brands"
           aria-label="HeyMoon, start a new campaign"
@@ -83,6 +92,12 @@ export function ChatShell({ children, panel }: { children: ReactNode; panel: Rea
         >
           <Wordmark size="sm" />
         </Link>}
+        {/* Centred above the conversation on a wide screen; on a phone it keeps to the end so the mark has its side. */}
+        {top && (
+          <div className="pointer-events-none absolute inset-x-0 top-3.5 z-20 flex justify-end pe-4 lg:justify-center lg:pe-0">
+            {top}
+          </div>
+        )}
         {children}
       </main>
 
@@ -92,7 +107,7 @@ export function ChatShell({ children, panel }: { children: ReactNode; panel: Rea
           you to exactly where you were in the thread. */}
       {open && (
         <aside
-          className="animate-slide-in-end flex w-full shrink-0 flex-col border-s border-hairline bg-rail md:w-[clamp(360px,40vw,560px)]"
+          className="animate-slide-in-end relative z-[1] flex w-full shrink-0 flex-col overflow-hidden max-md:bg-white md:glass md:my-3.5 md:me-3.5 md:w-[clamp(360px,40vw,560px)]"
           aria-label="Panel"
         >
           {panel}
@@ -123,7 +138,7 @@ function CampaignRow({ c, here }: { c: Campaign; here: boolean }) {
 
   if (editing) {
     return (
-      <div className="rounded-control bg-white px-2 py-1.5 shadow-card">
+      <div className="rounded-[12px] bg-white px-2 py-1.5 shadow-lift">
         <input
           ref={box}
           value={draft}
@@ -145,8 +160,8 @@ function CampaignRow({ c, here }: { c: Campaign; here: boolean }) {
 
   return (
     <div
-      className={`group flex w-full items-center gap-1 rounded-control transition ${
-        here ? "bg-white shadow-card" : "hover:bg-black/[0.04]"
+      className={`group flex w-full items-center gap-1 rounded-[12px] transition ${
+        here ? "bg-white shadow-lift" : "hover:bg-white/70"
       }`}
     >
       <button
@@ -197,7 +212,7 @@ export function PanelFrame({ title, sub, children }: { title: string; sub?: stri
   const available = VIEWS.filter((v) => (v.needs === "plan" ? hasPlan : hasRead));
   return (
     <>
-      <header className="flex h-[56px] shrink-0 items-center gap-2 border-b border-hairline px-4">
+      <header className="flex h-[60px] shrink-0 items-center gap-2 border-b border-brand/[0.07] px-5">
         {/* Below 768 the panel covers the conversation, so it needs a way
             back that reads as "back" rather than as "close". */}
         <button
@@ -209,7 +224,7 @@ export function PanelFrame({ title, sub, children }: { title: string; sub?: stri
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-body font-semibold text-ink">{title}</p>
-          {sub && <p className="truncate text-[11px] text-ink-faint">{sub}</p>}
+          {sub && <p className="truncate text-meta text-ink-faint">{sub}</p>}
         </div>
         <button
           onClick={closePanel}
@@ -220,14 +235,14 @@ export function PanelFrame({ title, sub, children }: { title: string; sub?: stri
         </button>
       </header>
       {available.length > 1 && (
-        <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-hairline px-3 py-2 no-bar">
+        <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-brand/[0.07] px-4 py-2 no-bar">
           {available.map((v) => (
             <button
               key={v.key}
               onClick={() => setPanelView(v.key)}
               aria-current={v.key === view}
-              className={`shrink-0 rounded-pill px-3 py-1.5 text-[11px] font-semibold transition ${
-                v.key === view ? "bg-brand text-white" : "text-ink-faint hover:bg-black/[0.05] hover:text-ink"
+              className={`shrink-0 rounded-pill px-3.5 py-1.5 text-meta font-semibold transition ${
+                v.key === view ? "bg-white text-ink shadow-lift" : "text-ink-faint hover:bg-white/70 hover:text-ink"
               }`}
             >
               {v.label}
@@ -235,7 +250,7 @@ export function PanelFrame({ title, sub, children }: { title: string; sub?: stri
           ))}
         </div>
       )}
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
     </>
   );
 }

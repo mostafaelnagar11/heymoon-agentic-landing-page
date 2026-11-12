@@ -120,7 +120,7 @@ export function AdsView() {
           window is now a chip on every card that has a clock on it. */}
       {shelf === "waiting" && counts.waiting > 0 && !deck && canApprove && (
         <Surface className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-          <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand text-[11px] font-bold text-white">
+          <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand text-meta font-bold text-white">
             {counts.waiting}
           </span>
           <span className="min-w-0 flex-1 text-body text-ink">
@@ -143,12 +143,12 @@ export function AdsView() {
             <button
               type="button"
               onClick={() => setDeck((d) => !d)}
-              className="text-[11px] font-semibold text-brand hover:underline"
+              className="text-meta font-semibold text-brand hover:underline"
             >
               {deck ? "See all as a grid" : "Review one by one"}
             </button>
           )}
-          <div role="tablist" aria-label="Ad shelves" className="flex gap-0.5 rounded-control border border-hairline bg-canvas p-0.5">
+          <div role="tablist" aria-label="Ad shelves" className="flex gap-0.5 glass !rounded-full p-1">
             {([
               { k: "waiting" as const, label: "Waiting", n: counts.waiting },
               { k: "live" as const, label: "Live", n: counts.live },
@@ -159,8 +159,8 @@ export function AdsView() {
                 role="tab"
                 aria-selected={shelf === t.k}
                 onClick={() => { setShelf(t.k); setSel([]); }}
-                className={`rounded-[10px] px-2.5 py-1 text-[11px] font-semibold transition ${
-                  shelf === t.k ? "bg-white text-ink shadow-card" : "text-ink-faint hover:text-ink"
+                className={`rounded-full px-3 py-1.5 text-meta font-semibold transition ${
+                  shelf === t.k ? "bg-white text-ink shadow-lift" : "text-ink-faint hover:text-ink"
                 }`}
               >
                 {t.label} <span className="tabular-nums opacity-70">{t.n}</span>
@@ -231,7 +231,7 @@ function AdCard({
   const flags = ad.compliance.checks.filter((c) => !c.clean).length;
 
   return (
-    <article className="flex min-w-0 flex-col overflow-hidden rounded-card border border-hairline bg-white shadow-card">
+    <article className="glass flex min-w-0 flex-col overflow-hidden">
       <div className="flex gap-3 p-3">
         {onSelect && canApprove && (
           <label className="flex shrink-0 items-start pt-1">
@@ -255,7 +255,7 @@ function AdCard({
           <div className="flex items-center gap-2">
             <Avatar src={ad.avatar} name={ad.creatorName} size={20} />
             <p className="truncate text-body font-semibold text-ink">{ad.creatorName}</p>
-            <span className="ms-auto flex shrink-0 items-center gap-1 text-[11px] text-ink-faint">
+            <span className="ms-auto flex shrink-0 items-center gap-1 text-meta text-ink-faint">
               <P size={11} weight="fill" aria-hidden /> {ad.format}
             </span>
           </div>
@@ -264,17 +264,17 @@ function AdCard({
           {/* The read, as chips. Verdict, then what the checks found,
               then the clock — the three things that decide the press. */}
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
-            <span className={`inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-[11px] font-semibold ${v.skin}`}>
+            <span className={`inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-meta font-semibold ${v.skin}`}>
               <v.Icon size={10} weight="fill" aria-hidden />
               {v.chip}
             </span>
-            <span className={`rounded-pill px-2 py-0.5 text-[11px] font-medium ${
+            <span className={`rounded-pill px-2 py-0.5 text-meta font-medium ${
               flags ? "bg-danger/10 text-danger" : "bg-good/10 text-good-deep"
             }`}>
               {flags ? `${flags} flagged` : "All checks clean"}
             </span>
             {days !== null && ad.state === "waiting" && (
-              <span className={`rounded-pill px-2 py-0.5 text-[11px] font-medium ${
+              <span className={`rounded-pill px-2 py-0.5 text-meta font-medium ${
                 days <= 2 ? "bg-danger/10 text-danger" : "bg-canvas text-ink-faint"
               }`}>
                 {days}d left
@@ -282,7 +282,7 @@ function AdCard({
             )}
           </div>
 
-          <p className="mt-1.5 line-clamp-2 text-[11px] leading-4 text-ink-faint">{ad.caption}</p>
+          <p className="mt-1.5 line-clamp-2 text-meta leading-4 text-ink-faint">{ad.caption}</p>
           <p className="mt-1 truncate text-micro text-ink-faint">{ad.submitted} · {ad.track}</p>
         </div>
       </div>
@@ -302,8 +302,8 @@ function AdCard({
                   {c.clean ? <CheckCircle size={10} weight="fill" /> : <Warning size={10} weight="fill" />}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[11px] font-semibold text-ink">{c.label}</span>
-                  <span className="block text-[11px] leading-4 text-ink-faint">{c.detail}</span>
+                  <span className="block text-meta font-semibold text-ink">{c.label}</span>
+                  <span className="block text-meta leading-4 text-ink-faint">{c.detail}</span>
                 </span>
               </li>
             ))}
@@ -325,10 +325,10 @@ function AdCard({
         </div>
       ) : (
         <div className="mt-auto flex items-center gap-2 border-t border-hairline px-3 py-2.5">
-          <span className="rounded-pill bg-canvas px-2 py-0.5 text-[11px] font-semibold text-ink-faint">Declined</span>
+          <span className="rounded-pill bg-canvas px-2 py-0.5 text-meta font-semibold text-ink-faint">Declined</span>
           <button
             onClick={() => setAdState(ad.id, "waiting")}
-            className="text-[11px] font-semibold text-brand hover:underline"
+            className="text-meta font-semibold text-brand hover:underline"
           >
             Put it back in the queue
           </button>
@@ -348,7 +348,7 @@ function AdCard({
             placeholder="It doesn't follow the brief because…"
             className="mt-3 w-full resize-none rounded-control border border-hairline bg-rail p-3 text-body text-ink outline-none focus:border-ink/25"
           />
-          <p className="mt-1 text-end text-[11px] tabular-nums text-ink-faint">{reason.length}/280</p>
+          <p className="mt-1 text-end text-meta tabular-nums text-ink-faint">{reason.length}/280</p>
           <div className="mt-4 flex gap-2">
             <Btn variant="quiet" className="flex-1" onClick={() => setDeclining(false)}>Cancel</Btn>
             <Btn

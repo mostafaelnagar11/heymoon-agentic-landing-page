@@ -129,7 +129,7 @@ export function PhaseTiles({
         return (
           <li key={r.phaseNo} className={`min-w-[148px] flex-1 rounded-control border p-3 ${tone}`}>
             <p className="text-meta font-semibold text-ink">{r.label}</p>
-            <p className="mt-0.5 text-[11px] leading-4 text-ink-faint">{r.sub}</p>
+            <p className="mt-0.5 text-meta leading-4 text-ink-faint">{r.sub}</p>
             {r.pct !== undefined && (
               <div className="relative mt-2 h-1.5 rounded-pill bg-track">
                 <div className="keyline-grad h-full rounded-pill" style={{ width: `${Math.min(r.pct, 100)}%` }} />

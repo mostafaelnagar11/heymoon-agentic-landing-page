@@ -7,9 +7,8 @@
 import { useState } from "react";
 import { CaretDown, Receipt } from "@phosphor-icons/react";
 import { accountContact, profileSections, useAccount, useProfile, useStore } from "../../lib/store";
-import { vatRateFor } from "../../lib/agent/billing";
+import { invoiceNo, vatRateFor } from "../../lib/agent/billing";
 import { fmtUSD, phaseTitle } from "../../lib/mock/campaigns";
-import { hash } from "../../lib/agent/rng";
 
 const day = (t: number) => new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
@@ -25,7 +24,7 @@ export function InvoicesView({ onOpenProfile }: { onOpenProfile: () => void }) {
     .map((f) => {
       const camp = Object.values(campaigns).find((c) => c.planId === f.planId);
       const at = camp?.launch?.paidAt ?? 0;
-      return { f, camp, at, no: `HM-${new Date(at || Date.now()).getFullYear()}-${String(hash(f.id) % 100000).padStart(5, "0")}` };
+      return { f, camp, at, no: invoiceNo(f.id, at) };
     })
     .sort((a, b) => b.at - a.at);
 
@@ -35,7 +34,7 @@ export function InvoicesView({ onOpenProfile }: { onOpenProfile: () => void }) {
 
   if (!invoices.length) {
     return (
-      <div className="rounded-card bg-white p-6 text-center shadow-card">
+      <div className="glass p-6 text-center">
         <Receipt size={22} className="mx-auto text-ink-faint" aria-hidden />
         <p className="mt-2 text-body font-semibold text-ink">No invoices yet</p>
         <p className="mt-1 text-meta text-ink-soft">Your first one is issued when you pay for Phase 1.</p>
@@ -56,8 +55,8 @@ export function InvoicesView({ onOpenProfile }: { onOpenProfile: () => void }) {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-card bg-white shadow-card">
-        <div className="hidden grid-cols-[1.1fr_0.9fr_1.4fr_0.8fr_0.7fr_0.8fr_auto] gap-3 border-b border-hairline px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint sm:grid">
+      <div className="glass overflow-hidden">
+        <div className="hidden grid-cols-[1.1fr_0.9fr_1.4fr_0.8fr_0.7fr_0.8fr_auto] gap-3 border-b border-hairline px-5 py-3 text-meta font-semibold uppercase tracking-[0.06em] text-ink-faint sm:grid">
           <span>Invoice</span><span>Date</span><span>For</span><span className="text-end">Amount</span><span className="text-end">VAT</span><span className="text-end">Total</span><span className="w-5" />
         </div>
         <ul className="divide-y divide-hairline">
@@ -86,7 +85,7 @@ export function InvoicesView({ onOpenProfile }: { onOpenProfile: () => void }) {
                 {isOpen && (
                   <div className="grid gap-4 bg-wash/40 px-5 py-4 text-meta sm:grid-cols-3">
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Billed to</p>
+                      <p className="text-meta font-semibold uppercase tracking-[0.06em] text-ink-faint">Billed to</p>
                       <p className="mt-1 font-semibold text-ink">{billedName}</p>
                       {profileReady && profile.vat && <p className="text-ink-soft" dir="ltr">TRN {profile.vat.replace(/\s+/g, "")}</p>}
                       {profileReady
@@ -94,13 +93,13 @@ export function InvoicesView({ onOpenProfile }: { onOpenProfile: () => void }) {
                         : f.billing && <p className="text-ink-soft">{f.billing.country}</p>}
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Line</p>
+                      <p className="text-meta font-semibold uppercase tracking-[0.06em] text-ink-faint">Line</p>
                       <p className="mt-1 text-ink">{phaseTitle(f.phaseNo)}, {fmtUSD(f.amount.value)}</p>
                       <p className="text-ink-soft">VAT {pct}%{f.billing ? (f.billing.uaeRegistered ? ", registered in the UAE" : ", not registered in the UAE") : ""}: {fmtUSD(f.vat.value)}</p>
                       <p className="font-semibold text-ink">Total {fmtUSD(f.total.value)} · Paid</p>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Sent</p>
+                      <p className="text-meta font-semibold uppercase tracking-[0.06em] text-ink-faint">Sent</p>
                       <p className="mt-1 text-ink-soft">{email ? <>Emailed to <span dir="ltr">{email}</span></> : "Kept on this campaign"}</p>
                     </div>
                   </div>

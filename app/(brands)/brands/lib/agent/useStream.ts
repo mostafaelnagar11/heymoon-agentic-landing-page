@@ -42,7 +42,20 @@ export function useStream<T>(): StreamState<T> {
      every chunk silently dropped. */
   useEffect(() => {
     alive.current = true;
-    return () => { alive.current = false; handle.current?.cancel(); };
+    /* Deliberately NOT cancelling the run here, the creator app's fix (its lib/agent/useStream.ts).
+     *
+     * React invokes an effect twice in development: mount, clean up,
+     * mount again. Cancelling on that cleanup killed the only run there
+     * was: the landing's `?q=` read is started from the entry effect,
+     * which runs once per entry, so nothing restarted it, and the read
+     * came back as "Stopped there" without anybody pressing stop (dev
+     * only; production mounts once). What the flag is for is preventing
+     * a setState after unmount, and it does that on its own.
+     *
+     * A run whose component genuinely went away therefore finishes into
+     * nothing. That costs a few timers in a mock. Pressing stop still
+     * cancels, through `cancel()` below. */
+    return () => { alive.current = false; };
   }, []);
 
   const start = useCallback<StreamState<T>["start"]>((make, onDone) => {

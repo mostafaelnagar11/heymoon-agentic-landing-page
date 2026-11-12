@@ -395,6 +395,9 @@ async function* propose_profile(i: { read: CreatorRead }, ctx: RunContext): Tool
   const finished = profileFor(i.read);
   const acc: Profile = { ...finished, changes: [] };
   let done = 0;
+  /* A first chunk before any task lands, as read_profile does, so the profile can be drawn with every section still
+     being worked on (the preview shows a section only once its task has landed). */
+  yield chunk({ ...acc }, `${BUILD_TASKS[0].agent} · ${BUILD_TASKS[0].note}`, done, BUILD_TASKS.length);
   for (const task of BUILD_TASKS) {
     if (ctx.signal.aborted) throw new Cancelled();
     await settle(costOf(`${i.read.id}:${task.key}`, task.weight), ctx.signal);

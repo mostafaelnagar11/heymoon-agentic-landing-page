@@ -8,10 +8,13 @@
    a second wizard; it is this, with the fields unlocked. */
 
 import { useEffect, useRef, useState } from "react";
-import { CaretRight, Lightning, PencilSimple } from "@phosphor-icons/react";
+import {
+  ArrowRight, CaretRight, Globe, Lightning, Notepad, Package, PencilSimple, RocketLaunch, ShieldCheck, Sparkle, UsersThree,
+  type Icon,
+} from "@phosphor-icons/react";
 import type { Plan } from "../lib/agent/types";
 import { fmtUSD } from "../lib/mock/campaigns";
-import { PHASE1_ROAS, STRATEGY_META, marketName } from "../lib/agent/tools";
+import { PHASE1_ROAS, PHASE_BUDGETS, PHASE_MULTIPLES, STRATEGY_META, marketName } from "../lib/agent/tools";
 import { getRead } from "../lib/agent/registry";
 import { roundBudget } from "../lib/agent/model";
 import { T } from "../lib/tokens";
@@ -19,7 +22,6 @@ import { Card, Pill } from "./ui";
 import { creatorProfile } from "./CreatorCard";
 import { focusText } from "./ScopeBlocks";
 import { Figure, Claim } from "./Evidence";
-import { RevenueRuler } from "./Ruler";
 import { useT } from "../lib/i18n";
 import { usePaid } from "../lib/store";
 import { guaranteeLine } from "../lib/agent/guarantee";
@@ -31,16 +33,21 @@ import { guaranteeLine } from "../lib/agent/guarantee";
    reads as a second, softer promise. `ConfidenceMeter` still reasons
    about the gap between the raw model and the guarantee. */
 
-function Row({ label, children, onEdit, editLabel }: { label: string; children: React.ReactNode; onEdit?: () => void; editLabel?: string }) {
+function Row({ label, icon: I, children, onEdit, editLabel }: { label: string; icon: Icon; children: React.ReactNode; onEdit?: () => void; editLabel?: string }) {
   return (
-    <div className="flex items-start gap-3 border-t border-hairline py-3 first:border-t-0 first:pt-0">
-      <p className="w-[112px] shrink-0 pt-0.5 text-meta font-medium text-ink-faint">{label}</p>
-      <div className="min-w-0 flex-1">{children}</div>
+    <div className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+      <span aria-hidden className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-haze text-brand">
+        <I size={15} weight="bold" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11.5px] font-semibold text-ink-faint">{label}</p>
+        <div className="mt-0.5">{children}</div>
+      </div>
       {onEdit && (
         <button
           onClick={onEdit}
           aria-label={editLabel ?? `Change ${label}`}
-          className="shrink-0 rounded-control p-1.5 text-ink-faint transition hover:bg-brand/[0.06] hover:text-brand"
+          className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink-faint transition hover:bg-haze hover:text-brand"
         >
           <PencilSimple size={13} aria-hidden />
         </button>
@@ -48,6 +55,36 @@ function Row({ label, children, onEdit, editLabel }: { label: string; children: 
     </div>
   );
 }
+
+/** The fixed ladder every brand climbs, the rung this plan buys lit. The figures are tools.ts's, the same three
+    the conversation explains before the plan. */
+function Ladder({ unlockAt }: { unlockAt: number }) {
+  return (
+    <div className="grid grid-cols-3 items-end gap-2">
+      {PHASE_BUDGETS.map((b, i) => {
+        const on = i === 0;
+        return (
+          <div
+            key={b}
+            className={`relative rounded-[14px] px-3 pb-2.5 pt-3 ${on ? "grad-promo shadow-pri" : "bg-haze/80"}`}
+            style={{ minHeight: 64 + i * 14 }}
+          >
+            <p className={`text-[10.5px] font-semibold uppercase tracking-[0.1em] ${on ? "text-white/75" : "text-ink-faint"}`}>Phase {i + 1}</p>
+            <p className={`num mt-1 text-[15px] font-bold leading-5 ${on ? "text-white" : "text-ink"}`}>{fmtUSD(b * PHASE_MULTIPLES[i])}</p>
+            <p className={`num text-[11px] ${on ? "text-white/80" : "text-ink-faint"}`}>{fmtUSD(b)} · {PHASE_MULTIPLES[i]}×</p>
+            {i === 1 && (
+              <span className="num absolute -top-2.5 end-2 inline-flex items-center gap-1 rounded-pill bg-white px-2 py-0.5 text-[10.5px] font-semibold text-brand shadow-edge">
+                <Lightning size={10} weight="fill" aria-hidden /> at {fmtUSD(unlockAt)}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const FLAGS = new Set(["ae", "bh", "eg", "jo", "kw", "om", "qa", "sa"]);
 
 export function PlanCard({
   plan, onEdit, dense = false, onOpenCreators,
@@ -82,127 +119,122 @@ export function PlanCard({
   const products = (bestsellers?.value ?? []).slice(0, STRATEGY_META[plan.strategy.value].lines);
 
   return (
-    <Card className={dense ? "p-4" : "p-5"}>
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="text-body font-semibold text-ink">{t("plan.phase1")}</p>
+    <Card className={dense ? "p-4" : "p-5 sm:p-6"}>
+      <div className="flex flex-wrap items-center gap-3">
+        <span aria-hidden className="grad-tile grid h-10 w-10 shrink-0 place-items-center rounded-[12px] shadow-pri">
+          <RocketLaunch size={19} weight="fill" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[17px] font-semibold leading-6 tracking-[-0.01em] text-ink">{t("plan.phase1")}</p>
+          <p className="truncate text-meta text-ink-faint">{plan.brandName}</p>
+        </div>
         {/* A draft until Phase 1 is paid for, and the pill says so. The
             review call asked for the unpaid state to be on screen, not
             only in the chat. */}
         <Pill tone={paid ? "good" : "muted"}>{paid ? "Started · paid" : "Draft · nothing charged"}</Pill>
-        <span className="ms-auto text-meta text-ink-faint">{plan.brandName}</span>
       </div>
 
-      {/* Two cells, and the guarantee carries the weight.
-
-          What you pay is a cost, so it is the smallest. The guaranteed
-          figure is the product, so it is the largest, with the multiple
-          under it as a note rather than as a second promise. There is
-          no third cell: an expected range sat here once, and a range
-          beside a guarantee reads as a second, softer promise. The
-          model still computes it — `underwriting` judges the crew by it
-          — but the brand is shown the number HeyMoon stands behind and
-          nothing that could be mistaken for it. */}
-      <div className="mt-3.5 overflow-hidden rounded-control border border-hairline">
-        <div className="grid gap-x-8 gap-y-3.5 p-3.5 sm:grid-cols-2">
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium text-ink-faint">You pay</p>
-            <div className="mt-1">
-              <Figure src={plan.budget} render={fmtUSD(budget)} size="md" />
-            </div>
-            <p className="mt-1 text-[11px] leading-4 text-ink-faint">Phase 1 only.</p>
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium text-ink-faint">Guaranteed sales</p>
-            <div className="mt-1">
-              <Figure src={plan.price.revenueTarget} render={fmtUSD(target)} size="lg" />
-            </div>
-            <p className="mt-1 text-[11px] leading-4 tabular-nums text-ink-faint">{multiple}x</p>
-          </div>
+      {/* What you pay, and what HeyMoon stands behind, as a pair with an arrow between: the cost is the smaller
+          tile, the guarantee the lit one. There is no third cell: an expected range beside a guarantee reads as a
+          second, softer promise. */}
+      <div className="relative mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-[18px] bg-haze/80 p-4">
+          <p className="text-meta font-medium text-ink-60">You pay</p>
+          <div className="mt-2"><Figure src={plan.budget} render={fmtUSD(budget)} size="display" /></div>
+          <p className="mt-1.5 text-meta text-ink-faint">Phase 1 only</p>
         </div>
-        {/* The refund rule was explained before the plan; in the conversation the card doesn't repeat it. */}
-        {!dense && (
-          <p className="border-t border-hairline bg-wash px-3.5 py-2 text-[11px] leading-4 text-ink-soft">
-            {guaranteeLine(budget, target)}
+        <span aria-hidden className="absolute start-1/2 top-1/2 z-[1] hidden h-9 w-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-brand shadow-lift sm:grid rtl:translate-x-1/2">
+          <ArrowRight size={15} weight="bold" className="rtl:rotate-180" />
+        </span>
+        <div className="grad-ws rounded-[18px] p-4 ring-1 ring-inset ring-brand/[0.1]">
+          <p className="flex items-center gap-1.5 text-meta font-medium text-brand">
+            <ShieldCheck size={14} weight="fill" aria-hidden /> Guaranteed sales
           </p>
-        )}
+          <div className="mt-2"><Figure src={plan.price.revenueTarget} render={fmtUSD(target)} size="display" /></div>
+          <p className="num mt-1.5 text-meta text-ink-faint">{multiple}× what you pay</p>
+        </div>
       </div>
-
-      <div className="mt-4">
-        <RevenueRuler pct={0} srLabel="Phase not started." />
-        <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-4 text-ink-faint">
-          <Lightning size={11} weight="fill" className="mt-0.5 shrink-0 text-brand" aria-hidden />
-          Phase 2 opens at {fmtUSD(plan.price.unlockAt.value)} in sales
+      {/* The refund rule was explained before the plan; in the conversation the card doesn't repeat it. */}
+      {!dense && (
+        <p className="mt-3 flex items-start gap-2 rounded-[14px] bg-good/[0.07] px-3.5 py-2.5 text-meta leading-5 text-good-deep">
+          <ShieldCheck size={14} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
+          {guaranteeLine(budget, target)}
         </p>
+      )}
+
+      <div className="mt-5">
+        <p className="mb-2.5 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-orchid">The path</p>
+        <Ladder unlockAt={plan.price.unlockAt.value} />
       </div>
 
-      <div className="mt-4">
-        <Row label={t("plan.markets")} onEdit={onEdit && (() => onEdit("markets"))}>
-          <Claim src={plan.markets}>{plan.markets.value.map(marketName).join(", ") || "None"}</Claim>
+      <div className="mt-5 divide-y divide-brand/[0.07] rounded-[18px] bg-white/70 px-4 py-3.5 ring-1 ring-brand/[0.07]">
+        <Row label={t("plan.markets")} icon={Globe} onEdit={onEdit && (() => onEdit("markets"))}>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="flex -space-x-1.5 rtl:space-x-reverse" aria-hidden>
+              {plan.markets.value.filter((c) => FLAGS.has(c.toLowerCase())).map((c) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={c} src={`/flags/${c.toLowerCase()}.svg`} alt="" className="h-5 w-5 rounded-full object-cover ring-2 ring-white" />
+              ))}
+            </span>
+            <Claim src={plan.markets} className="text-body text-ink">{plan.markets.value.map(marketName).join(", ") || "None"}</Claim>
+          </div>
         </Row>
-        <Row label={t("plan.audience")} onEdit={onEdit && (() => onEdit("audience"))}>
-          <Claim src={plan.audience}>
+        <Row label={t("plan.audience")} icon={UsersThree} onEdit={onEdit && (() => onEdit("audience"))}>
+          <Claim src={plan.audience} className="text-body text-ink">
             {`${genderWord}, ${a.ageLow} to ${a.ageHigh}`}
           </Claim>
         </Row>
-        <Row label={t("plan.creators")} onEdit={onEdit && (() => onEdit("creators"))}>
+        <Row label={t("plan.creators")} icon={Sparkle} onEdit={onEdit && (() => onEdit("creators"))}>
           <div className="flex w-full items-center gap-2 text-start">
             {/* Faces only once Phase 1 is paid (brand team, 15 Oct). Before
                 that the row names the KIND of creator, never the people. */}
             {paid && (
               <span className="flex -space-x-2 rtl:space-x-reverse" aria-hidden>
                 {plan.creators.value.slice(0, 5).map((c) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={c.id} src={c.avatar} alt="" loading="lazy" className="h-6 w-6 rounded-full bg-brand-100 object-cover ring-2 ring-white" />
+                  <img key={c.id} src={c.avatar} alt="" loading="lazy" className="h-7 w-7 rounded-full bg-brand-100 object-cover ring-2 ring-white" />
                 ))}
               </span>
             )}
-            {/* "Matched" is the pool MoonMatch AI found, not the crew the warm-up pays
-                for. The row used to say "matched" and show the crew,
-                which read as though the whole match were three people.
-                The crew follows it as the subset it is, so the two
-                numbers can never be confused for each other. */}
+            {/* "Matched" is the pool MoonMatch AI found, not the crew the warm-up pays for, which follows it as the
+                subset it is, so the two numbers can never be confused for each other. */}
             <span className="text-body text-ink-soft">
               <Figure src={plan.pool} render={`${pool} ${t("plan.matched")}`} size="sm" />
               {pool > crew ? <span className="text-ink-faint"> · {crew} in the warm-up</span> : null}
               {!paid && crew > 0 && <span className="mt-0.5 block text-meta text-ink-faint">{creatorProfile(plan.creators.value)}</span>}
             </span>
-            {/* The way to the crew is its own control. This row used to be one
-                big button with the matched-count Figure inside it, which put a
-                button inside a button: invalid HTML, and a hydration failure on
-                any page that renders this card from the server. */}
-
+            {/* The way to the crew is its own control, never a button inside a button around the Figure. */}
             {onOpenCreators && (
-
               <button
-
                 onClick={onOpenCreators}
-
                 aria-label="See the creators"
-
-                className="ms-auto grid h-6 w-6 shrink-0 place-items-center rounded-full text-ink-faint transition hover:bg-brand/[0.06] hover:text-brand"
-
+                className="ms-auto grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink-faint transition hover:bg-haze hover:text-brand"
               >
-
-                <CaretRight size={12} aria-hidden />
-
+                <CaretRight size={13} aria-hidden className="rtl:rotate-180" />
               </button>
-
             )}
           </div>
         </Row>
         {/* What the brand said to push (ProductsPick, asked before the plan). A plan built before that question
-            pushes the bestsellers the brief was written around. */}
-        <Row label="Products">
+            pushes the bestsellers the brief was written around, shown as the products. */}
+        <Row label="Products" icon={Package}>
           {plan.focus && plan.focus.kind !== "bestsellers" ? (
             <p className="text-body text-ink">{focusText(plan.focus, [])}</p>
           ) : bestsellers && products.length > 0 ? (
-            <Claim src={bestsellers}>{products.map((p) => p.name).join(", ")}</Claim>
+            <div>
+              <span className="mb-1.5 mt-1 flex gap-1.5" aria-hidden>
+                {products.filter((p) => p.img).slice(0, 5).map((p) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={p.name} src={p.img} alt="" loading="lazy" className="h-10 w-10 rounded-[10px] object-cover ring-1 ring-black/[0.05]" />
+                ))}
+              </span>
+              <Claim src={bestsellers} className="text-body text-ink">{products.map((p) => p.name).join(", ")}</Claim>
+            </div>
           ) : (
             <p className="text-body text-ink-soft">Your whole catalogue.</p>
           )}
         </Row>
-        <Row label={t("plan.brief")} onEdit={onEdit && (() => onEdit("brief"))}>
-          <Claim src={plan.brief.value.headline}>{plan.brief.value.headline.value}</Claim>
+        <Row label={t("plan.brief")} icon={Notepad} onEdit={onEdit && (() => onEdit("brief"))}>
+          <Claim src={plan.brief.value.headline} className="text-body text-ink">{plan.brief.value.headline.value}</Claim>
         </Row>
       </div>
     </Card>
@@ -356,7 +388,7 @@ export function BudgetDial({
       </p>
 
       <div className="mt-3 flex items-center gap-2.5">
-        <span className="w-12 shrink-0 text-[11px] font-medium tabular-nums text-ink-faint">{fmtUSD(min)}</span>
+        <span className="w-12 shrink-0 text-meta font-medium tabular-nums text-ink-faint">{fmtUSD(min)}</span>
         <div className="relative min-w-0 flex-1">
           <input
             type="range"
@@ -383,14 +415,14 @@ export function BudgetDial({
             />
           )}
         </div>
-        <span className="w-14 shrink-0 text-end text-[11px] font-medium tabular-nums text-ink-faint">{fmtUSD(max)}</span>
+        <span className="w-14 shrink-0 text-end text-meta font-medium tabular-nums text-ink-faint">{fmtUSD(max)}</span>
       </div>
 
       <p className="mt-2.5 text-meta leading-5 text-ink-soft">
         At {fmtUSD(local)}, Phase 1 guarantees{" "}
         <span className="font-semibold tabular-nums text-ink">{fmtUSD(local * guarantee)}</span> in sales, which is the{" "}
-        {guarantee}x HeyMoon stands behind. Creator fees for the whole crew come to {fmtUSD(crewCost)}, which is{" "}
-        {crewShare}% of it. The rest is matching, tracking and the share held back to refund you if the guarantee misses.
+        {guarantee}x HeyMoon stands behind. It covers your creators, matching, tracking and the share held back to refund
+        you if the guarantee misses.
       </p>
       {ladder.length > 1 && (
         <p className="mt-1.5 text-meta leading-5 text-ink-soft">

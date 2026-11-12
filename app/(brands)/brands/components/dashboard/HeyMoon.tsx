@@ -24,6 +24,7 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from "react";
 import { ArrowUp, Check, Sparkle, X } from "@phosphor-icons/react";
+import { Emblem } from "../../../../_shared/Emblem";
 import { dashboardChips, interpretDashboard, type DashboardView } from "../../lib/agent/dashboard";
 import type { MoveAction } from "../../lib/agent/moves";
 import {
@@ -221,12 +222,14 @@ export function AskBar() {
 
   return (
     <>
-      <div className="relative hidden w-[clamp(240px,30vw,440px)] md:block">
+      <div className="relative hidden w-[clamp(240px,32vw,460px)] md:block">
         <form
           onSubmit={(e) => { e.preventDefault(); send(text); }}
-          className="flex h-10 items-center gap-2 rounded-pill border border-black/[0.08] bg-white/90 px-3.5 transition focus-within:border-brand/40 focus-within:shadow-card"
+          className="glass flex h-[42px] items-center gap-2.5 !rounded-full pe-1.5 ps-1.5 transition focus-within:shadow-lift"
         >
-          <Sparkle size={14} weight="fill" aria-hidden className="shrink-0 text-brand" />
+          <span aria-hidden className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,#6848D1,#C2418B)] text-white">
+            <Sparkle size={13} weight="fill" />
+          </span>
           <input
             ref={field}
             value={text}
@@ -236,9 +239,9 @@ export function AskBar() {
             onKeyDown={(e) => { if (e.key === "Escape") field.current?.blur(); }}
             placeholder={t("dash.ask")}
             aria-label="Ask HeyMoon"
-            className="min-w-0 flex-1 bg-transparent text-meta text-ink outline-none placeholder:text-ink-faint"
+            className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-faint"
           />
-          <kbd className="hidden shrink-0 rounded-[6px] border border-hairline px-1.5 py-0.5 text-[10px] font-medium text-ink-faint lg:inline">
+          <kbd className="hidden shrink-0 rounded-pill bg-haze px-2.5 py-1 font-sans text-meta font-semibold text-ink-faint lg:inline">
             ⌘K
           </kbd>
         </form>
@@ -247,7 +250,7 @@ export function AskBar() {
           <ul
             role="listbox"
             aria-label="Suggestions"
-            className="absolute inset-x-0 top-full z-40 mt-1.5 overflow-hidden rounded-control border border-hairline bg-white py-1 shadow-float"
+            className="absolute inset-x-0 top-full z-40 mt-2 overflow-hidden rounded-[18px] border border-hairline bg-white p-1.5 shadow-float"
           >
             {chips.map((c) => (
               <li key={c}>
@@ -256,7 +259,7 @@ export function AskBar() {
                   role="option"
                   aria-selected={false}
                   onMouseDown={(e) => { e.preventDefault(); send(c); }}
-                  className="flex w-full items-center gap-2 px-3.5 py-2 text-start text-meta text-ink-soft transition hover:bg-lilac/60 hover:text-ink"
+                  className="flex w-full items-center gap-2 rounded-[12px] px-3 py-2 text-start text-meta text-ink-soft transition hover:bg-haze hover:text-ink"
                 >
                   <Sparkle size={11} weight="fill" aria-hidden className="shrink-0 text-brand/50" />
                   {c}
@@ -270,7 +273,7 @@ export function AskBar() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ask HeyMoon"
-        className="grid h-10 w-10 place-items-center rounded-pill text-main transition hover:bg-lilac/60 md:hidden"
+        className="glass grid h-[42px] w-[42px] place-items-center !rounded-full text-main md:hidden"
       >
         <Sparkle size={16} weight="fill" aria-hidden />
       </button>
@@ -295,14 +298,14 @@ export function AskChip({ q, say, tone = "light", className = "" }: {
     <button
       type="button"
       onClick={() => (say ? show({ q, say }) : ask(q))}
-      className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] font-semibold transition ${
+      className={`inline-flex h-7 items-center gap-1.5 rounded-pill px-3 text-meta font-semibold transition ${
         tone === "onDark"
           ? "bg-white/15 text-white hover:bg-white/25"
-          : "bg-lilac text-main hover:bg-main-10"
+          : "bg-haze text-brand hover:bg-brand/[0.1]"
       } ${className}`}
     >
-      <Sparkle size={10} weight="fill" aria-hidden />
-      {q}
+      <Sparkle size={11} weight="fill" aria-hidden />
+      <span dir="auto">{q}</span>
     </button>
   );
 }
@@ -328,8 +331,9 @@ export function HeyMoonPanel() {
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-hairline px-4">
-        <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-brand text-white">
-          <Sparkle size={11} weight="fill" />
+        {/* The agent's mark, the chat's: the emblem on the gradient disc. */}
+        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,#6848D1,#C2418B)] text-white shadow-[0_6px_14px_-6px_rgba(124,58,190,0.6)]">
+          <Emblem size={15} />
         </span>
         <p className="min-w-0 flex-1 truncate text-body font-semibold text-ink">HeyMoon</p>
         <button
@@ -350,7 +354,7 @@ export function HeyMoonPanel() {
                 <button
                   key={c}
                   onClick={() => send(c)}
-                  className="rounded-pill border border-black/[0.09] bg-white px-2.5 py-1 text-[11px] font-medium text-ink-soft transition hover:border-brand/40 hover:text-brand"
+                  className="rounded-pill border border-black/[0.09] bg-white px-2.5 py-1 text-meta font-medium text-ink-soft transition hover:border-brand/40 hover:text-brand"
                 >
                   {c}
                 </button>

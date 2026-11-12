@@ -35,7 +35,7 @@ function Person({ first, last, email, children }: { first?: string; last?: strin
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-body font-semibold text-ink">{name || email}</p>
-        {name && <p dir="ltr" className="truncate text-[11px] text-ink-faint">{email}</p>}
+        {name && <p dir="ltr" className="truncate text-meta text-ink-faint">{email}</p>}
       </div>
       {children}
     </div>
@@ -44,7 +44,7 @@ function Person({ first, last, email, children }: { first?: string; last?: strin
 
 const pill = (tone: "brand" | "good" | "muted", text: string) => (
   <span
-    className={`shrink-0 rounded-pill border px-2.5 py-1 text-[11px] font-semibold ${
+    className={`shrink-0 rounded-pill border px-2.5 py-1 text-meta font-semibold ${
       tone === "brand" ? "border-brand/25 bg-brand/[0.07] text-brand"
       : tone === "good" ? "border-good/25 bg-good/[0.07] text-good-deep"
       : "border-hairline bg-wash text-ink-faint"
@@ -151,7 +151,7 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
           <Person first={brand.owner.firstName} last={brand.owner.lastName} email={brand.owner.email}>
             {pill("brand", brand.owner.email === me ? "Owner · you" : "Owner")}
           </Person>
-          <p className="mt-3 border-t border-hairline pt-3 text-[11px] leading-4 text-ink-faint">
+          <p className="mt-3 border-t border-hairline pt-3 text-meta leading-4 text-ink-faint">
             Owner since {day(brand.owner.since)}. The owner can hand the brand to someone on the team.
           </p>
           {isOwner && (
@@ -173,7 +173,7 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
                         </li>
                       ))}
                     </ul>
-                    <p className="mt-2 text-[11px] leading-4 text-ink-faint">They become the owner and you stay on as an admin.</p>
+                    <p className="mt-2 text-meta leading-4 text-ink-faint">They become the owner and you stay on as an admin.</p>
                   </>
                 ) : (
                   <p className="text-meta text-ink-soft">Only someone who has joined can take it. Invite them first.</p>
@@ -233,7 +233,7 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
                   Send invite
                 </Btn>
               </div>
-              <p id="team-invite-note" className="mt-1.5 text-[11px] leading-4" role={tried && problem ? "alert" : "status"}>
+              <p id="team-invite-note" className="mt-1.5 text-meta leading-4" role={tried && problem ? "alert" : "status"}>
                 {tried && problem ? (
                   <span className="font-semibold text-danger">{problem}</span>
                 ) : note ? (
@@ -292,7 +292,7 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
           </ul>
 
           {!manages && (
-            <p className="border-t border-hairline p-5 text-[11px] leading-4 text-ink-faint">
+            <p className="border-t border-hairline p-5 text-meta leading-4 text-ink-faint">
               Only {brand.owner.firstName || "the owner"} or an admin can invite people, change roles or answer requests to join.
             </p>
           )}
@@ -312,7 +312,7 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
                 {brand.requests.map((r) => (
                   <li key={r.email} className="px-5 py-3.5">
                     <Person first={r.firstName} last={r.lastName} email={r.email}>
-                      <span className="hidden shrink-0 text-[11px] text-ink-faint sm:inline">Asked {day(r.at)}</span>
+                      <span className="hidden shrink-0 text-meta text-ink-faint sm:inline">Asked {day(r.at)}</span>
                       <Btn size="sm" className="shrink-0" onClick={() => answerRequest(host, r.email, true, Date.now())}>
                         <CheckCircle size={13} weight="fill" aria-hidden />
                         Let in as member
@@ -350,9 +350,9 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
           <table className="w-full min-w-[560px] text-start">
             <thead>
               <tr className="border-b border-hairline">
-                <th className="px-5 py-2.5 text-start text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Role</th>
+                <th className="px-5 py-2.5 text-start text-meta font-semibold uppercase tracking-wide text-ink-faint">Role</th>
                 {ACTIONS.map((a) => (
-                  <th key={a.key} className="px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{a.label}</th>
+                  <th key={a.key} className="px-3 py-2.5 text-center text-meta font-semibold uppercase tracking-wide text-ink-faint">{a.label}</th>
                 ))}
               </tr>
             </thead>
@@ -361,7 +361,7 @@ export function TeamView({ host, brandName }: { host: string; brandName: string 
                 <tr key={r} className={r === role ? "bg-brand/[0.03]" : ""}>
                   <td className="px-5 py-3">
                     <p className="text-body font-semibold text-ink">{ROLE_LABEL[r]}{r === real ? " · you" : ""}</p>
-                    <p className="text-[11px] leading-4 text-ink-faint">{ROLE_NOTE[r]}</p>
+                    <p className="text-meta leading-4 text-ink-faint">{ROLE_NOTE[r]}</p>
                   </td>
                   {ACTIONS.map((a) => (
                     <td key={a.key} className="px-3 py-3 text-center">

@@ -23,7 +23,7 @@ import type {
 import { rememberRead } from "./agent/registry";
 import { withBilling, type Billing } from "./agent/billing";
 import { hash } from "./agent/rng";
-import { ADS, PHASES, type Phase } from "./mock/campaigns";
+import { ADS, PHASES, draftsFor, fmtUSD, type Phase } from "./mock/campaigns";
 import { FIRST_SALE_DAYS, LAUNCH_BY_DAYS, PHASE_START_DAYS, STAGES, plusDays, type CouponRules, type Stage, type StageKey } from "./agent/connect";
 
 /* ------------------------------------------------------------------ */
@@ -624,6 +624,7 @@ function hydrate() {
       /* A plan holds a read id, not a read, so the registry has to know
          the restored reads or every plan comes back without evidence. */
       for (const r of Object.values(state.reads)) rememberRead(r);
+      state = { ...state, activity: withPhaseActivity(state, Date.now()) };
     }
   } catch {}
   try {
@@ -1014,7 +1015,8 @@ export const advanceLaunch = (campaignId: string, at: number) =>
     if (!l.phaseStartedAt) {
       const today = new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
       const phases = c.phases.map((p, i) => (i === 0 ? { ...p, status: "live" as const, dayOfPhase: 1, start: today } : p));
-      return patchCampaignIn(s, campaignId, { phases, launch: { ...l, phaseStartedAt: at } });
+      const next = patchCampaignIn(s, campaignId, { phases, launch: { ...l, phaseStartedAt: at } });
+      return { ...next, activity: withPhaseActivity({ ...s, ...next }, at) };
     }
     return {};
   });
@@ -1026,7 +1028,8 @@ export const recordFirstSale = (campaignId: string, amount: number, at: number) 
     const l = c?.launch;
     if (!c || !l?.phaseStartedAt || l.firstSaleAt) return {};
     const phases = c.phases.map((p, i) => (i === 0 ? { ...p, rev: p.rev + amount } : p));
-    return patchCampaignIn(s, campaignId, { phases, launch: { ...l, firstSaleAt: at } });
+    const next = patchCampaignIn(s, campaignId, { phases, launch: { ...l, firstSaleAt: at } });
+    return { ...next, activity: withPhaseActivity({ ...s, ...next }, at) };
   });
 
 /** A plan emailed before paying (brand flows, P0 "leaves" and P1 "someone else decides"). */
@@ -1335,12 +1338,84 @@ export const dismissInbox = (id: string) =>
    invalidates exactly when a decision changes and never otherwise. */
 let adsCache: { key: State["ads"]; value: AdRecord[] } | null = null;
 let extraCache: State["extraAds"] | null = null;
+/** The drafts of every live phase that has none of its own: a campaign built in the conversation, from its crew and
+    its bestsellers (mock/campaigns.ts, draftsFor). The running demo's phase has its seeds and is left alone. */
+function generatedAds(s: Pick<State, "campaigns" | "plans" | "reads" | "extraAds">): AdRecord[] {
+  const has = new Set([...ADS, ...s.extraAds].map((a) => a.campaignId));
+  const out: AdRecord[] = [];
+  for (const c of Object.values(s.campaigns)) {
+    const plan = c.planId ? s.plans[c.planId] : null;
+    const crew = plan?.creators.value ?? [];
+    if (!crew.length) continue;
+    const read = c.readId ? s.reads[c.readId] : null;
+    for (const p of c.phases) {
+      if (p.status !== "live" || has.has(p.id)) continue;
+      out.push(...draftsFor({
+        phaseId: p.id, phaseNo: p.phaseNo, rev: p.rev, crew,
+        products: read?.bestsellers?.value ?? [], brandName: read?.identity?.name.value ?? c.brandName,
+      }));
+    }
+  }
+  return out;
+}
+
+let genKey: { campaigns: State["campaigns"]; plans: State["plans"]; reads: State["reads"] } | null = null;
 export function adsWithState(s: State): AdRecord[] {
-  if (adsCache && adsCache.key === s.ads && extraCache === s.extraAds) return adsCache.value;
-  const value = [...ADS, ...s.extraAds].map((a) => ({ ...a, state: s.ads[a.id] ?? a.state }));
+  const same = genKey && genKey.campaigns === s.campaigns && genKey.plans === s.plans && genKey.reads === s.reads;
+  if (adsCache && adsCache.key === s.ads && extraCache === s.extraAds && same) return adsCache.value;
+  const value = [...ADS, ...s.extraAds, ...generatedAds(s)].map((a) => ({ ...a, state: s.ads[a.id] ?? a.state }));
   adsCache = { key: s.ads, value };
   extraCache = s.extraAds;
+  genKey = { campaigns: s.campaigns, plans: s.plans, reads: s.reads };
   return value;
+}
+
+/* WHAT THE AGENTS DID ON THEIR OWN ON A CAMPAIGN BUILT IN THE CONVERSATION (12 Nov: "activity is also empty"). Only
+   the running demo had a log. These follow from that campaign's own drafts, so the log and the Ads tab tell one story:
+   the held draft moved to the front of the queue, the brief tightened after a draft held the code too briefly, and
+   spend weighted toward the one ad that is selling. Kept in `activity` like any entry, so Undo works on them. */
+function phaseActivity(s: Pick<State, "campaigns" | "plans" | "reads" | "extraAds">, at: number): ActivityEntry[] {
+  const out: ActivityEntry[] = [];
+  const ads = generatedAds(s);
+  for (const c of Object.values(s.campaigns)) {
+    for (const p of c.phases) {
+      if (p.status !== "live") continue;
+      const mine = ads.filter((a) => a.campaignId === p.id);
+      if (!mine.length) continue;
+      const hold = mine.find((a) => a.state === "waiting" && a.compliance.verdict === "hold");
+      const note = mine.find((a) => a.state === "waiting" && a.compliance.verdict === "approve-with-note");
+      const live = mine.find((a) => a.state === "live");
+      if (live) out.push({
+        id: `act-gen-${p.id}-spend`, at: at - 35 * 60_000, ruleKey: "rebalance", agent: "MoonScore AI",
+        title: `Weighted spend toward ${live.creatorName}'s ${live.format.toLowerCase()}`,
+        because: `It carried the first sales on this phase, ${fmtUSD(p.rev)}, and every other draft is still waiting on you. Re-allocating budget to whatever is converting is MoonScore AI's whole job.`,
+        effect: `Phase ${p.phaseNo} spend leans toward the one live ad. Total phase budget unchanged.`,
+        undone: false, undoable: true,
+      });
+      if (hold) out.push({
+        id: `act-gen-${p.id}-order`, at: at - 95 * 60_000, ruleKey: "reorder", agent: "MoonScore AI",
+        title: `Put ${hold.creatorName}'s draft at the top of your queue`,
+        because: "MoonWriter AI is holding that draft against the brief it wrote: it is the only one in the queue it would not approve. Deciding it first leaves room for a re-cut while the review window is still open.",
+        effect: "Review queue order only. No decision was made on your behalf.",
+        undone: false, undoable: true,
+      });
+      if (note) out.push({
+        id: `act-gen-${p.id}-brief`, at: at - 210 * 60_000, ruleKey: "brief-tweak", agent: "MoonWriter AI",
+        title: `Added a code-visibility rule to the Phase ${p.phaseNo} brief`,
+        because: `${note.creatorName}'s draft held the discount code on screen for under five seconds. Attribution runs entirely through that code, so a short hold is lost sales.`,
+        effect: "The brief now reads “hold the code on screen for at least five seconds”. Applies to drafts submitted from now on.",
+        undone: false, undoable: true,
+      });
+    }
+  }
+  return out;
+}
+
+/** The log with any of those entries it does not hold yet. Newest first is the view's job, not this one's. */
+function withPhaseActivity<T extends Pick<State, "campaigns" | "plans" | "reads" | "extraAds" | "activity">>(s: T, at: number): ActivityEntry[] {
+  const have = new Set(s.activity.map((a) => a.id));
+  const add = phaseActivity(s, at).filter((a) => !have.has(a.id));
+  return add.length ? [...add, ...s.activity] : s.activity;
 }
 
 export const useAds = () => useStore(adsWithState);

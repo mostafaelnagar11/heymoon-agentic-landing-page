@@ -16,13 +16,11 @@ export function LeadMoves({ phase, moves }: { phase: Phase; moves: LeadMove[] })
   return (
     <section
       aria-label="Grow the lead"
-      className="rounded-tile border border-brand/25 bg-white p-5 shadow-card ring-4 ring-brand/[0.05]"
+      className="glass p-5 sm:p-6"
     >
       <div className="flex items-center gap-2">
-        <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-brand text-white">
-          <Sparkle size={11} weight="fill" />
-        </span>
-        <h2 className="text-body font-semibold text-main">
+        <Sparkle size={16} weight="fill" aria-hidden className="text-orchid" />
+        <h2 className="text-[15px] font-semibold text-ink">
           {moves.length ? `What adds most by day ${phase.plannedDays}` : "Nothing left to add"}
         </h2>
       </div>
@@ -30,19 +28,19 @@ export function LeadMoves({ phase, moves }: { phase: Phase; moves: LeadMove[] })
       {moves.length ? (
         <ul className="mt-2">
           {moves.map((m, i) => (
-            <li key={m.id} className="flex items-center gap-3 border-t border-hairline py-3">
-              <span className="num inline-flex min-w-[68px] shrink-0 justify-center rounded-pill bg-good/10 px-2 py-1 text-meta font-semibold text-good-deep">
+            <li key={m.id} className="flex items-center gap-3.5 border-t border-brand/[0.07] py-3.5 first:border-t-0">
+              <span className="num grid h-10 min-w-[64px] shrink-0 place-items-center rounded-[13px] bg-good/[0.09] px-2 text-[13px] font-bold text-good-deep">
                 +{fmtUSD(m.adds)}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-body font-semibold text-ink">{m.title}</p>
-                <p className="text-[11px] leading-4 text-ink-faint">{m.why}</p>
+                <p className="mt-0.5 text-meta text-ink-faint">{m.why}</p>
               </div>
               <button
                 type="button"
                 onClick={() => run(m.action)}
-                className={`inline-flex h-8 shrink-0 items-center rounded-pill px-3.5 text-meta font-semibold transition ${
-                  i === 0 ? "g-button border border-white/50 text-[#FBF8FE]" : "bg-lilac text-main hover:bg-main-10"
+                className={`inline-flex h-8 shrink-0 items-center rounded-pill px-3.5 text-meta font-semibold ${
+                  i === 0 ? "btn-pri" : "btn-soft"
                 }`}
               >
                 {m.action.label}
@@ -54,7 +52,7 @@ export function LeadMoves({ phase, moves }: { phase: Phase; moves: LeadMove[] })
         <p className="mt-2 text-meta text-ink-soft">Every draft is decided and the budget sits where it sells best.</p>
       )}
 
-      <p className="mt-2 text-[11px] text-ink-faint">Estimates from this phase&apos;s own rate. Budget stays inside the phase.</p>
+      <p className="mt-3 border-t border-brand/[0.07] pt-3 text-meta text-ink-faint">Estimates from this phase&apos;s own rate. Budget stays inside the phase.</p>
     </section>
   );
 }

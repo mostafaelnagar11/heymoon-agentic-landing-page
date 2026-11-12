@@ -34,7 +34,7 @@ export function CreatorCard({
 }) {
   const P = ICON[c.platform];
   return (
-    <article className="flex flex-col rounded-card border border-hairline bg-white p-4 shadow-card">
+    <article className="glass flex flex-col p-4">
       <div className="flex items-start gap-3">
         <Avatar src={c.avatar} name={c.name} size={44} />
         <div className="min-w-0 flex-1">
@@ -73,7 +73,7 @@ export function CreatorCard({
       )}
 
       {c.caveat && (
-        <p className="mt-3 flex items-start gap-2 rounded-control bg-wash px-2.5 py-2 text-[11px] leading-4 text-ink-soft">
+        <p className="mt-3 flex items-start gap-2 rounded-control bg-wash px-2.5 py-2 text-meta leading-4 text-ink-soft">
           <Warning size={12} weight="fill" className="mt-0.5 shrink-0 text-ink-faint" aria-hidden />
           {c.caveat}
         </p>
@@ -90,7 +90,7 @@ export function CreatorCard({
 export function CreatorRow({ c, onDrop }: { c: CreatorMatch; onDrop?: (id: number) => void }) {
   const P = ICON[c.platform];
   return (
-    <article className="rounded-card border border-hairline bg-white p-3.5 shadow-card">
+    <article className="glass p-3.5">
       <div className="flex items-center gap-3">
         <Avatar src={c.avatar} name={c.name} size={38} />
         <div className="min-w-0 flex-1">
@@ -128,7 +128,7 @@ export function CreatorRow({ c, onDrop }: { c: CreatorMatch; onDrop?: (id: numbe
       </ul>
 
       {c.caveat && (
-        <p className="mt-2.5 flex items-start gap-2 rounded-control bg-wash px-2.5 py-2 text-[11px] leading-4 text-ink-soft">
+        <p className="mt-2.5 flex items-start gap-2 rounded-control bg-wash px-2.5 py-2 text-meta leading-4 text-ink-soft">
           <Warning size={12} weight="fill" className="mt-0.5 shrink-0 text-ink-faint" aria-hidden />
           {c.caveat}
         </p>
@@ -225,39 +225,51 @@ export function CreatorSummary({ creators, matched }: {
   const subset = pool > crew;
 
   return (
-    <article className="rounded-card border border-hairline bg-white p-4 shadow-card">
+    <article className="glass p-5">
       <div className="flex items-center gap-3">
         {/* The profile type, not the people: an icon where faces were. */}
-        <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-100 text-brand">
-          <UsersThree size={18} weight="fill" />
+        <span aria-hidden className="grad-tile grid h-10 w-10 shrink-0 place-items-center rounded-[12px] shadow-pri">
+          <UsersThree size={19} weight="fill" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-body font-semibold text-ink">
+          <p className="text-[16px] font-semibold leading-6 text-ink">
             {subset
               ? `${crew} of the ${pool} matched creators are in your warm-up crew`
               : `${crew} creators matched and held for you`}
           </p>
-          <p className="mt-0.5 text-meta text-ink-faint">{creatorProfile(creators)}</p>
+          <p className="text-meta text-ink-faint">{creatorProfile(creators)}</p>
         </div>
       </div>
 
-      <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-hairline pt-3">
-        <div>
-          <dt className="text-[11px] text-ink-faint">Combined reach per post</dt>
-          <dd className="text-title font-semibold tabular-nums text-ink">{fmtCount(reach)}</dd>
-        </div>
-        <div>
-          <dt className="text-[11px] text-ink-faint">Audience in the Gulf</dt>
-          <dd className="text-title font-semibold tabular-nums text-ink">{inMarket}%</dd>
-        </div>
-        <div>
-          <dt className="text-[11px] text-ink-faint">Of followers who watch</dt>
-          <dd className="text-title font-semibold tabular-nums text-ink">{watch}%</dd>
-        </div>
+      {/* The pool as places, not people: one seat per matched creator, the warm-up's crew lit. Faces come the moment
+          Phase 1 starts (brand team, 15 Oct), so before then a seat is a seat. */}
+      <div className="mt-4 flex flex-wrap items-center gap-2 rounded-[18px] bg-haze/60 px-4 py-3.5" aria-hidden>
+        {Array.from({ length: pool }, (_, i) => (
+          <span
+            key={i}
+            className={`grid h-9 w-9 place-items-center rounded-full ${i < crew ? "grad-tile shadow-pri" : "bg-white text-ink-faint ring-1 ring-brand/[0.1]"}`}
+          >
+            <UsersThree size={15} weight={i < crew ? "fill" : "regular"} />
+          </span>
+        ))}
+        {subset && <span className="ms-1 text-meta font-semibold text-ink-soft">{crew} in the warm-up · {pool - crew} for Phases 2 and 3</span>}
+      </div>
+
+      <dl className="mt-3 grid grid-cols-3 gap-2">
+        {[
+          { k: "Combined reach per post", v: fmtCount(reach) },
+          { k: "Audience in the Gulf", v: `${inMarket}%` },
+          { k: "Of followers who watch", v: `${watch}%` },
+        ].map((x) => (
+          <div key={x.k} className="rounded-[14px] bg-white/80 px-3 py-2.5 ring-1 ring-brand/[0.07]">
+            <dt className="text-[11.5px] leading-4 text-ink-faint">{x.k}</dt>
+            <dd className="num mt-1 text-[20px] font-bold tracking-[-0.02em] text-ink">{x.v}</dd>
+          </div>
+        ))}
       </dl>
 
-      <p className="mt-3 flex items-start gap-2 rounded-control bg-wash px-2.5 py-2 text-[11px] leading-4 text-ink-soft">
-        <LockSimple size={12} weight="fill" className="mt-0.5 shrink-0 text-ink-faint" aria-hidden />
+      <p className="mt-3 flex items-start gap-2.5 rounded-[14px] bg-haze/70 px-3.5 py-3 text-meta leading-5 text-ink-soft">
+        <LockSimple size={14} weight="fill" className="mt-0.5 shrink-0 text-brand" aria-hidden />
         <span>
           MoonMatch AI found {subset ? `all ${pool}` : "them"} and MoonSearch AI vetted every one for brand and fraud
           risk.{" "}
@@ -282,7 +294,7 @@ export function CreatorSummary({ creators, matched }: {
 
 export function CreatorNames({ creators }: { creators: CreatorMatch[] }) {
   return (
-    <ul className="divide-y divide-hairline rounded-card border border-hairline bg-white shadow-card">
+    <ul className="glass divide-y divide-hairline">
       {creators.map((c) => {
         const P = ICON[c.platform];
         return (
@@ -290,12 +302,12 @@ export function CreatorNames({ creators }: { creators: CreatorMatch[] }) {
             <Avatar src={c.avatar} name={c.name} size={32} />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-body font-semibold text-ink">{c.name}</span>
-              <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-faint">
+              <span className="mt-0.5 flex items-center gap-1.5 text-meta text-ink-faint">
                 <P size={10} weight="fill" aria-hidden />
                 {c.handle} · {c.niche.toLowerCase()}
               </span>
             </span>
-            <span className="shrink-0 text-[11px] tabular-nums text-ink-faint">{fmtCount(c.followers)}</span>
+            <span className="shrink-0 text-meta tabular-nums text-ink-faint">{fmtCount(c.followers)}</span>
           </li>
         );
       })}

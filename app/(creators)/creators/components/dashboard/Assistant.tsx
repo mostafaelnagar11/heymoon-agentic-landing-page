@@ -14,8 +14,10 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Sparkle, X } from "@phosphor-icons/react";
+import { X } from "@phosphor-icons/react";
+import { Emblem } from "../../../../_shared/Emblem";
 import { Composer } from "../chat/Composer";
+import { Typed } from "../Stream";
 import { FORMAT_NAME, money } from "../../lib/agent/model";
 import { wantsYou } from "../../lib/agent/types";
 import { PAYOUTS } from "../../lib/agent/tools";
@@ -48,8 +50,9 @@ export function DashboardAssistant({ onClose }: { onClose: () => void }) {
 
   const say = (t: string, did?: string) => setTurns((xs) => [...xs, { id: seq++, who: "agent", text: t, did }]);
 
-  const send = () => {
-    const t = text.trim();
+  /* A chip is a question already written, so it goes straight away, the way the brand panel's do. */
+  const send = (v: string = text) => {
+    const t = v.trim();
     if (!t) return;
     setText("");
     setTurns((xs) => [...xs, { id: seq++, who: "you", text: t }]);
@@ -126,9 +129,10 @@ export function DashboardAssistant({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="flex h-full flex-col bg-white">
-      <header className="flex h-[67px] shrink-0 items-center gap-2.5 border-b border-line px-4">
-        <span aria-hidden className="g-button grid h-7 w-7 shrink-0 place-items-center rounded-full text-white">
-          <Sparkle size={13} weight="fill" />
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-hairline px-4">
+        {/* The agent's mark, the chat's: the emblem on the gradient disc. */}
+        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,#6848D1,#C2418B)] text-white shadow-[0_6px_14px_-6px_rgba(124,58,190,0.6)]">
+          <Emblem size={15} />
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-body font-semibold text-ink">Ask Moon</p>
@@ -150,12 +154,17 @@ export function DashboardAssistant({ onClose }: { onClose: () => void }) {
             <p>I cannot submit an ad, post to your accounts, join a campaign or sign anything. Those stay yours.</p>
           </div>
         )}
-        {turns.map((t) =>
+        {turns.map((t, i) =>
           t.who === "you" ? (
-            <p key={t.id} className="ms-auto max-w-[85%] rounded-[16px] bg-lilac px-3.5 py-2 text-body text-ink">{t.text}</p>
+            <div key={t.id} className="flex justify-end">
+              <p className="max-w-[85%] rounded-[16px] bg-black/[0.05] px-3 py-2 text-body leading-5 text-ink">{t.text}</p>
+            </div>
           ) : (
-            <div key={t.id}>
-              <p className="text-body leading-6 text-ink">{t.text}</p>
+            <div key={t.id} className="text-body leading-6 text-ink">
+              {/* The newest reply writes itself out, the brand panel's; the ones above it are already said. */}
+              {i === turns.length - 1
+                ? <Typed text={t.text} onTick={() => list.current?.scrollTo({ top: list.current.scrollHeight })} />
+                : <p className="whitespace-pre-line">{t.text}</p>}
               {t.did && <p className="mt-1 text-[11px] text-main">{t.did}</p>}
             </div>
           )
@@ -165,9 +174,9 @@ export function DashboardAssistant({ onClose }: { onClose: () => void }) {
       <Composer
         value={text}
         onChange={setText}
-        onSend={send}
+        onSend={() => send()}
         chips={turns.length ? [] : ["How is it doing?", "What's due next?", "Did anything come back?"]}
-        onChip={(c) => setText(c)}
+        onChip={(c) => send(c)}
         placeholder="Ask, or tell me what to open"
         note="I cannot submit, post, accept or sign."
       />

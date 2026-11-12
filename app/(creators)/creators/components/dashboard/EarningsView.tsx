@@ -72,14 +72,14 @@ export function EarningsView() {
   const names = (ps: Row[]) => ps.map((p) => p.brand).join(" and ");
 
   return (
-    <div className="flex flex-col gap-8 px-4 md:px-0">
+    <div className="flex flex-col gap-8">
       <PayoutSheet open={paying} onClose={() => setPaying(false)} />
       {/* ── 1 and 2: what is next, and what is done ─────────────────── */}
-      <section className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-4">
+      <section className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))] lg:gap-4">
         <Card edge className="flex flex-col p-5 md:p-6">
-          <p className="text-eyebrow font-semibold uppercase text-main">Next payout</p>
+          <p className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-orchid">Next payout</p>
           <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="num text-[40px] font-semibold leading-none tracking-[-0.03em] text-ink">{money(heldSum)}</span>
+            <span className="num grad-text text-[44px] font-bold leading-none tracking-[-0.035em]">{money(heldSum)}</span>
             <span className="text-row font-medium text-ink-60">
               {isToday ? "Today" : friday.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
             </span>
@@ -108,9 +108,9 @@ export function EarningsView() {
         </Card>
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:gap-4">
-          <StatTile label="Paid to you so far" icon="payments" value={money(paidSum)}
+          <StatTile label="Paid to you so far" value={money(paidSum)}
             delta={paid.length ? `from ${paid.length} ${paid.length === 1 ? "campaign" : "campaigns"}` : undefined} />
-          <StatTile label="Orders on your codes" icon="orders" value={String(orders)}
+          <StatTile label="Orders on your codes" value={String(orders)}
             delta={`across ${PAYOUTS.length} ${PAYOUTS.length === 1 ? "campaign" : "campaigns"}`} />
         </div>
       </section>
@@ -119,7 +119,7 @@ export function EarningsView() {
       <section>
         <H rule aside={<span className="hidden text-meta text-ink-50 sm:inline">Open a row to see its sum</span>}>By campaign</H>
         <Card edge className="mt-3 overflow-hidden md:mt-4">
-          <div className="hidden grid-cols-[minmax(0,1fr)_80px_72px_96px_140px_24px] items-center gap-3 border-b border-hairline bg-paper px-4 py-2.5 text-eyebrow font-semibold uppercase text-ink-50 md:grid">
+          <div className="hidden grid-cols-[minmax(0,1fr)_80px_72px_96px_140px_24px] items-center gap-3 border-b border-hairline px-5 py-3 text-meta font-semibold uppercase tracking-[0.06em] text-ink-50 md:grid">
             <span>Campaign</span><span className="text-end">Orders</span><span className="text-end">Payout</span><span className="text-end">Earned</span><span>Status</span><span />
           </div>
           <ul className="divide-y divide-hairline">
@@ -130,7 +130,7 @@ export function EarningsView() {
               return (
                 <li key={p.id}>
                   <button type="button" onClick={() => setOpen(isOpen ? null : p.id)} aria-expanded={isOpen}
-                    className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-4 py-3 text-start transition hover:bg-lilac/30 md:grid-cols-[minmax(0,1fr)_80px_72px_96px_140px_24px]">
+                    className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-5 py-3.5 text-start transition hover:bg-haze/50 md:grid-cols-[minmax(0,1fr)_80px_72px_96px_140px_24px]">
                     <span className="min-w-0">
                       <span className="block truncate text-body font-semibold text-ink">{o?.title ?? p.brand}</span>
                       <span className="mt-0.5 flex min-w-0 items-center gap-1.5">
@@ -151,7 +151,7 @@ export function EarningsView() {
                     <CaretDown size={14} aria-hidden className={`hidden justify-self-end text-ink-50 transition-transform md:block ${isOpen ? "rotate-180" : ""}`} />
                   </button>
                   {isOpen && (
-                    <div className="bg-paper/70 px-4 pb-4 pt-1">
+                    <div className="bg-haze/40 px-5 pb-4 pt-1">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div className="min-w-0 flex-1">
                           <p className="text-meta font-semibold text-ink-50">How it adds up</p>
@@ -194,7 +194,7 @@ export function EarningsView() {
           ].map((s, i) => (
             <li key={s.title}>
               <Card edge className="flex h-full gap-3 p-4">
-                <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-inner bg-lilac text-main"><s.icon size={18} weight="fill" /></span>
+                <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-haze text-main"><s.icon size={18} weight="fill" /></span>
                 <span className="min-w-0">
                   <span className="block text-body font-semibold text-ink"><span className="num text-main">{i + 1}.</span> {s.title}</span>
                   <span className="mt-1 block text-meta leading-5 text-ink-60">{s.body}</span>

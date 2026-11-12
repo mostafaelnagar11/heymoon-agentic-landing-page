@@ -226,7 +226,7 @@ export function SignInSheet({ open, onClose, onVerified, host, brandName, forPay
                   checked && personal ? "border-danger" : "border-black/[0.1] focus:border-ink/25"
                 }`}
               />
-              <p id="signin-email-note" className="mt-1.5 text-[11px] leading-4" role={checked && personal ? "alert" : undefined}>
+              <p id="signin-email-note" className="mt-1.5 text-meta leading-4" role={checked && personal ? "alert" : undefined}>
                 {checked && personal ? (
                   <span className="font-semibold text-danger">
                     Use your work email. Personal addresses like Gmail or Outlook can&apos;t open a brand account.
@@ -253,7 +253,7 @@ export function SignInSheet({ open, onClose, onVerified, host, brandName, forPay
             <p className="mt-5 text-center text-meta text-ink-soft">
               No account yet? The same email makes one. Whoever pays owns the brand account and invites the team.
             </p>
-            <p className="mt-2 text-center text-[11px] leading-4 text-ink-faint">
+            <p className="mt-2 text-center text-meta leading-4 text-ink-faint">
               By continuing you agree to the HeyMoon terms and privacy policy.
             </p>
           </>

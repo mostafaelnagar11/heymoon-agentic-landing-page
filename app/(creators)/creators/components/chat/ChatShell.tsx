@@ -12,19 +12,31 @@ import { CaretLeft, X } from "@phosphor-icons/react";
 import { Wordmark } from "../Wordmark";
 import { closePanel, selectOffer, setPanelView, useActiveProfile, usePanel, useSelectedOfferId, useStore, type PanelView } from "../../lib/store";
 
-export function ChatShell({ children, panel }: { children: ReactNode; panel: ReactNode }) {
+export function ChatShell({ children, panel, top }: {
+  children: ReactNode;
+  panel: ReactNode;
+  /** The header's middle: where the creator is in getting started (OnboardingSteps). */
+  top?: ReactNode;
+}) {
   const { open } = usePanel();
   return (
-    <div className="flex h-[100dvh] overflow-clip bg-white">
-      <main className={`relative flex min-w-0 flex-1 flex-col ${open ? "hidden md:flex" : "flex"}`} aria-label="Conversation">
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-gradient-to-b from-white from-40% to-transparent" />
+    /* The dashboard's light (Aurora, 11 Nov), so the conversation and the dashboard it ends in are one place. */
+    <div className="relative flex h-[100dvh] overflow-clip bg-[#FBFAFE]">
+      <div aria-hidden className="aurora pointer-events-none absolute inset-0" />
+      <main className={`relative z-[1] flex min-w-0 flex-1 flex-col ${open ? "hidden md:flex" : "flex"}`} aria-label="Conversation">
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 backdrop-blur-md [mask-image:linear-gradient(to_bottom,black_45%,transparent)]" />
         <Link href="/creators" aria-label="HeyMoon, start again" className="pointer-events-auto absolute start-5 top-4 z-20 rounded transition hover:opacity-70">
           <Wordmark size="sm" />
         </Link>
+        {top && (
+          <div className="pointer-events-none absolute inset-x-0 top-3.5 z-20 flex justify-end pe-4 lg:justify-center lg:pe-0">
+            {top}
+          </div>
+        )}
         {children}
       </main>
       {open && (
-        <aside className="animate-slide-in-end flex w-full shrink-0 flex-col border-s border-line bg-canvas md:w-[clamp(375px,40vw,560px)]" aria-label="Panel">
+        <aside className="animate-slide-in-end relative z-[1] flex w-full shrink-0 flex-col overflow-hidden bg-canvas md:my-3.5 md:me-3.5 md:w-[clamp(375px,40vw,560px)] md:rounded-glass md:bg-white/[0.72] md:shadow-glass md:backdrop-blur-[18px]" aria-label="Panel">
           {panel}
         </aside>
       )}
@@ -58,7 +70,7 @@ export function PanelFrame({ title, sub, children, bare }: { title: string; sub?
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-white px-4">
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-main/[0.07] bg-white px-4 md:h-[60px] md:bg-transparent md:px-5">
         <button onClick={back} aria-label={view === "offers" && selected ? "Back to the campaigns" : "Back to the conversation"} className="-ms-1.5 grid h-8 w-8 shrink-0 place-items-center rounded-pill text-ink-50 transition hover:bg-lilac hover:text-main md:hidden">
           <CaretLeft size={15} weight="bold" aria-hidden />
         </button>
@@ -71,10 +83,10 @@ export function PanelFrame({ title, sub, children, bare }: { title: string; sub?
         </button>
       </header>
       {available.length > 1 && (
-        <div className="no-bar flex shrink-0 gap-1 overflow-x-auto border-b border-line bg-white px-3 py-2">
+        <div className="no-bar flex shrink-0 gap-1 overflow-x-auto border-b border-main/[0.07] bg-white px-3 py-2 md:bg-transparent md:px-4">
           {available.map((v) => (
             <button key={v.key} onClick={() => { setPanelView(v.key); selectOffer(null); }} aria-current={v.key === view}
-              className={`shrink-0 rounded-pill px-3 py-1.5 text-meta font-semibold transition ${v.key === view ? "bg-main text-white" : "text-ink-50 hover:bg-lilac hover:text-main"}`}>
+              className={`shrink-0 rounded-pill px-3.5 py-1.5 text-meta font-semibold transition ${v.key === view ? "bg-white text-ink shadow-lift" : "text-ink-50 hover:bg-white/70 hover:text-ink"}`}>
               {v.label}
             </button>
           ))}

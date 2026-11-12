@@ -57,9 +57,12 @@ import { track } from "../lib/track";
 import { Btn, Card } from "../components/ui";
 import { Thinking, Typed, WorkingLine } from "../components/Stream";
 import { ChatShell } from "../components/chat/ChatShell";
+import { OnboardingSteps, type Step } from "../components/chat/Steps";
+import { Emblem } from "../../../_shared/Emblem";
+import { MoonLoop } from "../../../_shared/MoonLoop";
 import { Composer } from "../components/chat/Composer";
 import { PanelHost } from "../components/chat/PanelHost";
-import { AgentTurn, BlockRow, UserTurn } from "../components/chat/Turn";
+import { AgentProse, AgentTurn, BlockRow, UserTurn } from "../components/chat/Turn";
 import {
   AdCardBlock, ApprovalBlock, BriefBlock, ChangesBlock, ConfidenceBar, ConfidenceBlock,
   CreatorBlock, FundingBlock, LadderBlock, PlanBlock, ReadBlock, ReceiptBlock,
@@ -358,11 +361,16 @@ function ChatInner() {
     if (!box) return;
     const last = box.querySelector<HTMLElement>("[data-last-turn]");
     if (!last) return;
-    const top = box.scrollTop + (last.getBoundingClientRect().top - box.getBoundingClientRect().top) - 16;
+    /* 76, not 16: the header (the mark and where they are in getting started) floats over the top of the thread. */
+    const top = box.scrollTop + (last.getBoundingClientRect().top - box.getBoundingClientRect().top) - 76;
     box.scrollTo({ top: Math.max(0, top), behavior: smooth ? "smooth" : "auto" });
   }, []);
 
   useEffect(() => { park(true); }, [thread.length, report.partial, park]);
+  /* And again when the blocks a sentence was holding back appear (`visible` grows when the typing finishes, while the
+     thread's length does not change). Without it a card landed under the composer, below the fold, and the brand had
+     to notice it was there and scroll for it. */
+  useEffect(() => { if (!isTyping) park(true); }, [visible.length, isTyping, park]);
 
   /* The build happens HERE, in the conversation, not on a page the
      conversation comes after. The agent narrates what it is doing, the
@@ -1561,12 +1569,29 @@ function ChatInner() {
       case "user":
         return <UserTurn key={item.id} text={chipText(item.text)} />;
       case "say":
+        /* A conversation that is only its opening line opens like a page, not like a log (Aurora, 11 Nov): the mark
+           large, and the same words in the middle of the screen, still typed out. The first answer turns it back
+           into the thread. */
+        if (visible.length === 1 && !plan) {
+          return (
+            <div key={item.id} className="flex min-h-[calc(100dvh-260px)] flex-col items-center justify-center text-center">
+              <span aria-hidden className="grid h-16 w-16 place-items-center rounded-full bg-[linear-gradient(135deg,#6848D1,#C2418B)] text-white shadow-pri">
+                {typedDone[item.id] ? <Emblem size={30} /> : <MoonLoop size={30} />}
+              </span>
+              <div className="mt-6 max-w-[34ch] text-[24px] font-semibold leading-[1.3] tracking-[-0.02em] text-ink sm:text-[28px]">
+                {typedDone[item.id] || item.id !== lastSay?.id
+                  ? <p>{item.text}</p>
+                  : <Typed text={item.text} className="!text-[length:inherit] !leading-[inherit]" onDone={() => finish(item.id)} />}
+              </div>
+            </div>
+          );
+        }
         return (
           /* Consecutive assistant turns share one mark — the speaker is
              named once and then simply keeps talking. */
-          <AgentTurn key={item.id} mark={!afterSay}>
+          <AgentTurn key={item.id} mark={!afterSay} live={!(typedDone[item.id] || item.id !== lastSay?.id)}>
             {typedDone[item.id] || item.id !== lastSay?.id ? (
-              <p className="whitespace-pre-line text-prose text-ink">{item.text}</p>
+              <AgentProse text={item.text} />
             ) : (
               /* No onTick scroll here any more. The view is parked at
                  the top of this turn and the text grows downward into
@@ -1644,8 +1669,11 @@ function ChatInner() {
         return req ? <BlockRow key={item.id}><ApprovalBlock req={req} /></BlockRow> : null;
       }
       case "read": {
-        const live = readRun.status === "running";
-        const r = live ? readRun.partial : reads[readIdFor(item.url)] ?? readRun.partial;
+        /* Only the newest read is the live one: reading a second store used to turn the first store's card into the
+           second store's live read (the creator conversation's liveReadId, ported back). */
+        const newestRead = [...visible].reverse().find((x) => x.kind === "read")?.id;
+        const live = readRun.status === "running" && item.id === newestRead;
+        const r = live ? readRun.partial : reads[readIdFor(item.url)] ?? (item.id === newestRead ? readRun.partial : null);
         return (
           <BlockRow key={item.id}>
             <ReadBlock read={r} live={live} />
@@ -1737,8 +1765,19 @@ function ChatInner() {
     }
   }
 
+  /* Getting started, ticked by what is true of this conversation's account rather than by the scroll (Steps.tsx). */
+  const steps: Step[] = [
+    /* Ticked when the store cleared the eligibility check, not merely when it was read: a store below the floor
+       (or no store at all) has not finished this step. */
+    { key: "store", label: t("steps.store"), done: !!plan || thread.some((x) => x.kind === "read" && reads[readIdFor(x.url)]?.eligibility?.state === "ok") },
+    { key: "account", label: t("steps.account"), done: !!account },
+    { key: "plan", label: t("steps.plan"), done: !!plan },
+    { key: "pay", label: t("steps.pay"), done: paid },
+    { key: "launch", label: t("steps.launch"), done: paid && !!camp?.launch?.briefApprovedAt },
+  ];
+
   return (
-    <ChatShell panel={<PanelHost />}>
+    <ChatShell panel={<PanelHost />} top={<OnboardingSteps steps={steps} />}>
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
         {/* Offline (H7), the cards can be read and scrolled but not pressed: a Confirm or Approve made offline used to
             record a step the server never saw. */}

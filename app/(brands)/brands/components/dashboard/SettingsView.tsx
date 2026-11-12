@@ -132,7 +132,7 @@ export function SettingsView({ initialTab = "brand", onBack }: { initialTab?: Ta
 
   return (
     <div className="space-y-6">
-      <div role="tablist" aria-label="Settings" className="flex flex-wrap gap-1 rounded-pill bg-lilac/70 p-1">
+      <div role="tablist" aria-label="Settings" className="glass inline-flex max-w-full flex-wrap gap-1 !rounded-[22px] p-1">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -140,8 +140,7 @@ export function SettingsView({ initialTab = "brand", onBack }: { initialTab?: Ta
             aria-selected={tab === t.key}
             onClick={() => setTab(t.key)}
             className={`rounded-pill px-3.5 py-1.5 text-body transition ${
-              tab === t.key
-                ? "bg-white font-semibold text-main shadow-card"
+              tab === t.key ? "bg-white font-semibold text-ink shadow-lift"
                 : "font-normal text-ink-50 hover:bg-white/60 hover:text-ink-90"
             }`}
           >
@@ -169,9 +168,8 @@ export function SettingsView({ initialTab = "brand", onBack }: { initialTab?: Ta
             {read && (
               <p className="mt-3">
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1 text-[11px] font-semibold ${
-                    eligible
-                      ? "border-good/25 bg-good/[0.07] text-good-deep"
+                  className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1 text-meta font-semibold ${
+                    eligible ? "border-good/25 bg-good/[0.07] text-good-deep"
                       : "border-hairline bg-wash text-ink-faint"
                   }`}
                 >
@@ -214,7 +212,7 @@ export function SettingsView({ initialTab = "brand", onBack }: { initialTab?: Ta
                 options={COUNTRIES}
               />
             </div>
-            <p className="mt-4 text-[11px] leading-4 text-ink-faint">Name and website come from the read.</p>
+            <p className="mt-4 text-meta leading-4 text-ink-faint">Name and website come from the read.</p>
           </Surface>
         </div>
       </Section>
@@ -252,9 +250,9 @@ export function SettingsView({ initialTab = "brand", onBack }: { initialTab?: Ta
                   <span dir="ltr" className="num text-body text-ink-soft">
                     {accountContact(account)}
                   </span>
-                  <span className="shrink-0 text-[11px] font-semibold text-good-deep">Verified</span>
+                  <span className="shrink-0 text-meta font-semibold text-good-deep">Verified</span>
                 </div>
-                <p className="mt-1.5 text-[11px] leading-4 text-ink-faint">To change it, sign in with the new one.</p>
+                <p className="mt-1.5 text-meta leading-4 text-ink-faint">To change it, sign in with the new one.</p>
               </div>
               {/* Asked in the conversation before the plan is sized. It changes what HeyMoon leads with, never
                   what the plan is. */}
@@ -281,7 +279,7 @@ export function SettingsView({ initialTab = "brand", onBack }: { initialTab?: Ta
           <div className="flex items-start justify-between gap-4 border-b border-hairline p-5">
             <div className="min-w-0">
               <p className="text-body font-semibold text-ink">Message me</p>
-              <p className="mt-0.5 text-[11px] leading-4 text-ink-faint">
+              <p className="mt-0.5 text-meta leading-4 text-ink-faint">
                 Drafts, unlocks and reports, by email.
               </p>
             </div>
@@ -305,11 +303,11 @@ export function SettingsView({ initialTab = "brand", onBack }: { initialTab?: Ta
           <div className="flex items-center justify-between gap-4 p-5">
             <div className="min-w-0">
               <p className="text-body font-semibold text-ink">Language</p>
-              <p className="mt-0.5 max-w-[46ch] text-[11px] leading-4 text-ink-faint">
+              <p className="mt-0.5 max-w-[46ch] text-meta leading-4 text-ink-faint">
                 The launch steps, the tracker and the menus switch now. Other pages follow.
               </p>
             </div>
-            <div className="flex shrink-0 gap-1 rounded-control border border-hairline bg-canvas p-1">
+            <div className="flex shrink-0 gap-1 glass !rounded-full p-1">
               {([
                 { k: "en", label: "English" },
                 { k: "ar", label: "العربية" },
@@ -319,8 +317,8 @@ export function SettingsView({ initialTab = "brand", onBack }: { initialTab?: Ta
                   type="button"
                   onClick={() => { track("hm_language_switched", { to: o.k }); setLocale(o.k); }}
                   aria-pressed={locale === o.k}
-                  className={`rounded-[9px] px-3 py-1.5 text-[12px] font-semibold transition ${
-                    locale === o.k ? "bg-white text-ink shadow-card" : "text-ink-faint hover:text-ink-soft"
+                  className={`rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition ${
+                    locale === o.k ? "bg-white text-ink shadow-lift" : "text-ink-faint hover:text-ink-soft"
                   }`}
                 >
                   {o.label}
@@ -336,7 +334,7 @@ export function SettingsView({ initialTab = "brand", onBack }: { initialTab?: Ta
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-body font-semibold text-ink">Delete everything</p>
-              <p className="mt-0.5 max-w-[60ch] text-[11px] leading-4 text-ink-faint">
+              <p className="mt-0.5 max-w-[60ch] text-meta leading-4 text-ink-faint">
                 Clears {campaigns === 1 ? "the campaign" : `all ${campaigns} campaigns`} from this browser. No undo.
               </p>
             </div>

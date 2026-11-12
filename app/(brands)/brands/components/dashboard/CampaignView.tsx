@@ -17,10 +17,10 @@
  * assistant beside the page, where asking is the whole point.
  */
 
-import { CaretRight, Lightning, Warning } from "@phosphor-icons/react";
-import { fmtUSD, pace, phaseTitle, UNLOCK_AT, type Phase } from "../../lib/mock/campaigns";
+import { CaretRight, Lightning, TrendUp, Warning } from "@phosphor-icons/react";
+import { pace, phaseTitle, UNLOCK_AT, type Phase } from "../../lib/mock/campaigns";
 import {
-  campaignLabel, openCampaign, showCampaignList, useActiveCampaign, useActivity, useAds,
+  campaignLabel, openCampaign, openPhase, showCampaignList, useActiveCampaign, useActivity, useAds,
   useCampaignPhases, useDrill, useLivePhase, type Campaign,
 } from "../../lib/store";
 import { CampaignsList } from "./CampaignsList";
@@ -31,7 +31,8 @@ import { PhaseDetail } from "./PhaseDetail";
 import { RevenueChart } from "./RevenueChart";
 import { Surface } from "./kit";
 import { LeadMoves } from "./LeadMoves";
-import { CampaignHeader, PhaseStepper, TopSellers, WaitingOnYou, WhoSelling } from "./CampaignOverview";
+import { CampaignHeader, TopSellers, WaitingOnYou, WhoSelling } from "./CampaignOverview";
+import { LivePhaseCard, PhaseCard, TileHead } from "./HomeView";
 import { leadMoves } from "../../lib/agent/moves";
 
 
@@ -85,7 +86,7 @@ export function CampaignView({ tab = "campaign", onTab }: {
           to the phase: drilling into one rung steps them aside. */}
       {!phase && <CampaignHeader campaign={campaign} />}
       {!phase && (
-        <div role="tablist" aria-label="Campaign" className="flex flex-wrap gap-1 border-b border-hairline">
+        <div role="tablist" aria-label="Campaign" className="glass inline-flex max-w-full gap-1 overflow-x-auto !rounded-full p-1">
           {CAMPAIGN_TABS.map((t) => {
             const on = tab === t.key;
             return (
@@ -94,13 +95,13 @@ export function CampaignView({ tab = "campaign", onTab }: {
                 role="tab"
                 aria-selected={on}
                 onClick={() => onTab?.(t.key)}
-                className={`-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-body transition ${
-                  on ? "border-main font-semibold text-ink" : "border-transparent text-ink-50 hover:text-ink-90"
+                className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-body transition ${
+                  on ? "bg-white font-semibold text-ink shadow-lift" : "font-medium text-ink-60 hover:text-ink"
                 }`}
               >
                 {t.label}
                 {t.key === "ads" && waiting > 0 && (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-pill bg-danger/[0.10] px-1 text-tiny font-semibold text-danger">
+                  <span className="grid h-[18px] min-w-[18px] place-items-center rounded-pill bg-blush-deep px-1 text-[10.5px] font-semibold text-white">
                     {waiting}
                   </span>
                 )}
@@ -138,7 +139,7 @@ export function CampaignView({ tab = "campaign", onTab }: {
 
 function Crumbs({ campaign, phase }: { campaign: Campaign; phase: Phase | null }) {
   return (
-    <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-[11px]">
+    <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-meta">
       <button onClick={showCampaignList} className="font-semibold text-brand hover:underline">
         Campaigns
       </button>
@@ -164,11 +165,13 @@ function OneCampaign() {
   const ads = useAds();
   const activity = useActivity();
 
-  /* Between phases there is no line to draw and nothing selling; the row of phases says where things stand. */
+  /* Between phases there is no line to draw and nothing selling; the phases say where things stand. */
   if (!phase) {
     return (
-      <div className="space-y-6">
-        <PhaseStepper phases={phases} />
+      <div className="space-y-4">
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))]">
+          {phases.map((p) => <PhaseCard key={p.id} p={p} onOpen={() => openPhase(p.id)} />)}
+        </div>
         <Surface className="p-6 text-center">
           <p className="text-body text-ink-soft">No phase is running. Open the next one above to start it.</p>
         </Surface>
@@ -181,43 +184,39 @@ function OneCampaign() {
   /* B · Grow the lead: where the phase lands, and the moves that add the most (lib/agent/moves). */
   const lead = leadMoves({ phase, ads, activity });
 
+  /* The overview in the dashboard's own language (12 Nov: "the overview looks boring and out of date next to the
+     dashboard"): the guarantee ring card the dashboard opens on, beside the moves; the sales by day in a glass card;
+     who is selling and what is waiting as the dashboard's tiles; and the ladder as its phase cards. Every grid is
+     sized by the column, because the assistant can take 400px of it. */
   return (
-    <div className="space-y-6">
-      {/* 1 · The phases as one row: what each sold against what it guarantees, and the next one to start. */}
-      <PhaseStepper phases={phases} />
-
-      {/* 2 · Where the running phase is heading, beside the moves that change it. */}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
-        <Surface className="p-5">
-          <div className="flex flex-wrap items-start gap-x-8 gap-y-2">
-            {([
-              ["Sold", fmtUSD(phase.rev), "text-ink"],
-              ["On pace for", fmtUSD(lead.onPace), "text-ink"],
-              ...(lead.withMoves > lead.onPace ? [["With the moves", fmtUSD(lead.withMoves), "text-[#A21CAF]"]] : []),
-            ] as const).map(([k, v, c]) => (
-              <div key={k}>
-                <p className="text-[11px] text-ink-faint">{k}</p>
-                <p className={`num text-[24px] font-semibold tracking-[-0.02em] ${c}`}>{v}</p>
-              </div>
-            ))}
-            <span className={`ms-auto inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11px] font-semibold ${
-              crossed ? "bg-good/10 text-good-deep" : "bg-brand/10 text-brand"
-            }`}>
-              {crossed ? <Lightning size={11} weight="fill" aria-hidden /> : <Warning size={11} weight="fill" aria-hidden />}
-              {crossed ? "Next phase unlocked" : `${p?.daysToUnlock ?? 0} days to the unlock line`}
-            </span>
-          </div>
-          <div className="mt-2">
-            <RevenueChart phase={phase} projection={{ onPace: lead.onPace, withMoves: lead.withMoves }} height={280} />
-          </div>
-        </Surface>
+    <div className="space-y-4">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,470px),1fr))]">
+        {phase.revTarget !== null ? <LivePhaseCard live={phase} /> : <Surface className="p-6"><p className="text-body text-ink-soft">This phase has no target yet.</p></Surface>}
         <LeadMoves phase={phase} moves={lead.moves} />
       </div>
 
-      {/* 3 · Who is selling, next to what is waiting on the brand. */}
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+      <section className="glass p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <TileHead icon={TrendUp} label="Sales by day" />
+          <span className={`ms-auto inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-meta font-semibold ${
+            crossed ? "bg-good/10 text-good-deep" : "bg-brand/10 text-brand"
+          }`}>
+            {crossed ? <Lightning size={11} weight="fill" aria-hidden /> : <Warning size={11} weight="fill" aria-hidden />}
+            {crossed ? "Next phase unlocked" : `${p?.daysToUnlock ?? 0} days to the unlock line`}
+          </span>
+        </div>
+        <div className="mt-3">
+          <RevenueChart phase={phase} projection={{ onPace: lead.onPace, withMoves: lead.withMoves }} height={260} />
+        </div>
+      </section>
+
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr))]">
         <TopSellers phase={phase} />
         <WaitingOnYou phase={phase} />
+      </div>
+
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))]">
+        {phases.map((x) => <PhaseCard key={x.id} p={x} onOpen={() => openPhase(x.id)} />)}
       </div>
     </div>
   );

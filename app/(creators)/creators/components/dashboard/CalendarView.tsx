@@ -84,8 +84,8 @@ export function CalendarView() {
 
   if (posts.length === 0) {
     return (
-      <Card edge className="mx-4 flex flex-col items-center px-6 py-14 text-center md:mx-0">
-        <span aria-hidden className="grid h-12 w-12 place-items-center rounded-inner bg-lilac text-main"><CalendarBlank size={22} weight="fill" /></span>
+      <Card edge className="flex flex-col items-center px-6 py-14 text-center">
+        <span aria-hidden className="grid h-12 w-12 place-items-center rounded-[11px] bg-haze text-main"><CalendarBlank size={22} weight="fill" /></span>
         <p className="mt-4 text-row font-semibold text-ink">Nothing to post yet</p>
         <p className="mt-1.5 max-w-[42ch] text-body text-ink-60">Join a campaign and every post it asks for lands here, on the days your posting schedule puts it.</p>
         <Btn dense className="mt-5" onClick={() => go("home")}>Find a campaign</Btn>
@@ -98,7 +98,7 @@ export function CalendarView() {
      would put the panel beside a grid of 60px days. The panel sits
      beside the month only when the column can hold both. */
   return (
-    <div className="@container px-4 md:px-0">
+    <div className="@container">
     <div className="flex flex-col gap-4 @4xl:grid @4xl:grid-cols-[minmax(0,1fr)_300px] @4xl:items-start @4xl:gap-6">
       <Card edge className="overflow-hidden">
         {/* The month, its way back and forward, and what it holds. */}

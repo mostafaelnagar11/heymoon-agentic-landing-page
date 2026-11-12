@@ -79,6 +79,12 @@ const config: Config = {
         night: "#161722",
         amber: { DEFAULT: "#B26A00", soft: "#FFF4E5", line: "#FFE0B2" },
         danger: "#D70015",
+        /* Aurora (11 Nov), the brands app's exactly: the icon tile and chip ground, the eyebrow violet, the
+           count pink and the track a bar runs in. */
+        haze: "#F4F2FA",
+        orchid: "#7A47CE",
+        blush: { DEFAULT: "#F4A8D8", deep: "#C2418B" },
+        track: "#F1EEFB",
       },
       borderRadius: {
         chip: "8px",
@@ -87,6 +93,8 @@ const config: Config = {
         tile: "24px",
         sheet: "32px",
         pill: "100px",
+        glass: "24px",
+        row: "14px",
       },
       boxShadow: {
         card: "0 4px 4px rgba(17,17,17,0.04)",
@@ -105,6 +113,11 @@ const config: Config = {
         "hm-field": "0 2px 4px rgba(25,18,52,0.04), 0 20px 44px -18px rgba(25,18,52,0.22), 0 56px 90px -48px rgba(25,18,52,0.30)",
         "hm-card": "0 1px 2px rgba(25,18,52,0.04), 0 24px 48px -32px rgba(25,18,52,0.22)",
         "hm-mock": "0 2px 4px rgba(25,18,52,0.05), 0 20px 40px -16px rgba(25,18,52,0.22)",
+        /* Aurora (11 Nov), the brands app's set. */
+        glass: "inset 0 0 0 1px rgba(255,255,255,0.95), 0 0 0 1px rgba(77,47,176,0.06), 0 1px 2px rgba(25,18,52,0.04), 0 30px 60px -40px rgba(77,47,176,0.35)",
+        lift: "0 0 0 1px rgba(77,47,176,0.06), 0 1px 2px rgba(25,18,52,0.05), 0 8px 20px -10px rgba(77,47,176,0.28)",
+        pri: "0 8px 20px -8px rgba(77,47,176,0.6)",
+        soft: "0 0 0 1px rgba(77,47,176,0.1), 0 2px 6px -2px rgba(25,18,52,0.08)",
       },
       /* AN ALPHA HAIRLINE, because `line` is opaque #EBEBEB and is
          visibly wrong the moment it sits on lilac, canvas or amber —

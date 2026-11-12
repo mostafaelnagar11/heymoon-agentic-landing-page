@@ -8,6 +8,7 @@
    export of services), so it is kept here, in one place, to confirm with finance and flip if needed. */
 
 import { sourced, type FundingRequest } from "./types";
+import { hash } from "./rng";
 
 export interface Billing {
   brandName: string;
@@ -44,3 +45,8 @@ export function withBilling(r: FundingRequest, b: Billing): FundingRequest {
     total: sourced(r.amount.value + vat, `Budget plus VAT at ${pct}.`, r.total.evidence.length ? r.total.evidence : r.vat.evidence, { computedFrom: "budget + VAT" }),
   };
 }
+
+/** The invoice number a paid phase is filed under: the year it was paid and a stable five digits from the payment's
+    id. One function, so the invoice in the conversation and the row in Settings → Invoices can never disagree. */
+export const invoiceNo = (fundingId: string, paidAt: number | null | undefined) =>
+  `HM-${new Date(paidAt || Date.now()).getFullYear()}-${String(hash(fundingId) % 100000).padStart(5, "0")}`;

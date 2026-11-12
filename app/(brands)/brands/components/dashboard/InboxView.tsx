@@ -236,7 +236,7 @@ function Row({ item, onGo }: { item: Item; onGo: (v: PanelView) => void }) {
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-body font-medium text-ink">{item.title}</p>
-          {item.note && <p className="truncate text-[11px] text-ink-faint">{item.note}</p>}
+          {item.note && <p className="truncate text-meta text-ink-faint">{item.note}</p>}
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
@@ -278,7 +278,7 @@ function Row({ item, onGo }: { item: Item; onGo: (v: PanelView) => void }) {
         {item.dismissible && (
           <button
             onClick={() => dismissInbox(item.id)}
-            className="text-[11px] font-semibold text-ink-faint transition hover:text-ink"
+            className="text-meta font-semibold text-ink-faint transition hover:text-ink"
           >
             Dismiss
           </button>

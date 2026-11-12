@@ -13,7 +13,8 @@
 
    Every figure is the store's own (the phases, the ads), and every press goes through HeyMoon's `run`. */
 
-import { Check, Lightning, LockSimple, Sparkle } from "@phosphor-icons/react";
+import { Check, Images, Lightning, LockSimple, Sparkle, TrendUp } from "@phosphor-icons/react";
+import { TileHead } from "./HomeView";
 import { fmtUSD, pace, phaseTitle, UNLOCK_AT, withVat, type Phase } from "../../lib/mock/campaigns";
 import type { AdRecord } from "../../lib/agent/types";
 import { getRead } from "../../lib/agent/registry";
@@ -55,7 +56,7 @@ export function CampaignHeader({ campaign }: { campaign: Campaign }) {
 
   return (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-3">
-      <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-control border border-hairline bg-white">
+      <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[14px] bg-white p-1 shadow-lift">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logo} alt="" className="h-full w-full object-cover" />
@@ -64,7 +65,7 @@ export function CampaignHeader({ campaign }: { campaign: Campaign }) {
         )}
       </span>
       <div className="min-w-0">
-        <h2 className="truncate text-[22px] font-semibold tracking-[-0.02em] text-ink">{campaignLabel(campaign)}</h2>
+        <h2 className="truncate text-[26px] font-semibold leading-tight tracking-[-0.025em] text-ink">{campaignLabel(campaign)}</h2>
         <p className="truncate text-meta text-ink-faint">{campaign.brandName} · {campaign.url}</p>
       </div>
       <div className="flex flex-wrap items-center gap-1.5 sm:ms-3">
@@ -73,12 +74,12 @@ export function CampaignHeader({ campaign }: { campaign: Campaign }) {
           {status.text}
         </span>
         {markets.length > 0 && (
-          <span className="inline-flex h-7 items-center rounded-pill border border-hairline bg-white px-3 text-[12px] text-ink-soft">
+          <span className="glass inline-flex h-7 items-center !rounded-full px-3 text-[12px] text-ink-soft">
             {markets.join(" · ")}
           </span>
         )}
         {since && (
-          <span className="inline-flex h-7 items-center rounded-pill border border-hairline bg-white px-3 text-[12px] text-ink-soft">
+          <span className="glass inline-flex h-7 items-center !rounded-full px-3 text-[12px] text-ink-soft">
             Since {since.replace(/ \d{4}$/, "")}
           </span>
         )}
@@ -101,7 +102,7 @@ export function PhaseStepper({ phases }: { phases: Phase[] }) {
         const pct = target ? Math.round((p.rev / target) * 100) : 0;
         const ran = p.status === "live" || p.status === "ended";
         const skin =
-          p.status === "live" ? "border-brand/35 ring-4 ring-brand/[0.06]"
+          p.status === "live" ? "ring-2 ring-brand/25"
           : p.status === "locked" ? "opacity-70"
           : "";
         const badge =
@@ -112,7 +113,7 @@ export function PhaseStepper({ phases }: { phases: Phase[] }) {
           : { t: "Locked", c: "bg-wash text-ink-faint" };
         const circle =
           p.status === "ended" ? "bg-good/15 text-good-deep"
-          : p.status === "live" ? "bg-brand text-white"
+          : p.status === "live" ? "grad-tile"
           : "bg-lilac text-main";
         return (
           <div
@@ -121,38 +122,38 @@ export function PhaseStepper({ phases }: { phases: Phase[] }) {
             tabIndex={0}
             onClick={() => openPhase(p.id)}
             onKeyDown={(e) => { if (e.key === "Enter") openPhase(p.id); }}
-            className={`cursor-pointer rounded-tile border border-hairline bg-white p-4 shadow-card transition hover:border-brand/30 ${skin}`}
+            className={`glass cursor-pointer p-5 transition hover:-translate-y-0.5 hover:shadow-lift motion-reduce:hover:translate-y-0 ${skin}`}
           >
             <div className="flex items-center gap-2">
-              <span aria-hidden className={`grid h-6 w-6 place-items-center rounded-full text-[11px] font-bold ${circle}`}>
+              <span aria-hidden className={`grid h-8 w-8 place-items-center rounded-[10px] text-[13px] font-bold ${circle}`}>
                 {p.status === "ended" ? <Check size={11} weight="bold" /> : p.phaseNo}
               </span>
               <span className="text-body font-semibold text-ink">{stage(p)}</span>
-              <span className={`ms-auto rounded-pill px-2 py-0.5 text-[11px] font-semibold ${badge.c}`}>{badge.t}</span>
+              <span className={`ms-auto rounded-pill px-2 py-0.5 text-meta font-semibold ${badge.c}`}>{badge.t}</span>
             </div>
 
-            <p className="num mt-3 text-[22px] font-semibold tracking-[-0.02em] text-ink">
+            <p className="num mt-4 text-[26px] font-bold tracking-[-0.03em] text-ink">
               {ran ? fmtUSD(p.rev) : fmtUSD(guaranteed(p))}
             </p>
-            <p className="text-[11px] text-ink-faint">
+            <p className="text-meta text-ink-faint">
               {ran ? `of ${fmtUSD(target)}` : "guaranteed"} · {fmtUSD(p.budget)} at {p.guaranteedRoas}x
             </p>
 
-            <div className="mt-3 h-1.5 overflow-hidden rounded-pill bg-lilac">
+            <div className="mt-3 h-2 overflow-hidden rounded-pill bg-track">
               <div
-                className={`h-full rounded-pill ${p.status === "ended" ? "bg-good" : "bg-brand"}`}
+                className={`h-full rounded-pill ${p.status === "ended" ? "bg-good" : "bg-[linear-gradient(90deg,#6848D1,#A65FED)]"}`}
                 style={{ width: `${ran ? Math.min(100, pct) : 0}%` }}
               />
             </div>
 
-            <div className="mt-3 flex min-h-8 items-center text-[11px] text-ink-faint">
+            <div className="mt-3 flex min-h-8 items-center text-meta text-ink-faint">
               {p.status === "ended" && <>{p.start} to {p.end} · {pct}%</>}
               {p.status === "live" && <>Day {p.dayOfPhase} of {p.plannedDays} · {pct}%</>}
               {p.status === "ready" && (
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); openPhase(p.id); }}
-                  className="g-button inline-flex h-8 items-center gap-1.5 rounded-pill border border-white/50 px-3.5 text-meta font-semibold text-[#FBF8FE]"
+                  className="btn-pri inline-flex h-8 items-center gap-1.5 rounded-pill px-3.5 text-meta font-semibold"
                 >
                   <Lightning size={12} weight="fill" aria-hidden /> Start · {fmtUSD(withVat(p.budget))}
                 </button>
@@ -185,14 +186,22 @@ export function TopSellers({ phase }: { phase: Phase }) {
   const top = live[0]?.performance?.revenue.value ?? 1;
   const go = useGo();
   return (
-    <section className="rounded-tile border border-hairline bg-white p-5 shadow-card">
+    /* The dashboard's tile (12 Nov): the figure first, then the ads behind it. */
+    <section className="glass flex min-h-[188px] flex-col p-5 sm:p-6">
       <div className="flex items-center">
-        <h3 className="text-body font-semibold text-ink">Top sellers</h3>
-        <button type="button" onClick={() => go("creators")} className="ms-auto text-[11px] font-semibold text-brand hover:underline">
-          All {live.length} · {fmtUSD(phase.rev)}
-        </button>
+        <TileHead icon={TrendUp} label="Top sellers" />
+        {live.length > 0 && (
+          <button type="button" onClick={() => go("creators")} className="ms-auto text-meta font-semibold text-ink-60 transition hover:text-brand">
+            All {live.length}
+          </button>
+        )}
       </div>
-      <ul className="mt-2">
+      <p className="mt-2.5 flex items-baseline gap-2">
+        <span className="num text-[30px] font-bold leading-none tracking-[-0.03em] text-ink">{fmtUSD(phase.rev)}</span>
+        <span className="text-meta text-ink-faint"><bdi>{live.length ? `from ${live.length} live ad${live.length === 1 ? "" : "s"}` : "no ad live yet"}</bdi></span>
+      </p>
+      {!live.length && <p className="mt-auto pt-4 text-meta text-ink-soft">Sales show here, by ad, as soon as an ad you approved goes live.</p>}
+      <ul className="mt-3">
         {live.slice(0, 5).map((a) => {
           const rev = a.performance?.revenue.value ?? 0;
           return (
@@ -201,9 +210,9 @@ export function TopSellers({ phase }: { phase: Phase }) {
               <img src={a.img} alt="" className="h-12 w-10 shrink-0 rounded-[10px] object-cover object-top" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-body font-semibold text-ink">{a.creatorName}</p>
-                <p className="truncate text-[11px] text-ink-faint">{a.format} · {a.product}</p>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-pill bg-lilac">
-                  <div className="h-full rounded-pill bg-brand" style={{ width: `${(rev / top) * 100}%` }} />
+                <p className="truncate text-meta text-ink-faint">{a.format} · {a.product}</p>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-pill bg-track">
+                  <div className="h-full rounded-pill bg-[linear-gradient(90deg,#6848D1,#A65FED)]" style={{ width: `${(rev / top) * 100}%` }} />
                 </div>
               </div>
               <span className="num w-16 shrink-0 text-end text-body font-semibold text-ink">{fmtUSD(rev)}</span>
@@ -223,39 +232,35 @@ export function WaitingOnYou({ phase }: { phase: Phase }) {
   const cleared = waiting.filter((a) => a.compliance.verdict !== "hold");
   const held = waiting.length - cleared.length;
   return (
-    <section className="rounded-tile border border-hairline bg-white p-5 shadow-card">
-      <div className="flex items-center gap-2">
-        <h3 className="text-body font-semibold text-ink">Waiting on you</h3>
-        {waiting.length > 0 && (
-          <span className="rounded-pill bg-danger/[0.10] px-2 py-0.5 text-[11px] font-semibold text-danger">{waiting.length}</span>
-        )}
-        {waiting.length > 0 && (
-          <span className="ms-auto text-[11px] text-ink-faint">
-            {cleared.length} on brief{held ? ` · ${held} to re-cut` : ""}
-          </span>
-        )}
+    <section className="glass flex min-h-[188px] flex-col p-5 sm:p-6">
+      <div className="flex items-center">
+        <TileHead icon={Images} label="Waiting on you" />
       </div>
+      <p className="mt-2.5 flex items-baseline gap-2">
+        <span className="num text-[30px] font-bold leading-none tracking-[-0.03em] text-ink">{waiting.length}</span>
+        <span className="text-meta text-ink-faint"><bdi>{waiting.length ? `${cleared.length} on brief${held ? ` · ${held} to re-cut` : ""}` : "nothing waiting on you"}</bdi></span>
+      </p>
       {waiting.length === 0 ? (
-        <p className="mt-3 text-meta text-ink-soft">Nothing waiting. New drafts land here as creators finish them.</p>
+        <p className="mt-auto pt-4 text-meta text-ink-soft">New drafts land here as creators finish them.</p>
       ) : (
         <>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {waiting.map((d) => (
               <button
                 key={d.id}
                 type="button"
                 onClick={() => go("ads")}
                 aria-label={`${d.creatorName}, ${d.product}`}
-                className="relative overflow-hidden rounded-control transition hover:opacity-90"
+                className="relative overflow-hidden rounded-[12px] shadow-[0_6px_14px_-8px_rgba(25,18,52,0.45)] ring-1 ring-inset ring-white/40 transition hover:-translate-y-0.5"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={d.img} alt="" className="h-[84px] w-[64px] object-cover object-top" />
+                <img src={d.img} alt="" className="h-[84px] w-[62px] object-cover object-top" />
                 <span aria-hidden className={`absolute bottom-1.5 start-1.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${d.compliance.verdict === "hold" ? "bg-danger" : "bg-good"}`} />
               </button>
             ))}
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => go("ads")} className="g-button inline-flex h-9 items-center gap-1.5 rounded-pill border border-white/50 px-4 text-meta font-semibold text-[#FBF8FE]">
+            <button type="button" onClick={() => go("ads")} className="btn-pri inline-flex h-9 items-center gap-1.5 rounded-pill px-4 text-meta font-semibold">
               <Sparkle size={12} weight="fill" aria-hidden /> Review with HeyMoon
             </button>
             {cleared.length > 0 && (
@@ -292,10 +297,10 @@ export function WhoSelling({ phase }: { phase: Phase }) {
   const p = pace(phase);
 
   return (
-    <section className="rounded-tile border border-hairline bg-white p-5 shadow-card">
+    <section className="glass p-5">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-body font-semibold text-ink">Who&apos;s selling</h3>
-        <span className="ms-auto text-[11px] text-ink-faint">
+        <span className="ms-auto text-meta text-ink-faint">
           Ranked by sales · {short(phase)}{p ? ` · ${fmtUSD(Math.round(p.perDay))} a day` : ""}
         </span>
       </div>
@@ -324,7 +329,7 @@ export function WhoSelling({ phase }: { phase: Phase }) {
                       <img src={a.img} alt="" className="h-11 w-9 shrink-0 rounded-[9px] object-cover object-top" />
                       <span className="min-w-0">
                         <span className="block truncate font-semibold text-ink">{a.creatorName}</span>
-                        <span className="block truncate text-[11px] text-ink-faint">{a.product}</span>
+                        <span className="block truncate text-meta text-ink-faint">{a.product}</span>
                       </span>
                     </span>
                   </td>
@@ -335,7 +340,7 @@ export function WhoSelling({ phase }: { phase: Phase }) {
                   <td className="py-2.5 text-end">
                     {isTop && boost && (
                       <button type="button" onClick={() => run(boost.action)}
-                        className="inline-flex items-center gap-1 rounded-pill bg-lilac px-2.5 py-1 text-[11px] font-semibold text-main transition hover:bg-main-10">
+                        className="inline-flex items-center gap-1 rounded-pill bg-lilac px-2.5 py-1 text-meta font-semibold text-main transition hover:bg-main-10">
                         <Sparkle size={10} weight="fill" aria-hidden /> Back it · {boost.action.label.replace(/^Move /, "")}
                       </button>
                     )}
@@ -345,7 +350,7 @@ export function WhoSelling({ phase }: { phase: Phase }) {
                           label: "", do: "why", q: `Why replace ${owns(a.creatorName)} ${a.format.toLowerCase()}?`,
                           say: `It sells $${k.toFixed(1)} per 1,000 views, against $${avg.toFixed(1)} across this phase. I'd leave it running and brief a matched creator in its place for the next phase.`,
                         })}
-                        className="inline-flex items-center gap-1 rounded-pill bg-danger/[0.08] px-2.5 py-1 text-[11px] font-semibold text-danger transition hover:bg-danger/[0.12]">
+                        className="inline-flex items-center gap-1 rounded-pill bg-danger/[0.08] px-2.5 py-1 text-meta font-semibold text-danger transition hover:bg-danger/[0.12]">
                         <Sparkle size={10} weight="fill" aria-hidden /> Replace next phase
                       </button>
                     )}

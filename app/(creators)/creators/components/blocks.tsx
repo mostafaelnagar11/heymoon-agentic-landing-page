@@ -17,10 +17,14 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  ArrowRight, CaretLeft, CaretRight, Check, CheckCircle, CreditCard, Info, Lock, Minus, Plus, Sparkle, X,
+  ArrowRight, CalendarCheck, CaretLeft, CaretRight, Check, Handshake, Info, Lock, Minus, Plus, Sparkle,
+  TrendUp, X,
 } from "@phosphor-icons/react";
-import { Btn, Callout, Card, Chip, Avatar, Skeleton, KV } from "./ui";
-import { Figure, Claim, EvidenceRow } from "./Evidence";
+import { ProfileReadCard, ProfileReadLive } from "./chat/ProfileRead";
+import { Emblem } from "../../../_shared/Emblem";
+import { Btn, Card, Chip, Avatar, Skeleton, KV, DonePill } from "./ui";
+import { Figure, Claim, ClaimPlain, EvidenceRow } from "./Evidence";
+import { TypeOn } from "../../../_shared/TypeOn";
 import { CampaignCard, DeliverablesCard, Soc } from "./figma";
 import { CodeBadge } from "./CodeBadge";
 import { Flag } from "./Flag";
@@ -30,7 +34,7 @@ import {
   type AcceptRequest, type Cadence, type CreatorRead, type Decision,
   type Offer, type Profile, type ReadLayerKey,
 } from "../lib/agent/types";
-import { READ_TASKS, tools } from "../lib/agent/tools";
+import { BUILD_TASKS, READ_TASKS, tools } from "../lib/agent/tools";
 import {
   afterThreeMonths, earningsFor, money, orderValue,
 } from "../lib/agent/model";
@@ -53,6 +57,9 @@ export function rosterTitle(tasks: RosterTask[], tail: string) {
   return `${w[0].toUpperCase()}${w.slice(1)} agent${n === 1 ? "" : "s"} ${tail}`;
 }
 
+/* The brand's roster (12 Nov: "every component in the creator should act similar to its similar one in the brand"):
+   a tile per agent in two columns, the one at work lifted with its ring turning, the finished ones ticked, the
+   queued ones an empty outline, and the count in a chip on the title. */
 export function TaskRoster({ tasks, done, live, title }: { tasks: RosterTask[]; done: string[]; live: boolean; title: string }) {
   const finished = new Set(done);
   const activeKey = live ? tasks.find((t) => !finished.has(t.key))?.key : undefined;
@@ -60,12 +67,15 @@ export function TaskRoster({ tasks, done, live, title }: { tasks: RosterTask[]; 
     (acc[t.agent] ??= { role: t.role, tasks: [] }).tasks.push(t); return acc;
   }, {});
   return (
-    <Card className="overflow-hidden">
-      <p className="flex items-center gap-2 px-4 pt-3 text-tiny font-bold uppercase tracking-widest text-main">
-        {live ? <span aria-hidden className="working-ring h-3 w-3" /> : <Check size={11} weight="bold" aria-hidden />}
+    <Card edge className="overflow-hidden">
+      <p className="flex items-center gap-2 px-4 pt-4 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-orchid @lg:px-5">
+        {live ? <span aria-hidden className="working-ring h-3.5 w-3.5" /> : <Check size={12} weight="bold" aria-hidden />}
         {title}
+        <span className="num ms-auto rounded-pill bg-haze px-2 py-0.5 text-[11px] font-semibold normal-case tracking-normal text-main">
+          {done.length}/{tasks.length}
+        </span>
       </p>
-      <ul className="divide-y divide-line">
+      <ul className="grid gap-2 p-3 @lg:grid-cols-2 @lg:p-4">
         {Object.entries(byAgent).map(([name, a]) => {
           const doneHere = a.tasks.filter((t) => finished.has(t.key));
           const current = a.tasks.find((t) => t.key === activeKey);
@@ -75,19 +85,21 @@ export function TaskRoster({ tasks, done, live, title }: { tasks: RosterTask[]; 
             : doneHere.length > 0 ? doneHere.map((t) => t.produces).join(" · ")
             : live ? "Waiting to start" : "Did not get to this";
           return (
-            <li key={name} className="flex items-start gap-3 px-4 py-2.5">
-              <span aria-hidden className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-pill ${
-                allDone ? "bg-green-10 text-green" : current ? "" : "border border-dashed border-black/15"}`}>
-                {allDone ? <Check size={12} weight="bold" /> : current ? <span className="working-ring h-4 w-4" /> : null}
+            <li key={name} className={`flex items-start gap-3 rounded-[16px] px-3.5 py-3 transition ${
+              current ? "bg-white shadow-lift ring-1 ring-main/20" : allDone ? "bg-white/70 ring-1 ring-main/[0.06]" : "bg-haze/50"
+            }`}>
+              <span aria-hidden className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[9px] ${
+                allDone ? "bg-green text-white" : current ? "bg-haze" : "border border-dashed border-black/15"}`}>
+                {allDone ? <Check size={13} weight="bold" /> : current ? <span className="working-ring h-4 w-4" /> : null}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-baseline gap-x-2">
                   <span className="text-meta font-semibold text-ink">{name}</span>
-                  <span className="text-brand text-ink-50">{a.role}</span>
+                  <span className="text-meta text-ink-50">{a.role}</span>
                 </span>
-                <span className="mt-0.5 block truncate text-brand text-ink-60">{line}</span>
+                <span className="mt-0.5 block truncate text-meta text-ink-60">{line}</span>
               </span>
-              <span className="num shrink-0 pt-0.5 text-brand text-ink-50">{doneHere.length}/{a.tasks.length}</span>
+              <span className="num shrink-0 pt-0.5 text-[11px] font-semibold text-ink-50">{doneHere.length}/{a.tasks.length}</span>
             </li>
           );
         })}
@@ -100,21 +112,11 @@ export function TaskRoster({ tasks, done, live, title }: { tasks: RosterTask[]; 
    The read
    ══════════════════════════════════════════════════════════════════ */
 
-/* While it works, a row per thing being read, and none of them is a
-   follower count. Rasha: "we don't focus on the followers... views,
-   followers, reach. We focus more on their influence — authenticity,
-   consistency." Performance is read, and its row says so without a
-   number in it. */
+/* None of what the read shows is a follower count. Rasha: "we don't focus on the followers... views, followers,
+   reach. We focus more on their influence — authenticity, consistency." */
 
-const LAYER_LABEL: Record<ReadLayerKey, string> = {
-  identity: "You", accounts: "Accounts", reach: "Performance", audience: "Audience",
-  niche: "What you post", voice: "Your voice", cadence: "Rhythm", conflicts: "Your grid",
-  standing: "Campaigns",
-};
-
-/* WHAT THE READ SHOWS, and what it deliberately does not.
-   `reach` is read — matching needs it — and never displayed. */
-const SHOWN_LAYERS: ReadLayerKey[] = ["accounts", "niche", "audience", "voice", "cadence", "conflicts"];
+/* WHAT THE READ SHOWS, and what it deliberately does not: chat/ProfileRead.tsx draws accounts, niche, audience,
+   voice, cadence and conflicts. `reach` is read — matching needs it — and never displayed. */
 
 /* WHAT A SAMPLE READ SAYS FIRST. Any handle that is not seeded is read
    off the sample creator's figures (personFor), and every row under
@@ -141,111 +143,13 @@ export function ReadBlock({ read, live, onOpen }: { read: CreatorRead | null; li
      thing being pulled, with the agent pulling it beside it: waiting,
      working, then the answer. The header carries the count. */
   if (live) {
-    const done = new Set(read.done);
-    const active = READ_TASKS.find((t) => !done.has(t.key))?.key;
-    const agents = new Set(READ_TASKS.map((t) => t.agent)).size;
-    return (
-      <Card className="overflow-hidden">
-        {read.sample && <SampleNotice className="border-b border-line" />}
-        <div className="flex items-center gap-2.5 border-b border-line px-4 py-3">
-          <span aria-hidden className="working-ring h-4 w-4 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-body font-semibold text-ink">{read.sample ? "Reading a sample profile" : "Reading your profile"}</p>
-            <p className="truncate text-brand text-ink-50"><span dir="ltr">{read.handle}</span> · {countWord(agents)} agents</p>
-          </div>
-          <span className="num shrink-0 text-meta font-semibold text-main">{read.done.length}/{READ_TASKS.length}</span>
-        </div>
-        <dl className="divide-y divide-line">
-          {READ_TASKS.map((t) => {
-            const state = done.has(t.key) ? "done" : t.key === active ? "working" : "waiting";
-            const agent = (
-              <span className={`inline-flex shrink-0 items-center gap-1 text-brand font-semibold ${state === "working" ? "text-main" : state === "done" ? "text-ink-50" : "text-ink-40"}`}>
-                {state === "done" && <Check size={11} weight="bold" aria-hidden className="text-green" />}
-                {t.agent}
-              </span>
-            );
-            return (
-              <div key={t.key} className={`flex flex-col gap-1 px-4 py-2.5 transition-colors @lg:flex-row @lg:items-start @lg:gap-3 ${state === "working" ? "bg-lilac/50" : ""}`}>
-                <dt className="flex items-center justify-between gap-2 text-brand font-semibold text-ink-50 @lg:w-[92px] @lg:shrink-0 @lg:pt-0.5">
-                  {LAYER_LABEL[t.key]}
-                  <span className="@lg:hidden">{agent}</span>
-                </dt>
-                <dd className="min-w-0 flex-1 text-body text-ink">
-                  {state === "done" ? <LiveValue read={read} layer={t.key} />
-                    : state === "working" ? (
-                      <span className="flex items-center gap-2 text-meta text-ink-60">
-                        <span aria-hidden className="working-ring h-3 w-3 shrink-0" />{t.note}…
-                      </span>
-                    ) : <span className="text-meta text-ink-40">Waiting</span>}
-                </dd>
-                <span className="hidden @lg:block @lg:w-[104px] @lg:shrink-0 @lg:pt-0.5 @lg:text-end">{agent}</span>
-              </div>
-            );
-          })}
-        </dl>
-      </Card>
-    );
+    /* The brand's live store read, in the creator's tokens (chat/ProfileRead.tsx): a tile per finding, the agent on
+       it until it lands, then the finding written out. */
+    return <ProfileReadLive read={read} notice={read.sample ? <SampleNotice className="border-b border-line" /> : undefined} />;
   }
 
-  return (
-    <Card className="overflow-hidden">
-      {read.sample && <SampleNotice className="border-b border-line" />}
-      <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-        {/* A sample has no name, so the handle that was typed leads and
-            the avatar is the "You" the dashboard uses when there is no
-            name to draw. */}
-        <Avatar src={read.identity?.avatar} name={read.identity?.name?.value ?? "You"} size={40} />
-        <div className="min-w-0 flex-1">
-          {read.identity?.name ? (
-            <>
-              <p className="truncate text-row font-semibold text-ink">{read.identity.name.value}</p>
-              <p className="truncate text-meta text-ink-50" dir="ltr">{[read.handle, read.identity.location?.value].filter(Boolean).join(" · ")}</p>
-            </>
-          ) : (
-            <p className="truncate text-row font-semibold text-ink" dir="ltr">{read.handle}</p>
-          )}
-        </div>
-        {onOpen && (
-          <button onClick={onOpen} className="shrink-0 rounded-pill bg-lilac px-3 py-1.5 text-meta font-semibold text-main">
-            See all
-          </button>
-        )}
-      </div>
-      <dl className="divide-y divide-line">
-        {SHOWN_LAYERS.map((k) => (
-          <div key={k} className="flex flex-col gap-1 px-4 py-2.5 @lg:flex-row @lg:items-start @lg:gap-3">
-            <dt className="text-brand font-semibold text-ink-50 @lg:w-[92px] @lg:shrink-0 @lg:pt-0.5">{LAYER_LABEL[k]}</dt>
-            <dd className="min-w-0 flex-1 text-body text-ink"><ReadValue read={read} layer={k} /></dd>
-          </div>
-        ))}
-      </dl>
-      {read.standing && (
-        <div className={`flex items-start gap-2.5 border-t px-4 py-3 ${read.standing.state === "ok" ? "border-green/20 bg-green-10" : "border-line bg-lilac/60"}`}>
-          {read.standing.state === "ok"
-            ? <CheckCircle size={16} weight="fill" aria-hidden className="mt-0.5 shrink-0 text-green" />
-            : <Info size={16} weight="fill" aria-hidden className="mt-0.5 shrink-0 text-ink-50" />}
-          <p className={`flex-1 text-body leading-5 ${read.standing.state === "ok" ? "text-green" : "text-ink-60"}`}>{read.standing.line.value}</p>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-/** A layer as it lands in the live read: the short form, plus the two
-    layers the finished read does not list as rows of their own. */
-function LiveValue({ read, layer }: { read: CreatorRead; layer: ReadLayerKey }) {
-  if (layer === "identity") {
-    const v = read.identity;
-    if (!v) return null;
-    /* The sample's You row is the handle that was typed, and nothing
-       else: there is no name or location that would be theirs. */
-    if (!v.name) return <span dir="ltr">{read.handle}</span>;
-    return <>{v.name.value}{v.location && <span className="text-ink-50"> · {v.location.value}</span>}</>;
-  }
-  /* Read for the orders forecast (expectedOrders), not for the match —
-     matchFor has no reach term — and its number is not shown here. */
-  if (layer === "reach") return <span className="text-meta text-ink-50">Used to forecast orders, not to match you. Not shown here.</span>;
-  return <ReadValue read={read} layer={layer} short />;
+  /* Drawn as tiles now (chat/ProfileRead.tsx): the standing first, then each finding in its own kind. */
+  return <ProfileReadCard read={read} onOpen={onOpen} notice={read.sample ? <SampleNotice className="border-b border-line" /> : undefined} />;
 }
 
 export function ReadValue({ read, layer, short }: { read: CreatorRead; layer: ReadLayerKey; short?: boolean }) {
@@ -331,51 +235,99 @@ export function ReadValue({ read, layer, short }: { read: CreatorRead; layer: Re
    this shows is what brands will come to them for, the influence
    signals matching reads, and what they have said they will not take. */
 
-export function ProfileBlock({ profile, onOpen }: { profile: Profile; onOpen?: () => void }) {
+/* WHILE IT IS BEING BUILT (12 Nov: the brand's plan fills in under its roster as it is built, so this does too). The
+   card is drawn from the build's first chunk, and each section shows the agent on it until that agent's task has
+   landed, then writes itself out, as the live read's tiles do. Nothing is shown before its task is done: the stream
+   carries the whole profile from the start, and `landed` is what decides what may be seen. Availability is set by
+   MoonShot AI and lands without a section of its own, as in the finished card. */
+const BUILD_SECTION = { authority: "authority", influence: "match", noList: "safety" } as const;
+const doingNote = (note: string) => note.charAt(0).toLowerCase() + note.slice(1);
+
+export function ProfileBlock({ profile, onOpen, building }: {
+  profile: Profile;
+  onOpen?: () => void;
+  /** While the build runs: the BUILD_TASKS keys that have landed. */
+  building?: { landed: string[] };
+}) {
+  const has = (k: string) => !building || building.landed.includes(k);
+  const write = (k: string, node: ReactNode) =>
+    building ? <ClaimPlain.Provider value={true}><TypeOn id={`${profile.id}:build:${k}`}>{node}</TypeOn></ClaimPlain.Provider> : node;
+  const working = (k: string) => {
+    const t = BUILD_TASKS.find((x) => x.key === k)!;
+    return (
+      <p className="mt-2 flex items-start gap-2 text-meta text-ink-50">
+        <span aria-hidden className="working-ring mt-0.5 h-3 w-3 shrink-0" />
+        <span className="min-w-0"><span className="font-semibold text-ink-60">{t.agent}</span> is {doingNote(t.note)}…</span>
+      </p>
+    );
+  };
+  const landedCount = building ? building.landed.length : 0;
   return (
-    <Card className="overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-        <Avatar src={profile.avatar} name={profile.creatorName ?? "You"} size={36} />
+    <Card edge className="overflow-hidden p-4 @lg:p-5">
+      <div className="flex items-center gap-3.5">
+        <span className="shrink-0 rounded-full bg-white p-[3px] shadow-lift">
+          <Avatar src={profile.avatar} name={profile.creatorName ?? "You"} size={44} />
+        </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-body font-semibold text-ink">Your profile</p>
-          <p className="truncate text-brand text-ink-50" dir="ltr">{profile.handle}</p>
+          <p className="truncate text-[17px] font-semibold leading-6 text-ink">Your profile</p>
+          <p className="truncate text-meta text-ink-50" dir="ltr">{profile.handle}</p>
         </div>
-        {onOpen && <button onClick={onOpen} className="shrink-0 rounded-pill bg-lilac px-3 py-1.5 text-meta font-semibold text-main">Open</button>}
+        {building ? (
+          <span className="num inline-flex h-8 shrink-0 items-center gap-2 rounded-pill bg-haze px-3 text-meta font-semibold text-main">
+            <span aria-hidden className="working-ring h-3.5 w-3.5" />
+            {landedCount}/{BUILD_TASKS.length}
+          </span>
+        ) : onOpen && <button onClick={onOpen} className="btn-soft h-8 shrink-0 rounded-pill px-3.5 text-meta font-semibold">Open</button>}
       </div>
 
-      <div className="space-y-3 p-3">
-        <div className="rounded-inner border border-line p-3">
-          <p className="text-brand font-semibold text-main">Known for</p>
-          <Claim src={profile.authority} className="mt-1 block text-body leading-5 text-ink">
-            <span className="font-semibold text-ink">{profile.authority.value.primary}</span>
-            {profile.authority.value.also.length > 0 && <span className="text-ink-60">, then {profile.authority.value.also.join(" and ")}</span>}
-          </Claim>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {profile.platforms.value.map((pl) => <Soc key={pl} platform={pl} size={20} />)}
+      {/* What brands will come to them for, lit: the one line of this card a creator would say about themselves. */}
+      <div className={`mt-4 rounded-[18px] p-4 transition ${has(BUILD_SECTION.authority) ? "grad-ws ring-1 ring-inset ring-main/[0.08]" : "bg-haze/60"}`}>
+        <p className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-orchid">Known for</p>
+        {has(BUILD_SECTION.authority) ? write(BUILD_SECTION.authority, (
+          <div>
+            <Claim src={profile.authority} className="mt-1.5 block leading-6">
+              <span className="text-[19px] font-semibold tracking-[-0.01em] text-ink">{profile.authority.value.primary}</span>
+              {profile.authority.value.also.length > 0 && <span className="text-body text-ink-60">, then {profile.authority.value.also.join(" and ")}</span>}
+            </Claim>
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {profile.platforms.value.map((pl) => <Soc key={pl} platform={pl} size={24} />)}
+            </div>
           </div>
-        </div>
+        )) : working(BUILD_SECTION.authority)}
+      </div>
 
+      <div className="mt-3 grid gap-3 @lg:grid-cols-[1.4fr_1fr]">
         {/* THE FOUR SIGNALS. This is what replaced the rate table, and
             not one of them is a count of an audience. */}
-        <div className="rounded-inner border border-line p-3">
-          <p className="text-brand font-semibold text-main">What matching reads</p>
-          <Claim src={profile.influence}>
-            <ul className="mt-1.5 space-y-1.5">
-              {profile.influence.value.map((line) => (
-                <li key={line} className="flex items-start gap-2 text-body leading-5 text-ink-60">
-                  <Check size={13} weight="bold" aria-hidden className="mt-1 shrink-0 text-green" />{line}
-                </li>
-              ))}
-            </ul>
-          </Claim>
+        <div className={`rounded-[18px] p-4 transition ${has(BUILD_SECTION.influence) ? "bg-white/80 ring-1 ring-main/[0.07]" : "bg-haze/60"}`}>
+          <p className="text-meta font-semibold text-ink-60">What matching reads</p>
+          {has(BUILD_SECTION.influence) ? write(BUILD_SECTION.influence, (
+            <Claim src={profile.influence}>
+              <ul className="mt-2.5 space-y-2">
+                {profile.influence.value.map((line) => (
+                  <li key={line} className="flex items-start gap-2.5 text-body leading-5 text-ink">
+                    <span aria-hidden className="mt-0.5 grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-green text-white"><Check size={10} weight="bold" /></span>
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </Claim>
+          )) : working(BUILD_SECTION.influence)}
         </div>
-
-        <div className="rounded-inner border border-line p-3">
-          <p className="text-brand font-semibold text-main">You will not take</p>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {profile.noList.value.categories.map((c) => <Chip key={c} tone="ink">{c}</Chip>)}
-          </div>
-          {profile.noList.value.note && <p className="mt-2 text-meta leading-4 text-ink-60">{profile.noList.value.note}</p>}
+        <div className={`rounded-[18px] p-4 transition ${has(BUILD_SECTION.noList) ? "bg-white/80 ring-1 ring-main/[0.07]" : "bg-haze/60"}`}>
+          <p className="text-meta font-semibold text-ink-60">You will not take</p>
+          {has(BUILD_SECTION.noList) ? write(BUILD_SECTION.noList, (
+            <div>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {profile.noList.value.categories.map((c) => (
+                  <span key={c} className="inline-flex items-center gap-1 rounded-pill bg-danger/[0.07] px-2.5 py-1 text-meta font-semibold text-danger">
+                    <X size={11} weight="bold" aria-hidden />{c}
+                  </span>
+                ))}
+              </div>
+              {profile.noList.value.note && <p className="mt-2.5 text-meta leading-4 text-ink-60">{profile.noList.value.note}</p>}
+            </div>
+          )) : working(BUILD_SECTION.noList)}
         </div>
       </div>
     </Card>
@@ -418,47 +370,49 @@ export function EarningsBlock({ offer }: { offer: Offer }) {
   ];
 
   return (
-    <Card className="overflow-hidden">
-      <div className="px-4 pt-4">
-        <p className="text-row font-semibold text-ink">What {offer.brand} could pay you</p>
+    <Card edge className="overflow-hidden">
+      <div className="grad-ws px-4 pb-4 pt-4 @lg:px-5">
+        <p className="text-[17px] font-semibold leading-6 text-ink">What {offer.brand} could pay you</p>
         <p className="mt-1 text-body leading-5 text-ink-60">Move the slider to set how many orders your code brings in, and see your share of them.</p>
-      </div>
-      <div className="px-4 pb-4 pt-3">
-        <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+        <div className="mt-4 flex flex-wrap items-end gap-x-3 gap-y-1">
           <Figure src={offer.orders} render={money(month)} size="xl" label="You earn" />
           <span className="pb-1 text-row text-ink">for <span className="num font-semibold">{orders}</span> order{orders === 1 ? "" : "s"}</span>
         </div>
-
+      </div>
+      <div className="px-4 pb-4 pt-4 @lg:px-5">
         {/* The slider between a minus and a plus, so it reads as a
             control on a phone as well as with a mouse. */}
-        <div className="mt-4 flex items-center gap-3">
+        <div className="flex items-center gap-3">
           <button type="button" onClick={() => set(orders - step)} disabled={orders <= 0} aria-label="Fewer orders"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-pill bg-lilac text-main transition hover:bg-main-10 disabled:opacity-40"><Minus size={16} weight="bold" aria-hidden /></button>
+            className="btn-soft grid h-10 w-10 shrink-0 place-items-center rounded-pill text-main disabled:opacity-40"><Minus size={16} weight="bold" aria-hidden /></button>
           <input type="range" min={0} max={ceiling} step={step} value={orders} onChange={(e) => set(Number(e.target.value))}
             aria-label="Orders your code brings in" aria-valuetext={`${orders} orders, ${money(month)}`}
-            className="hm-range min-w-0 flex-1" style={{ background: `linear-gradient(to right, #4D2FB0 ${fill}%, #E7E0FA ${fill}%)` }} />
+            className="hm-range min-w-0 flex-1" style={{ background: `linear-gradient(to right, #6848D1, #A65FED ${fill}%, #F1EEFB ${fill}%)` }} />
           <button type="button" onClick={() => set(orders + step)} disabled={orders >= ceiling} aria-label="More orders"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-pill bg-lilac text-main transition hover:bg-main-10 disabled:opacity-40"><Plus size={16} weight="bold" aria-hidden /></button>
+            className="btn-soft grid h-10 w-10 shrink-0 place-items-center rounded-pill text-main disabled:opacity-40"><Plus size={16} weight="bold" aria-hidden /></button>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 inline-flex max-w-full flex-wrap gap-1 rounded-[18px] bg-haze/70 p-1">
           {presets.map((p) => (
             <button key={p.label} type="button" onClick={() => set(p.n)} aria-pressed={orders === p.n}
-              className={`rounded-pill border px-3 py-1.5 text-body transition ${orders === p.n ? "border-main bg-main-10 font-semibold text-main" : "border-line text-ink-60 hover:border-main/40 hover:text-ink"}`}>
+              className={`rounded-pill px-3 py-1.5 text-body transition ${orders === p.n ? "bg-white font-semibold text-ink shadow-lift" : "text-ink-60 hover:text-ink"}`}>
               {p.label} · <span className="num">{p.n}</span>
             </button>
           ))}
         </div>
 
-        <p className="num mt-4 rounded-inner bg-paper px-3 py-2.5 text-body text-ink-60">
+        <p className="num mt-4 rounded-[14px] bg-white/80 px-3.5 py-2.5 text-body text-ink-60 ring-1 ring-main/[0.07]">
           {orders} orders × {money(each)} median order × {offer.commissionPct}% = <span className="font-semibold text-ink">{money(month)}</span>
         </p>
 
-        <div className="mt-3 rounded-inner bg-lilac px-4 py-3">
-          <p className="text-body font-semibold text-main">Where consistency gets you</p>
-          <p className="mt-0.5 text-body leading-5 text-ink-60">
-            Three campaigns like this one come to about{" "}
-            <span className="num font-semibold text-ink">{money(afterThreeMonths(month))}</span>, because an audience that has bought from you once buys again more readily.
-          </p>
+        <div className="mt-3 flex items-start gap-3 rounded-[16px] bg-white/80 px-4 py-3.5 ring-1 ring-main/[0.07]">
+          <span aria-hidden className="grad-tile grid h-9 w-9 shrink-0 place-items-center rounded-[11px]"><TrendUp size={17} weight="bold" /></span>
+          <span className="min-w-0">
+            <span className="block text-body font-semibold text-ink">Where consistency gets you</span>
+            <span className="mt-0.5 block text-body leading-5 text-ink-60">
+              Three campaigns like this one come to about{" "}
+              <span className="num grad-text font-bold">{money(afterThreeMonths(month))}</span>, because an audience that has bought from you once buys again more readily.
+            </span>
+          </span>
         </div>
         <p className="mt-3 text-meta leading-4 text-ink-60">
           There is no ceiling and no floor: a quiet month pays less and a good one more. It is not a guarantee.
@@ -483,19 +437,22 @@ export function EarningsBlock({ offer }: { offer: Offer }) {
 export function IntroBlock() {
   const stats = tools.platform_stats();
   return (
-    <Card className="overflow-hidden">
-      <div className="px-4 pt-4">
-        <p className="text-row font-semibold text-ink">A little about HeyMoon</p>
-        <p className="mt-1 text-body leading-5 text-ink-60">
-          Brands in the Gulf pay creators a share of every order they bring in. There is no agency in the middle and nothing to pay to join.
-        </p>
+    <Card edge className="overflow-hidden p-4 @lg:p-5">
+      <div className="flex items-center gap-3">
+        <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,#6848D1,#C2418B)] text-white shadow-pri">
+          <Emblem size={20} />
+        </span>
+        <p className="text-[17px] font-semibold leading-6 text-ink">A little about HeyMoon</p>
       </div>
-      <div className="grid grid-cols-2 gap-2 p-3">
+      <p className="mt-3 text-body leading-6 text-ink-60">
+        Brands in the Gulf pay creators a share of every order they bring in. There is no agency in the middle and nothing to pay to join.
+      </p>
+      <div className="mt-4 grid grid-cols-2 gap-3">
         {stats.map((s) => (
-          <div key={s.key} className="relative rounded-inner bg-lilac/60 px-3 py-2.5">
-            {s.sample && <span className="absolute end-2 top-2 rounded-chip bg-white/80 px-1.5 text-tiny font-semibold text-ink-50">Sample</span>}
-            <p className="num text-section font-semibold text-ink">{s.value}</p>
-            <p className="mt-0.5 text-meta leading-4 text-ink-60">{s.label}</p>
+          <div key={s.key} className="relative rounded-[18px] bg-white/80 px-4 py-3.5 ring-1 ring-main/[0.07]">
+            {s.sample && <span className="absolute end-2.5 top-2.5 rounded-pill bg-haze px-2 py-0.5 text-tiny font-semibold text-ink-50">Sample</span>}
+            <p className="num grad-text text-[26px] font-bold leading-none tracking-[-0.03em]">{s.value}</p>
+            <p className="mt-1.5 text-meta leading-4 text-ink-60">{s.label}</p>
           </div>
         ))}
       </div>
@@ -563,8 +520,10 @@ export function CampaignBlockCard({ offer, onOpen, footer, pill }: {
   footer?: ReactNode;
 }) {
   return (
-    <div className={`relative flex w-full flex-col ${footer ? "md:overflow-hidden md:rounded-card md:border md:border-hairline md:bg-white md:shadow-edge" : ""}`}>
-      <CampaignCard offer={offer} onOpen={onOpen} className={`h-full ${footer ? "md:border-0 md:shadow-none" : ""}`} />
+    /* With a footer (the dashboard's Active cards) the frosted card is the surface, as the brand's campaign cards are,
+       and the card inside it goes clear so the two read as one object. */
+    <div className={`relative flex w-full flex-col ${footer ? "md:glass md:overflow-hidden" : ""}`}>
+      <CampaignCard offer={offer} onOpen={onOpen} className={`h-full ${footer ? "md:bg-transparent md:shadow-none" : ""}`} />
       {offer.state !== "open" && (
         <span className="absolute end-3 top-3 rounded-pill bg-white/95 px-2.5 py-1 text-meta font-semibold text-ink shadow-card">
           {STATE_WORD[offer.state]}
@@ -599,7 +558,7 @@ export function BriefBlock({ offer, showCode = true }: {
   showCode?: boolean;
 }) {
   return (
-    <Card className="overflow-hidden">
+    <Card edge className="overflow-hidden">
       <div className="border-b border-line px-4 py-3">
         <p className="text-body font-semibold text-ink">{offer.brief.headline.value}</p>
         <p className="mt-0.5 text-brand text-ink-50">{offer.brand} · written in your register by MoonWriter AI</p>
@@ -638,8 +597,6 @@ function BriefList({ title, items, tone }: { title: string; items: string[]; ton
    Scheduling preference
    ══════════════════════════════════════════════════════════════════ */
 
-const CreditIcon = () => <CreditCard size={20} weight="fill" aria-hidden />;
-
 export function CadenceBlock({ offer, onPick, settled, initial, bare }: {
   offer: Offer; onPick: (c: Cadence) => void; settled?: Cadence;
   /** Picked to start with — the last choice, when the creator comes back. */
@@ -652,43 +609,55 @@ export function CadenceBlock({ offer, onPick, settled, initial, bare }: {
   const total = offer.deliverables.reduce((n, d) => n + d.count, 0);
   const weeks = Math.ceil(total / (CADENCES.find((c) => c.key === chosen)?.perWeek ?? 3));
 
+  /* Answered: folded to the brand's DonePill, the one shape every answered card in both apps takes. */
   if (settled) {
     return (
-      <Card className="flex items-center gap-3 px-4 py-3">
-        <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-pill bg-green-10 text-green"><Check size={14} weight="bold" /></span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-body font-semibold text-ink">{CADENCES.find((c) => c.key === settled)?.label}</span>
-          <span className="block text-meta text-ink-50">{total} deliverable{total === 1 ? "" : "s"}, about {weeks} week{weeks === 1 ? "" : "s"} of posting.</span>
-        </span>
-      </Card>
+      <DonePill>
+        <span className="font-semibold text-ink">{CADENCES.find((c) => c.key === settled)?.label}</span>
+        {" · "}{total} deliverable{total === 1 ? "" : "s"}, about {weeks} week{weeks === 1 ? "" : "s"} of posting.
+      </DonePill>
     );
   }
 
   const Wrap = bare ? "div" : Card;
   return (
-    <Wrap className="overflow-hidden">
-      <div className={bare ? "px-4" : "px-4 pb-2 pt-4"}>
-        {!bare && <p className="text-section font-semibold text-ink">Scheduling preference</p>}
-        <p className={`text-body text-ink-60 ${bare ? "" : "mt-1"}`}>Please select your preferred posting schedule</p>
+    <Wrap {...(bare ? {} : { edge: true })} className="overflow-hidden">
+      <div className={bare ? "px-4" : "flex items-center gap-3 px-4 pb-1 pt-4 @lg:px-5 @lg:pt-5"}>
+        {!bare && (
+          <span aria-hidden className="grad-tile grid h-10 w-10 shrink-0 place-items-center rounded-[12px] shadow-pri"><CalendarCheck size={19} weight="fill" /></span>
+        )}
+        <div className="min-w-0">
+          {!bare && <p className="text-[17px] font-semibold leading-6 text-ink">Scheduling preference</p>}
+          <p className="text-body text-ink-60">Please select your preferred posting schedule</p>
+        </div>
       </div>
-      <div className="space-y-4 p-4 pt-2">
+      <div className="space-y-4 p-4 @lg:px-5 @lg:pb-5">
         {/* The design's own line, and on a performance campaign it is
             literally true rather than encouragement: more posting is
             more orders, and orders are what pays. */}
-        <Callout title="Consistent posting means higher earnings" icon={<CreditIcon />}>
-          You earn {offer.commissionPct}% of every order your code brings in, so the schedule you can actually keep
-          matters more than the fastest one.
-        </Callout>
-        <div className="space-y-2">
-          {CADENCES.map((c) => (
-            <button key={c.key} onClick={() => setPicked(c.key)} aria-pressed={picked === c.key}
-              className={`flex w-full items-center gap-3 rounded-inner border px-4 py-3.5 text-start transition ${picked === c.key ? "border-main bg-white" : "border-transparent bg-lilac/60 hover:bg-lilac"}`}>
-              <span className="min-w-0 flex-1 text-body font-medium text-ink">{c.label}</span>
-              <span aria-hidden className={`grid h-5 w-5 shrink-0 place-items-center rounded-pill border-2 ${picked === c.key ? "border-main" : "border-black/10 bg-white"}`}>
-                {picked === c.key && <span className="h-2.5 w-2.5 rounded-pill bg-main" />}
-              </span>
-            </button>
-          ))}
+        <div className="grad-ws flex items-start gap-3 rounded-[16px] px-4 py-3 ring-1 ring-inset ring-main/[0.08]">
+          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-white text-main shadow-edge"><TrendUp size={16} weight="bold" /></span>
+          <span className="min-w-0">
+            <span className="block text-body font-semibold text-ink">Consistent posting means higher earnings</span>
+            <span className="mt-0.5 block text-meta leading-5 text-ink-60">
+              You earn {offer.commissionPct}% of every order your code brings in, so the schedule you can actually keep
+              matters more than the fastest one.
+            </span>
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2.5">
+          {CADENCES.map((c) => {
+            const on = picked === c.key;
+            const w = Math.ceil(total / c.perWeek);
+            return (
+              <button key={c.key} onClick={() => setPicked(c.key)} aria-pressed={on}
+                className={`rounded-[18px] px-4 py-3.5 text-start transition ${on ? "grad-promo shadow-pri" : "bg-white/85 ring-1 ring-main/[0.08] hover:shadow-lift hover:ring-main/20"}`}>
+                <span className={`num block text-[24px] font-bold leading-none tracking-[-0.03em] ${on ? "text-white" : "text-ink"}`}>{c.perWeek}×</span>
+                <span className={`mt-1.5 block text-body font-semibold ${on ? "text-white" : "text-ink"}`}>{c.label}</span>
+                <span className={`num mt-0.5 block text-meta ${on ? "text-white/80" : "text-ink-50"}`}>about {w} week{w === 1 ? "" : "s"}</span>
+              </button>
+            );
+          })}
         </div>
         <p className="text-meta leading-4 text-ink-50">
           {total} deliverable{total === 1 ? "" : "s"} at this cadence is about {weeks} week{weeks === 1 ? "" : "s"} of posting
@@ -712,34 +681,61 @@ export function AcceptBlock({ req, onConfirm, onCancel, bare }: {
 }) {
   const settled = req.state !== "pending";
   const line = req.needsApproval ? "A request to join. Nothing is agreed until the brand answers." : "You're Pre-qualified. Pressing it joins you.";
+  const outcome = req.state !== "confirmed" ? "Not sent. Nothing was agreed."
+    : req.needsApproval ? "Request sent. It is with the brand."
+    : "You're on the campaign.";
+  /* Answered, in the conversation: folded to the DonePill, as the brand's checkout folds once it is paid. In a popup
+     the full card stays, because the popup closes on its own. */
+  /* A cancelled request is not a done step, so it gets no green tick: a plain card, as the brand's checkout is when
+     it was not paid. */
+  if (settled && !bare && req.state !== "confirmed") {
+    return <Card edge className="p-4"><p className="text-body text-ink-60"><span className="font-semibold text-ink">{req.brand}</span>{" · "}{outcome}</p></Card>;
+  }
+  if (settled && !bare) {
+    return <DonePill><span className="font-semibold text-ink">{req.brand}</span>{" · "}{outcome}</DonePill>;
+  }
   const Wrap = bare ? "div" : Card;
   return (
-    <Wrap className="overflow-hidden">
+    <Wrap {...(bare ? {} : { edge: true })} className="overflow-hidden">
       {bare
         ? <p className="px-4 text-body text-ink-60">{line}</p>
         : (
-          <div className="border-b border-line px-4 py-3">
-            <p className="text-body font-semibold text-ink">Join {req.brand}</p>
-            <p className="mt-0.5 text-brand text-ink-50">{line}</p>
+          <div className="flex items-center gap-3 px-4 pt-4 @lg:px-5 @lg:pt-5">
+            <span aria-hidden className="grad-tile grid h-10 w-10 shrink-0 place-items-center rounded-[12px] shadow-pri"><Handshake size={20} weight="fill" /></span>
+            <div className="min-w-0">
+              <p className="text-[17px] font-semibold leading-6 text-ink">Join {req.brand}</p>
+              <p className="text-meta text-ink-50">{line}</p>
+            </div>
           </div>
         )}
-      <div className="p-4">
+      <div className="p-4 @lg:p-5">
         {/* No money figure here. The share is the terms; what it comes
             to is the calculator's job, and that is after joining. */}
-        <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="num text-display font-semibold text-ink">{req.commissionPct}%</span>
-          <span className="text-body text-ink-50">of every order you bring in</span>
+        <div className="grad-ws flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-[18px] px-4 py-3.5 ring-1 ring-inset ring-main/[0.08]">
+          <span className="num grad-text text-[40px] font-bold leading-none tracking-[-0.035em]">{req.commissionPct}%</span>
+          <span className="text-body text-ink-60">of every order you bring in</span>
         </div>
-        <p className="mt-4 text-brand font-semibold text-main">You&apos;re agreeing to</p>
-        <ul className="mt-1.5 space-y-1.5">{req.commits.map((c) => <li key={c} className="flex items-start gap-2 text-body leading-5 text-ink-60"><Check size={14} weight="bold" aria-hidden className="mt-0.5 shrink-0 text-ink-50" />{c}</li>)}</ul>
-        <p className="mt-4 text-brand font-semibold text-main">You&apos;re not</p>
-        <ul className="mt-1.5 space-y-1.5">{req.notCommits.map((c) => <li key={c} className="flex items-start gap-2 text-body leading-5 text-ink-60"><Lock size={14} weight="bold" aria-hidden className="mt-0.5 shrink-0 text-green" />{c}</li>)}</ul>
+        <div className="mt-3 grid gap-3 @lg:grid-cols-2">
+          <div className="rounded-[18px] bg-white/85 p-4 ring-1 ring-main/[0.07]">
+            <p className="text-meta font-semibold text-ink-60">You&apos;re agreeing to</p>
+            <ul className="mt-2.5 space-y-2">{req.commits.map((c) => (
+              <li key={c} className="flex items-start gap-2.5 text-body leading-5 text-ink">
+                <span aria-hidden className="mt-0.5 grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-main text-white"><Check size={10} weight="bold" /></span>{c}
+              </li>
+            ))}</ul>
+          </div>
+          <div className="rounded-[18px] bg-green-10 p-4">
+            <p className="text-meta font-semibold text-green">You&apos;re not</p>
+            <ul className="mt-2.5 space-y-2">{req.notCommits.map((c) => (
+              <li key={c} className="flex items-start gap-2.5 text-body leading-5 text-ink">
+                <span aria-hidden className="mt-0.5 grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-green text-white"><Lock size={10} weight="bold" /></span>{c}
+              </li>
+            ))}</ul>
+          </div>
+        </div>
         {settled ? (
-          <p className="mt-4 flex items-center gap-2 text-body font-semibold text-green"><CheckCircle size={16} weight="fill" aria-hidden />{
-            req.state !== "confirmed" ? "Not sent. Nothing was agreed."
-              : req.needsApproval ? "Request sent. It is with the brand."
-              : "You're on the campaign."
-          }</p>
+          <p className="mt-4 flex items-center gap-2.5 rounded-pill bg-green-10 px-3 py-2 text-body font-semibold text-green">
+            <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-green text-white"><Check size={12} weight="bold" /></span>{outcome}</p>
         ) : (
           <div className="mt-4 flex flex-col gap-2">
             <Btn full onClick={onConfirm}>{req.needsApproval ? "Send request" : "Join Campaign"}</Btn>
@@ -776,8 +772,8 @@ export function DecisionBlock({ offer, decision, onGo, goLabel = "Go to campaign
   const due = firstDue ? ` Your first ad is due ${firstDue}.` : "";
   const Wrap = bare ? "div" : Card;
   return (
-    <Wrap className="overflow-hidden">
-      <div className={`flex flex-col items-center px-6 pb-6 pt-8 text-center ${yes ? "bg-lilac/70" : "bg-paper"}`}>
+    <Wrap {...(bare ? {} : { edge: true })} className="overflow-hidden">
+      <div className={`flex flex-col items-center px-6 pb-6 pt-8 text-center ${yes ? "grad-ws" : "bg-paper"}`}>
         <span aria-hidden className={`grid h-16 w-16 place-items-center rounded-pill text-white ${yes ? "medallion" : "bg-ink/20"}`}>
           {yes ? <Check size={28} weight="bold" /> : <X size={28} weight="bold" />}
         </span>
@@ -818,7 +814,7 @@ export function DecisionBlock({ offer, decision, onGo, goLabel = "Go to campaign
 export function ChangesBlock({ changes }: { changes: { id: string; label: string; from: string; to: string; because: string; detail?: string }[] }) {
   if (!changes.length) return null;
   return (
-    <Card className="overflow-hidden">
+    <Card edge className="overflow-hidden">
       <p className="px-4 pt-3 text-brand font-semibold text-main">What changed</p>
       <ul className="divide-y divide-line">
         {changes.map((c) => (
@@ -845,15 +841,11 @@ export function ChangesBlock({ changes }: { changes: { id: string; label: string
 export function RejectedBlock({ read }: { read: CreatorRead }) {
   const st = read.standing; if (!st) return null;
   return (
-    <Card className="overflow-hidden">
+    <Card edge className="overflow-hidden">
       <div className="border-b border-line bg-paper px-4 py-3"><p className="text-body font-semibold text-ink">HeyMoon cannot place you yet</p></div>
       <div className="space-y-3 p-4 text-body leading-5 text-ink-60">
-        <Claim src={st.line}>{st.line.value}</Claim>
-        <Claim src={st.strengths}>
-          <span className="flex flex-col gap-1">
-            {st.strengths.value.map((line) => <span key={line}>{line}</span>)}
-          </span>
-        </Claim>
+        {/* The line and what matching read are the result at the top of the read now (ProfileRead), so this block
+            carries only what would change it. */}
         {st.wouldChangeIt && (
           <div>
             <p className="text-brand font-semibold text-main">What would change it</p>

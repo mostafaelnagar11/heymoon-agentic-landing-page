@@ -54,7 +54,7 @@ export function Composer({
   const armed = !!value.trim() && !disabled;
 
   return (
-    <div className="shrink-0 bg-gradient-to-t from-white via-white to-transparent px-4 pb-4 pt-2">
+    <div className="shrink-0 bg-gradient-to-t from-canvas via-canvas/90 to-transparent px-4 pb-4 pt-3">
       <div className="mx-auto w-full max-w-[720px]">
         {chips.length > 0 && (
           <div className="mb-2.5 flex flex-wrap gap-1.5">
@@ -62,7 +62,7 @@ export function Composer({
               <button
                 key={c}
                 onClick={() => onChip?.(c)}
-                className="rounded-pill border border-black/[0.09] bg-white px-3 py-1.5 text-meta font-medium text-ink-soft transition hover:border-brand/40 hover:text-brand"
+                className="btn-soft rounded-pill px-3.5 py-1.5 text-meta font-semibold text-ink-90 hover:text-brand"
               >
                 {chipLabel ? chipLabel(c) : c}
               </button>
@@ -70,7 +70,7 @@ export function Composer({
           </div>
         )}
 
-        <div className="flex items-end gap-2 rounded-[26px] border border-black/[0.1] bg-white px-4 py-2.5 shadow-[0_2px_12px_rgba(16,12,40,0.06)] transition focus-within:border-ink/25">
+        <div className="glass flex items-end gap-2 !rounded-[26px] py-2.5 pe-2.5 ps-5 transition focus-within:shadow-lift">
           <textarea
             ref={ref}
             rows={1}
@@ -91,7 +91,7 @@ export function Composer({
               onClick={onStop}
               aria-label={stopLabel}
               title={stopLabel}
-              className="mb-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink text-white transition hover:bg-ink/85"
+              className="mb-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-white transition hover:bg-ink/85"
             >
               <Square size={10} weight="fill" aria-hidden />
             </button>
@@ -100,8 +100,8 @@ export function Composer({
               onClick={onSend}
               disabled={!armed}
               aria-label="Send"
-              className={`mb-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full transition ${
-                armed ? "bg-ink text-white hover:bg-ink/85" : "bg-neutral-200 text-white"
+              className={`mb-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full transition ${
+                armed ? "bg-[linear-gradient(135deg,#6848D1,#C2418B)] text-white shadow-pri hover:brightness-110" : "bg-haze text-ink-faint"
               }`}
             >
               <ArrowUp size={15} weight="bold" aria-hidden />
@@ -109,7 +109,7 @@ export function Composer({
           )}
         </div>
 
-        {note && <p className="mt-2 text-center text-[11px] text-ink-faint">{note}</p>}
+        {note && <p className="mt-2 text-center text-meta text-ink-faint">{note}</p>}
       </div>
     </div>
   );

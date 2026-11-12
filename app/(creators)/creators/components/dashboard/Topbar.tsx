@@ -1,10 +1,9 @@
 "use client";
 
-/* The page title, the bell, and the way to the assistant. The Figma's
-   screens carry a centred title with a back circle on the left; on a
-   desktop the rail already says where you are, so the title sits left
-   and the back circle appears only when there is somewhere to go back
-   to. */
+/* The page title, the bell, and the way to the assistant — the brand
+   dashboard's top bar (brands Topbar.tsx): 72px, no bar and no rule, a
+   bare back arrow when there is somewhere to go back to, and the title
+   at 15px on the left at every width. */
 
 import { Bell, Sparkle } from "@phosphor-icons/react";
 import { BackButton } from "../figma";
@@ -18,22 +17,21 @@ export function DashboardTopbar({ title, onBack, assistantOpen, onToggleAssistan
 }) {
   const waiting = useWaiting();
   return (
-    /* A keyline under the chrome above 768px, so the white frame reads
-       as a frame against the canvas the page now sits on. */
-    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 bg-white/85 px-4 backdrop-blur-sm sm:px-6 md:border-b md:border-line lg:px-8">
+    /* No bar, no rule: the controls sit on the page's light. */
+    <header className="relative z-20 flex h-[72px] shrink-0 items-center gap-2.5 px-4 sm:px-6 lg:px-8">
       {onBack && <BackButton onClick={onBack} />}
-      {/* Centred with a back circle on a phone, the way the file draws
-          every screen; left-aligned and one step down on a desktop,
-          where the rail already says where you are. */}
-      <h1 className={`min-w-0 flex-1 truncate text-section font-semibold text-ink md:text-row ${onBack ? "text-center pe-10 md:pe-0 md:text-start" : ""}`}>{title}</h1>
+      <h1 className="min-w-0 flex-1 truncate text-[15px] font-semibold text-ink-60">{title}</h1>
       <button onClick={onToggleAssistant} aria-pressed={assistantOpen}
-        className={`inline-flex h-10 items-center gap-2 rounded-pill px-3.5 text-body font-semibold transition md:h-9 ${assistantOpen ? "bg-lilac text-main" : "text-ink-60 hover:bg-lilac/60 hover:text-main"}`}>
-        <Sparkle size={16} weight="fill" aria-hidden /><span className="hidden sm:inline">Ask Moon</span>
+        className={`inline-flex h-[42px] items-center gap-2 rounded-pill pe-4 ps-1.5 text-body font-semibold transition ${assistantOpen ? "bg-white text-ink shadow-lift" : "glass !rounded-full text-ink-60 hover:text-ink"}`}>
+        <span aria-hidden className="grid h-[30px] w-[30px] place-items-center rounded-full bg-[linear-gradient(135deg,#6848D1,#C2418B)] text-white">
+          <Sparkle size={13} weight="fill" />
+        </span>
+        <span className="hidden sm:inline">Ask Moon</span>
       </button>
       <button type="button" onClick={onBell} aria-label={waiting ? `${waiting} waiting on you` : "Nothing waiting"}
-        className="relative grid h-10 w-10 place-items-center rounded-pill bg-lilac text-main md:h-9 md:w-9">
-        <Bell size={18} weight="fill" aria-hidden />
-        {waiting > 0 && <span className="absolute -end-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-pill bg-danger px-1 text-tiny font-semibold text-white">{waiting}</span>}
+        className="glass relative grid h-[42px] w-[42px] place-items-center !rounded-full text-ink-60 transition hover:text-ink">
+        <Bell size={18} aria-hidden />
+        {waiting > 0 && <span className="absolute -end-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-pill bg-blush-deep px-1 text-[10px] font-semibold text-white ring-2 ring-white">{waiting}</span>}
       </button>
     </header>
   );

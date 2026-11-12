@@ -7,7 +7,7 @@
    request the brand confirms. */
 
 import { useEffect, useRef, useState } from "react";
-import { Lightning, Sparkle } from "@phosphor-icons/react";
+import { Check, Sparkle } from "@phosphor-icons/react";
 import { catchUp, type MoveAction } from "../../lib/agent/moves";
 import { useActiveCampaign, useActivity, useAds, useLivePhase, useReadyPhase } from "../../lib/store";
 import { useHeyMoon } from "./HeyMoon";
@@ -97,52 +97,46 @@ export function CatchUp() {
       key={a.label}
       type="button"
       onClick={() => run(a)}
-      className={`inline-flex h-8 shrink-0 items-center rounded-pill px-3.5 text-meta font-semibold transition ${
-        primary ? "g-button border border-white/50 text-[#FBF8FE]" : "text-ink-60 hover:bg-black/[0.04] hover:text-ink"
+      className={`inline-flex h-8 shrink-0 items-center rounded-pill px-3.5 text-meta font-semibold ${
+        primary ? "btn-pri" : a.do === "why" ? "text-ink-60 transition hover:text-ink" : "btn-soft"
       }`}
     >
       {a.label}
     </button>
   );
 
-  return (
-    <section
-      aria-label="Catch me up"
-      className="rounded-tile border border-brand/25 bg-white px-5 pb-4 pt-4 shadow-card ring-4 ring-brand/[0.05]"
-    >
-      <div className="flex items-center gap-2">
-        <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-brand text-white">
-          <Sparkle size={11} weight="fill" />
-        </span>
-        <h2 className="text-body font-semibold text-main">{since.label}</h2>
-      </div>
+  /* The figure sits on its own tile, tinted by what it is: money in green, a count or a done move in violet. */
+  const tint = (id: string) =>
+    id === "sales" ? "bg-good/[0.09] text-good-deep" : "bg-haze text-brand";
 
+  /* The ready phase is not repeated here: the rail's card and the ladder under this card both carry it, each
+     with its start. */
+  return (
+    <section aria-label="Catch me up" className="glass flex flex-col px-5 pb-2 pt-5 sm:px-6">
+      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+        <Sparkle size={16} weight="fill" aria-hidden className="text-orchid" />
+        {since.label}
+      </h2>
       <ul className="mt-2">
         {rows.map((r) => (
-          <li key={r.id} className="flex flex-col gap-2 border-t border-hairline py-3 sm:flex-row sm:items-center sm:gap-5">
-            <span className="num w-[92px] shrink-0 text-[24px] font-semibold tracking-[-0.02em] text-main">{r.figure}</span>
-            <div className="min-w-0 flex-1">
-              <p className="text-body font-semibold text-ink">{r.title}</p>
-              <p className="text-meta text-ink-soft">{r.detail}</p>
+          <li key={r.id} className="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-brand/[0.07] py-3.5 first:border-t-0">
+            <span className={`num grid h-10 min-w-10 shrink-0 place-items-center rounded-[13px] px-2 text-[14px] font-bold ${tint(r.id)}`}>
+              {r.figure === "✓" ? <Check size={18} weight="bold" aria-hidden /> : r.figure}
+            </span>
+            <div className="min-w-0 flex-1 basis-[180px]">
+              <p className="text-body font-semibold text-ink"><bdi>{r.title}</bdi></p>
+              <p className="text-meta text-ink-faint"><bdi>{r.detail}</bdi></p>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1.5">
               {/* The last action leads, unless it is an undo or a why: those are offered, not pushed. */}
               {r.actions.map((a, i) => btn(a, i === r.actions.length - 1 && a.do !== "undo" && a.do !== "why"))}
             </div>
           </li>
         ))}
+        {!rows.length && readyRow && (
+          <li className="py-3.5 text-body text-ink-60">Quiet since your last visit. {readyRow.title}.</li>
+        )}
       </ul>
-
-      {readyRow && (
-        <div className="mt-1 flex flex-wrap items-center gap-3 rounded-control bg-lilac px-4 py-3">
-          <Lightning size={15} weight="fill" aria-hidden className="text-amber-600" />
-          <p className="min-w-0 flex-1 text-meta">
-            <span className="font-semibold text-ink">{readyRow.title}</span>
-            <span className="text-ink-soft"> · {readyRow.detail}</span>
-          </p>
-          {readyRow.actions.map((a) => btn(a, true))}
-        </div>
-      )}
     </section>
   );
 }

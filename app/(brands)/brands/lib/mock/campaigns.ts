@@ -294,7 +294,7 @@ function checksFor(seed: AdSeed) {
   return [...base, third];
 }
 
-export const ADS: AdRecord[] = SEEDS.map((seed) => {
+function recordOf(seed: AdSeed, phaseNo = 2): AdRecord {
   const c = creatorById(seed.creatorId);
   return {
     id: seed.id,
@@ -318,7 +318,7 @@ export const ADS: AdRecord[] = SEEDS.map((seed) => {
         seed.reasoning,
         "MoonWriter AI read this draft against the brief it wrote for this phase. Publishing is never its call: an ad goes out only when you approve it, and MoonLive AI is what puts it live.",
         [
-          ev(`brief-${seed.id}`, "policy", "your Phase 2 brief", "Written by MoonWriter AI · Product named in the first 3s · code on screen 5s · editorial register · Reel or short video."),
+          ev(`brief-${seed.id}`, "policy", `your Phase ${phaseNo} brief`, "Written by MoonWriter AI · Product named in the first 3s · code on screen 5s · editorial register · Reel or short video."),
           ev(`draft-${seed.id}`, "creator", `${c.name}'s draft`, `Submitted ${seed.submitted} · tracking code ${seed.track}.`),
         ]
       ),
@@ -335,7 +335,80 @@ export const ADS: AdRecord[] = SEEDS.map((seed) => {
           }
         : undefined,
   };
-});
+}
+
+export const ADS: AdRecord[] = SEEDS.map((seed) => recordOf(seed));
+
+/* ── A campaign built in the conversation ──────────────────────────────
+
+   The seeds above are the running demo's, all on its own Phase 2. A campaign a brand builds in the conversation
+   used to open its Ads tab on "Nothing waiting on you" for the whole phase (12 Nov: "the ads are always empty"). Its
+   drafts are made here from its own crew and its own bestsellers: each creator on the phase hands in one, read
+   against the brief by the same three checks, and the verdicts are mixed the way a real queue is (one held, one with
+   a note). Phase 1 starts six days after the briefs go out, so by day 1 the drafts are in.
+
+   The sales already counted on the phase belong to an ad, so when there are any, the first creator's draft is the
+   one that is live and carrying them, and the Ads tab, the overview and the top sellers say the same number. Views
+   are a share of that creator's own average. Deterministic: the same campaign always gets the same drafts. */
+export interface PhaseDraftInput {
+  phaseId: string;
+  phaseNo: number;
+  /** Sales counted on the phase so far; carried by the live ad. */
+  rev: number;
+  crew: { id: number }[];
+  products: { name: string }[];
+  brandName: string;
+}
+
+const AGO = ["5h ago", "1d ago", "2d ago", "3h ago", "1d ago", "2d ago", "4h ago", "1d ago"];
+
+export function draftsFor(i: PhaseDraftInput): AdRecord[] {
+  const products = i.products.length ? i.products.map((p) => p.name) : [`${i.brandName}'s bestseller`];
+  const live = i.rev > 0 ? 1 : 0;
+  let waitingIdx = 0;
+  return i.crew.slice(0, 8).map((m, n) => {
+    const c = creatorById(m.id);
+    const product = products[n % products.length];
+    const platform = c.platform as AdRecord["platform"];
+    const format: AdRecord["format"] = platform === "Instagram" ? (n % 2 ? "Story" : "Reel") : "Video";
+    const caption =
+      format === "Story" ? `Unboxing ${product} on camera, with the price and the code said out loud.`
+      : format === "Reel" ? `${product} in real use, start to finish, with the code on screen.`
+      : `${product}, tried on camera in one take and rated honestly, code on screen.`;
+    const track = `MT-P${i.phaseNo}-${String(1100 + n * 7 + (hashOf(i.phaseId) % 7)).padStart(4, "0")}`;
+    const img = c.posts[n % Math.max(1, c.posts.length)]?.img ?? c.avatar;
+    const id = `gen-${i.phaseId}-${n}`;
+    if (n < live) {
+      const views = Math.round(c.avgViews * 0.4);
+      return recordOf({
+        id, campaignId: i.phaseId, creatorId: c.id, product, caption, format, platform, img,
+        submitted: "6d ago", track, state: "live", verdict: "approve",
+        reasoning: "Approved by you; MoonLive AI published it the same day. It is the ad behind the first sales on this phase.",
+        views, revenue: i.rev,
+      }, i.phaseNo);
+    }
+    const k = waitingIdx++;
+    const verdict: AdRecord["compliance"]["verdict"] = k === 1 ? "approve-with-note" : k === 2 ? "hold" : "approve";
+    return recordOf({
+      id, campaignId: i.phaseId, creatorId: c.id, product, caption, format, platform, img,
+      submitted: AGO[n % AGO.length], track, state: "waiting", verdict,
+      reasoning:
+        verdict === "approve" ? "It does what the brief asks: the product is named early, the code is on screen long enough to count, and nothing in it needs a change."
+        : verdict === "approve-with-note" ? "I would approve it, with one thing to know: the code is on screen for under five seconds. Orders through it still count, but a longer hold carries more of them."
+        : "I would hold this one. The product is not named until well into the video, and the brief asks for it up front. A re-cut fixes it, and there is time inside the review window.",
+      issue:
+        verdict === "approve-with-note" ? { label: "Code on screen for under five seconds", detail: "The brief asks for five. It still counts.", by: "MoonWriter AI" }
+        : verdict === "hold" ? { label: "Product not named in the first 3 seconds", detail: "Named at 0:09. The brief asks for it up front.", by: "MoonWriter AI" }
+        : undefined,
+    }, i.phaseNo);
+  });
+}
+
+function hashOf(str: string) {
+  let h = 0;
+  for (let n = 0; n < str.length; n++) h = (h * 31 + str.charCodeAt(n)) | 0;
+  return Math.abs(h);
+}
 
 /* The review window. An undecided draft publishes on its own after this
    many days, which is the one thing about the queue a brand must be told

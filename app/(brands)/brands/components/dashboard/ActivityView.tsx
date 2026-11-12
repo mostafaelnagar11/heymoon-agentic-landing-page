@@ -83,7 +83,7 @@ export function ActivityView() {
   const locked = autonomy.filter((r) => r.locked);
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-[880px] space-y-6">
       {/* One figure, which is the one the page is about.
 
           "Money moved · $0 · never, and not a setting" was a constant
@@ -116,7 +116,7 @@ export function ActivityView() {
           Never
         </span>
         {/* One line: the three things no agent may do. The explanation went; "Never" is the explanation. */}
-        <span className="text-[11px] text-ink-soft">{locked.map((r) => r.label.toLowerCase()).join(" · ")}</span>
+        <span className="text-meta text-ink-soft">{locked.map((r) => r.label.toLowerCase()).join(" · ")}</span>
         </div>
       </Surface>
 
@@ -125,128 +125,89 @@ export function ActivityView() {
         aside={
           <button
             onClick={() => go("autonomy")}
-            className="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-white px-3 py-1.5 text-[11px] font-semibold text-ink-soft transition hover:bg-wash"
+            className="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-white px-3 py-1.5 text-meta font-semibold text-ink-soft transition hover:bg-wash"
           >
             <Sliders size={12} weight="bold" aria-hidden /> Permissions
           </button>
         }
       >
-        <Surface>
-          {/* Column heads, so the rows read as a table and not as a feed. */}
-          <div className="hidden items-center gap-3 border-b border-hairline bg-rail px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.09em] text-ink-faint sm:flex">
-            <span className="w-[132px] shrink-0">Agent</span>
-            <span className="min-w-0 flex-1">What it did</span>
-            <span className="w-[72px] shrink-0 text-end">When</span>
-            <span className="w-[88px] shrink-0 text-end">Undo</span>
-          </div>
-
-          {rows.length === 0 ? (
-            <div className="px-4 py-10 text-center">
-              <p className="text-body text-ink-soft">Nothing yet. Anything I do on my own shows up here first.</p>
-            </div>
-          ) : (
-            <ol className="divide-y divide-hairline">
-              {rows.map((a) => {
-                const rule = ruleOf(a.ruleKey);
-                const agent = agentOf(a);
-                return (
-                  <li key={a.id} className={`px-4 py-3 ${a.undone ? "bg-wash/60" : ""}`}>
-                    <div className="flex items-start gap-3">
-                      <span className="hidden w-[132px] shrink-0 sm:block">
-                        {agent && (
-                          <Pill tone={a.undone ? "muted" : "brand"} className="max-w-full">
-                            <span className="min-w-0 truncate">{agent}</span>
-                          </Pill>
-                        )}
-                      </span>
-
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className={`text-body font-medium ${
-                            a.undone ? "text-ink-faint line-through" : "text-ink"
-                          }`}
-                        >
-                          {a.title}
-                        </p>
-
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-ink-faint">
-                          {agent && <span className="font-semibold text-brand sm:hidden">{agent}</span>}
-                          <span className="sm:hidden">{ago(a.at, now)}</span>
-                          {rule && <span className="truncate">{rule.label}</span>}
-                          {a.undone && <span className="font-semibold text-danger">Undone</span>}
-                        </div>
-
-                        {/* Everything the old card said out loud: why, what
-                            changed, which permission, and the way out. */}
-                        <div className="mt-2">
-                          <Detail summary="Why">
-                            <p>{a.because}</p>
-                            <p className="mt-2 rounded-control bg-rail px-3 py-2">
-                              <span className="font-medium text-ink">What changed: </span>
-                              {a.effect}
-                            </p>
-                            {rule && (
-                              <p className="mt-2">
-                                <span className="font-medium text-ink">Permission: </span>
-                                {rule.label}. {LEVEL_WORD[rule.level]}
-                              </p>
-                            )}
-                            {!a.undoable && (
-                              <p className="mt-2">
-                                {a.undoNote ??
-                                  "Cannot be undone from here. Some of the held budget has already been deployed. Ask me in the conversation and I will lay out what reversing it would cost."}
-                              </p>
-                            )}
-                            {rule && (
-                              <button
-                                onClick={() => go("autonomy")}
-                                className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-brand hover:underline"
-                              >
-                                Stop me doing this
-                                <ArrowRight size={11} weight="bold" aria-hidden className="rtl:rotate-180" />
-                              </button>
-                            )}
-                          </Detail>
-                        </div>
+        {/* A list of cards, one under the other (12 Nov: "activity should be a list of cards not a grid"), the same
+            shape as the creator's log: who, when and the undo on the card, the reasoning one press away. */}
+        {rows.length === 0 ? (
+          <Surface className="px-4 py-10 text-center">
+            <p className="text-body text-ink-soft">Nothing yet. Anything I do on my own shows up here first.</p>
+          </Surface>
+        ) : (
+          <ol className="flex flex-col gap-3">
+            {rows.map((a) => {
+              const rule = ruleOf(a.ruleKey);
+              const agent = agentOf(a);
+              return (
+                <li key={a.id} className={`glass p-4 transition ${a.undone ? "opacity-70" : ""}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                        {agent && <Pill tone={a.undone ? "muted" : "brand"}>{agent}</Pill>}
+                        <span className="text-meta tabular-nums text-ink-faint">{ago(a.at, now)}</span>
+                        {a.undone && <span className="text-meta font-semibold text-danger">Undone</span>}
                       </div>
-
-                      <span className="hidden w-[72px] shrink-0 text-end text-[11px] tabular-nums text-ink-faint sm:block">
-                        {ago(a.at, now)}
-                      </span>
-
-                      <div className="flex w-[88px] shrink-0 justify-end">
-                        {a.undoable ? (
-                          a.undone ? (
+                      <p className={`mt-2 text-body font-semibold ${a.undone ? "text-ink-faint line-through" : "text-ink"}`}>{a.title}</p>
+                      {rule && <p className="mt-0.5 text-meta text-ink-faint">Allowed by “{rule.label}”</p>}
+                      <div className="mt-2">
+                        <Detail summary="Why">
+                          <p>{a.because}</p>
+                          <p className="mt-2 rounded-control bg-rail px-3 py-2">
+                            <span className="font-medium text-ink">What changed: </span>
+                            {a.effect}
+                          </p>
+                          {rule && (
+                            <p className="mt-2">
+                              <span className="font-medium text-ink">Permission: </span>
+                              {rule.label}. {LEVEL_WORD[rule.level]}
+                            </p>
+                          )}
+                          {!a.undoable && (
+                            <p className="mt-2">
+                              {a.undoNote ??
+                                "Cannot be undone from here. Some of the held budget has already been deployed. Ask me in the conversation and I will lay out what reversing it would cost."}
+                            </p>
+                          )}
+                          {rule && (
                             <button
-                              onClick={() => redoActivity(a.id)}
-                              className="inline-flex items-center gap-1 rounded-control border border-hairline bg-white px-2.5 py-1.5 text-[11px] font-semibold text-brand transition hover:bg-brand/[0.06]"
+                              onClick={() => go("autonomy")}
+                              className="mt-2 inline-flex items-center gap-1 text-meta font-semibold text-brand hover:underline"
                             >
-                              <ArrowClockwise size={11} weight="bold" aria-hidden />
-                              Redo
+                              Stop me doing this
+                              <ArrowRight size={11} weight="bold" aria-hidden className="rtl:rotate-180" />
                             </button>
-                          ) : (
-                            <button
-                              onClick={() => undoActivity(a.id)}
-                              className="inline-flex items-center gap-1 rounded-control border border-hairline bg-white px-2.5 py-1.5 text-[11px] font-semibold text-ink-soft transition hover:bg-wash"
-                            >
-                              <ArrowCounterClockwise size={11} weight="bold" aria-hidden />
-                              Undo
-                            </button>
-                          )
-                        ) : (
-                          <span className="inline-flex items-center gap-1 py-1.5 text-[11px] font-medium text-ink-faint">
-                            <LockSimple size={11} weight="fill" aria-hidden />
-                            Locked
-                          </span>
-                        )}
+                          )}
+                        </Detail>
                       </div>
                     </div>
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-        </Surface>
+                    <div className="shrink-0">
+                      {a.undoable ? (
+                        a.undone ? (
+                          <button onClick={() => redoActivity(a.id)} className="btn-soft inline-flex h-8 items-center gap-1.5 rounded-pill px-3.5 text-meta font-semibold">
+                            <ArrowClockwise size={12} weight="bold" aria-hidden /> Redo
+                          </button>
+                        ) : (
+                          <button onClick={() => undoActivity(a.id)} className="btn-soft inline-flex h-8 items-center gap-1.5 rounded-pill px-3.5 text-meta font-semibold">
+                            <ArrowCounterClockwise size={12} weight="bold" aria-hidden /> Undo
+                          </button>
+                        )
+                      ) : (
+                        <span className="inline-flex items-center gap-1 py-1.5 text-meta font-medium text-ink-faint">
+                          <LockSimple size={11} weight="fill" aria-hidden />
+                          Locked
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </Section>
     </div>
   );

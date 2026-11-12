@@ -133,7 +133,7 @@ export function PhaseDetail({ campaign, phase }: { campaign: Campaign; phase: Ph
         </Surface>
       )}
 
-      <p className="text-[11px] text-ink-faint">
+      <p className="text-meta text-ink-faint">
         {campaign.brandName} · {phaseTitle(phase.phaseNo)}
         {phase.start ? ` · started ${phase.start}` : ""}
         {phase.end ? ` · closed ${phase.end}` : ""}
@@ -180,7 +180,7 @@ function StartPhase({ campaign, phase }: { campaign: Campaign; phase: Phase }) {
           <button
             type="button"
             onClick={() => queuePhase(phase.id)}
-            className="g-button inline-flex h-10 items-center rounded-pill border border-white/50 px-5 text-body font-semibold text-[#FBF8FE]"
+            className="btn-pri inline-flex h-10 items-center rounded-pill px-5 text-body font-semibold"
           >
             Pay {fmtUSD(withVat(phase.budget))}
           </button>

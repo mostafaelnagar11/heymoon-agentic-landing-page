@@ -19,7 +19,11 @@
    learned, what is missing and the way back sit underneath it. */
 
 import { useEffect, useRef, useState } from "react";
-import { Check, CheckCircle, Info, PencilSimple, Plus, WarningCircle } from "@phosphor-icons/react";
+import { GlassPopover } from "../../../../_shared/GlassPopover";
+import {
+  CalendarBlank, ChatCircleText, Check, CheckCircle, Globe, Info, Package, PencilSimple, Plus, ShoppingBag, Tag, UsersThree,
+  WarningCircle, type Icon,
+} from "@phosphor-icons/react";
 import { READ_TASKS } from "../../lib/agent/tools";
 import type { BrandRead, Correction, ReadLayerKey } from "../../lib/agent/types";
 
@@ -33,6 +37,20 @@ import { Btn, Card } from "../ui";
 /* Which agent found a layer. The evidence is attributed to the agent
    that gathered it, so the panel reads as work that was done rather
    than as a list of citations. */
+
+/* Each finding on its own small tile, the one StoreRead's tiles use, so the panel and the card read as one thing. */
+const LAYER_ICON: Partial<Record<ReadLayerKey, Icon>> = {
+  category: ShoppingBag, priceBand: Tag, bestsellers: Package, voice: ChatCircleText, socials: UsersThree,
+  markets: Globe, seasonality: CalendarBlank,
+};
+function LayerIcon({ k }: { k: ReadLayerKey }) {
+  const I = LAYER_ICON[k] ?? Info;
+  return (
+    <span aria-hidden className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] bg-haze text-brand">
+      <I size={14} weight="bold" />
+    </span>
+  );
+}
 
 export function ReadPanel() {
   const read = useStore((s) => Object.values(s.reads)[0]);
@@ -51,17 +69,17 @@ export function ReadPanel() {
     <div className="space-y-3">
       {/* The store itself. Not a page header — it is the first finding,
           and the name and line under it were read off the home page. */}
-      <Card className="flex items-center gap-3 p-3.5">
+      <Card className="flex items-center gap-3.5 p-4">
         {read.identity?.logo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={read.identity.logo} alt="" className="h-11 w-11 shrink-0 rounded-control object-cover" />
+          <img src={read.identity.logo} alt="" className="h-12 w-12 shrink-0 rounded-[14px] bg-white object-cover p-1 shadow-lift" />
         ) : (
           <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-control bg-brand-100 text-body font-bold text-brand">
             {read.identity?.name.value?.[0] ?? "?"}
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-body font-semibold text-ink">{read.identity?.name.value ?? read.url}</p>
+          <p className="truncate text-[17px] font-semibold text-ink">{read.identity?.name.value ?? read.url}</p>
           <p className="mt-0.5 text-meta leading-5 text-ink-soft">{read.identity?.tagline.value}</p>
         </div>
       </Card>
@@ -89,6 +107,7 @@ export function ReadPanel() {
 function Layer({ readId, k, read }: { readId: string; k: ReadLayerKey; read: BrandRead }) {
   const { t } = useT();
   const [openEv, setOpenEv] = useState(false);
+  const evRef = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<"idle" | "fix" | "add">("idle");
   const [draft, setDraft] = useState("");
   /* Arriving from a tap on this finding in the conversation: scroll to
@@ -139,16 +158,19 @@ function Layer({ readId, k, read }: { readId: string; k: ReadLayerKey; read: Bra
      read. */
   return (
     <div ref={box}>
-    <Card className={`p-3.5 ${focus === k ? "ring-2 ring-brand/30" : ""}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{t(`layer.${k}`)}</p>
-      <div className="mt-1.5">
+    <Card className={`p-4 ${focus === k ? "ring-2 ring-brand/30" : ""}`}>
+      <p className="flex items-center gap-2 text-meta font-semibold text-ink-60">
+        <LayerIcon k={k} />
+        {t(`layer.${k}`)}
+      </p>
+      <div className="mt-2.5">
         <ReadValue read={read} k={k} />
       </div>
 
       {corrected.length > 0 && (
         <ul className="mt-2.5 space-y-1">
           {corrected.map((c, i) => (
-            <li key={i} className="flex items-start gap-2 rounded-control bg-brand/[0.05] px-2.5 py-1.5 text-meta text-brand">
+            <li key={i} className="flex items-start gap-2 rounded-[12px] bg-haze px-3 py-2 text-meta text-brand">
               <PencilSimple size={11} className="mt-1 shrink-0" aria-hidden />
               <span><span className="font-semibold">{t("read.corrected")}:</span> {c.now}</span>
             </li>
@@ -156,39 +178,40 @@ function Layer({ readId, k, read }: { readId: string; k: ReadLayerKey; read: Bra
         </ul>
       )}
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-brand/[0.07] pt-3">
         {confirmed ? (
-          <span className="inline-flex items-center gap-1.5 rounded-control bg-good/[0.1] px-2.5 py-1.5 text-[11px] font-semibold text-good-deep">
+          <span className="inline-flex h-8 items-center gap-1.5 rounded-pill bg-good/[0.1] px-3 text-meta font-semibold text-good-deep">
             <Check size={11} weight="bold" aria-hidden /> {t("read.confirmed")}
           </span>
         ) : (
           <button
             onClick={() => record("confirmed", "", "confirmed")}
-            className="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-white px-2.5 py-1.5 text-[11px] font-semibold text-ink-soft transition hover:border-good/40 hover:text-good-deep"
+            className="btn-soft inline-flex h-8 items-center gap-1.5 rounded-pill px-3 text-meta font-semibold text-ink-soft hover:text-good-deep"
           >
             <Check size={11} weight="bold" aria-hidden /> {t("read.yes")}
           </button>
         )}
         <button
           onClick={() => { setMode("fix"); setDraft(""); }}
-          className="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-white px-2.5 py-1.5 text-[11px] font-semibold text-ink-soft transition hover:border-brand/40 hover:text-brand"
+          className="btn-soft inline-flex h-8 items-center gap-1.5 rounded-pill px-3 text-meta font-semibold text-ink-soft hover:text-brand"
         >
           <PencilSimple size={11} aria-hidden /> {t("read.fix")}
         </button>
         <button
           onClick={() => { setMode("add"); setDraft(""); }}
-          className="inline-flex items-center gap-1.5 rounded-control border border-hairline bg-white px-2.5 py-1.5 text-[11px] font-semibold text-ink-soft transition hover:border-brand/40 hover:text-brand"
+          className="btn-soft inline-flex h-8 items-center gap-1.5 rounded-pill px-3 text-meta font-semibold text-ink-soft hover:text-brand"
         >
           <Plus size={11} weight="bold" aria-hidden /> {t("read.add")}
         </button>
         {src && (
           <button
+            ref={evRef}
             onClick={() => setOpenEv((o) => !o)}
             aria-expanded={openEv}
-            className="ms-auto inline-flex items-center gap-1.5 text-[11px] font-medium text-brand hover:underline"
+            className="ms-auto inline-flex h-8 items-center gap-1.5 rounded-pill bg-haze px-3 text-meta font-semibold text-brand transition hover:bg-brand/[0.1]"
           >
             <Info size={12} weight="fill" aria-hidden />
-            {openEv ? "Hide the evidence" : `${t("read.evidence")} · ${src.evidence.length}`}
+            {`${t("read.evidence")} · ${src.evidence.length}`}
           </button>
         )}
       </div>
@@ -201,7 +224,7 @@ function Layer({ readId, k, read }: { readId: string; k: ReadLayerKey; read: Bra
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder={mode === "fix" ? "What should this say instead?" : "What else should I know about this?"}
-            className="w-full resize-none rounded-control border border-black/[0.09] bg-rail p-2.5 text-body text-ink outline-none focus:border-ink/25"
+            className="w-full resize-none rounded-[14px] border border-transparent bg-haze/70 p-3 text-body text-ink outline-none focus:border-brand/30 focus:bg-white"
           />
           <div className="mt-2 flex gap-2">
             <Btn size="sm" onClick={mode === "fix" ? saveFix : saveAdd} disabled={!draft.trim()}>{t("read.save")}</Btn>
@@ -210,16 +233,19 @@ function Layer({ readId, k, read }: { readId: string; k: ReadLayerKey; read: Bra
         </div>
       )}
 
-      {openEv && src && (
-        <div className="mt-2 rounded-control border border-brand/15 bg-brand/[0.03] p-2.5">
-          <p className="text-[11px] font-semibold text-ink">
+      {src && (
+
+        <GlassPopover anchor={evRef} open={openEv} onClose={() => setOpenEv(false)} label="Evidence">
+          <p className="text-meta font-semibold text-ink">
             {agentForLayer(k)} read this off {src.evidence[0]?.label ?? "your store"}:
           </p>
           <p className="mt-0.5 text-meta leading-5 text-ink-soft">{src.why}</p>
           <ul className="mt-1 divide-y divide-hairline">
             {src.evidence.map((e) => <EvidenceRow key={e.id} e={e} />)}
           </ul>
-        </div>
+
+        </GlassPopover>
+
       )}
     </Card>
     </div>
@@ -231,8 +257,8 @@ function Layer({ readId, k, read }: { readId: string; k: ReadLayerKey; read: Bra
 function MissedLayer({ k }: { k: ReadLayerKey }) {
   const { t } = useT();
   return (
-    <Card className="p-3.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{t(`layer.${k}`)}</p>
+    <Card className="p-4">
+      <p className="flex items-center gap-2 text-meta font-semibold text-ink-60"><LayerIcon k={k} />{t(`layer.${k}`)}</p>
       <p className="mt-1 text-meta leading-5 text-ink-faint">
         The read stopped before this one. Ask me to keep reading and I will finish it.
       </p>
@@ -246,11 +272,12 @@ function MissedLayer({ k }: { k: ReadLayerKey }) {
 
 function EligibilityRow({ read }: { read: BrandRead }) {
   const [open, setOpen] = useState(false);
+  const whyRef = useRef<HTMLButtonElement>(null);
   const e = read.eligibility!;
   const ok = e.state === "ok";
   return (
-    <Card className={`p-3.5 ${ok ? "border-good/25 bg-good/[0.04]" : "border-danger/25 bg-danger/[0.04]"}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Eligibility</p>
+    <Card className={`p-4 ${ok ? "!bg-good/[0.07]" : "!bg-danger/[0.05]"}`}>
+      <p className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-ink-faint">Eligibility</p>
       <p className={`mt-1.5 flex items-start gap-2 text-body font-semibold leading-6 ${ok ? "text-good-deep" : "text-danger"}`}>
         {ok
           ? <CheckCircle size={15} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
@@ -258,21 +285,21 @@ function EligibilityRow({ read }: { read: BrandRead }) {
         {e.line.value}
       </p>
       <button
+        ref={whyRef}
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-brand hover:underline"
+        aria-haspopup="dialog"
+        className="mt-1.5 inline-flex items-center gap-1.5 text-meta font-medium text-brand hover:underline"
       >
         <Info size={12} weight="fill" aria-hidden />
-        {open ? "Hide" : "Why this matters, and where the number came from"}
+        Why this matters, and where the number came from
       </button>
-      {open && (
-        <div className="mt-2 rounded-control border border-hairline bg-white p-2.5">
+      <GlassPopover anchor={whyRef} open={open} onClose={() => setOpen(false)} label="Why this matters">
           <p className="text-meta leading-5 text-ink-soft">{e.line.why}</p>
           <ul className="mt-1 divide-y divide-hairline">
             {e.line.evidence.map((x) => <EvidenceRow key={x.id} e={x} />)}
           </ul>
-        </div>
-      )}
+      </GlassPopover>
     </Card>
   );
 }

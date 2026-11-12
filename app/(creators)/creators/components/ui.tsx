@@ -12,22 +12,23 @@ import { X } from "@phosphor-icons/react";
 
 export function Card({ children, className = "", as: As = "div", edge, ...rest }: {
   children: ReactNode; className?: string; as?: "div" | "section" | "article";
-  /** THE DESKTOP SURFACE: a keyline and a 1px contact shadow above
-      768px. Opt-in, because `shadow-card`'s 4px float IS the Figma's
-      phone card and one call site passes its own border, which this
-      must not override. */
+  /** THE DASHBOARD SURFACE: the frosted card, at every width. Opt-in,
+      because `shadow-card`'s 4px float IS the Figma's phone card and one
+      call site passes its own border, which this must not override. */
   edge?: boolean;
 } & React.HTMLAttributes<HTMLElement>) {
   return (
-    <As className={`rounded-card bg-white shadow-card ${edge ? "md:border md:border-hairline md:shadow-edge" : ""} ${className}`} {...rest}>
+    /* `edge` is the dashboard's frosted card (Aurora, 11 Nov), the brands app's `.glass`, on a phone as on a desktop:
+       the brand's dashboard has no white phone card, so neither does this one. */
+    <As className={`${edge ? "glass" : "rounded-card bg-white shadow-card"} ${className}`} {...rest}>
       {children}
     </As>
   );
 }
 
-/** Section heading: 20px semibold on a phone, the way "Stats" and
-    "Deliverables" are set in the file; 17px above 768px, because a 20px
-    head over a 14px body is a phone's heading ratio. */
+/** Section heading: 17px semibold at every width, the brand dashboard's
+    section head (kit.tsx Section), so a heading reads the same in both
+    apps. */
 export function H({ children, className = "", aside, rule }: {
   children: ReactNode; className?: string; aside?: ReactNode;
   /** Closes the header line with a hairline above 768px, the way a
@@ -35,8 +36,9 @@ export function H({ children, className = "", aside, rule }: {
   rule?: boolean;
 }) {
   return (
-    <div className={`flex items-center justify-between gap-3 ${rule ? "md:border-b md:border-hairline md:pb-2.5" : ""} ${className}`}>
-      <h2 className="text-section font-semibold text-ink-90 md:text-head md:tracking-[-0.01em]">{children}</h2>
+    /* The rule is gone on the dashboard's glass (Aurora, 11 Nov): a heading sits straight over its card. */
+    <div className={`flex items-center justify-between gap-3 ${rule ? "md:pb-0.5" : ""} ${className}`}>
+      <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">{children}</h2>
       {aside}
     </div>
   );
@@ -57,13 +59,14 @@ export function Btn({
   dense?: boolean;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const v = {
-    /* The file's only primary: a 48px gradient pill, near-white text. */
-    primary: "g-button text-[#FBF8FE] border border-white/50 disabled:opacity-40",
-    quiet: "bg-lilac text-main hover:bg-main-10 disabled:text-ink-40",
+    /* The one primary: the dashboard's gradient pill (Aurora, 11 Nov), in the chat as on the dashboard; the quiet
+       one is its white pill at every size, as the brand's is. */
+    primary: "btn-pri disabled:opacity-40",
+    quiet: "btn-soft text-ink disabled:text-ink-40",
     ghost: "text-ink-60 hover:bg-black/[0.04] disabled:text-ink-40",
     danger: "bg-danger/[0.08] text-danger hover:bg-danger/[0.12]",
   }[variant];
-  const s = (size === "sm" ? "h-9 px-4 text-meta" : "h-12 px-5 text-body")
+  const s = (size === "sm" ? "h-9 px-4 text-meta" : "h-11 px-5 text-body")
     + (dense ? (size === "sm" ? " md:h-8 md:px-3" : " md:h-10 md:px-4") : "");
   return (
     <button
@@ -77,7 +80,9 @@ export function Btn({
 
 /* ── Chips ───────────────────────────────────────────────────────── */
 
-/** A tinted chip: Main at 10%, orange at 20%, green at 10%. */
+/** A tinted chip: Main at 10%, orange at 20%, green at 10%. A pill, the
+    brand's Pill (ui.tsx), sized by its 11px line rather than a fixed
+    height. */
 export function Chip({ children, tone = "main", className = "", icon }: {
   children: ReactNode; tone?: "main" | "orange" | "green" | "danger" | "ink" | "white"; className?: string; icon?: ReactNode;
 }) {
@@ -91,7 +96,7 @@ export function Chip({ children, tone = "main", className = "", icon }: {
     white: "bg-white/10 text-white border border-white/10 backdrop-blur-[2px]",
   }[tone];
   return (
-    <span className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-chip px-1.5 text-meta font-semibold ${c} ${className}`}>
+    <span className={`inline-flex shrink-0 items-center gap-1 rounded-pill px-2.5 py-1 text-[11px] font-semibold leading-[14px] ${c} ${className}`}>
       {icon}{children}
     </span>
   );
@@ -113,7 +118,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, className = "", 
   dense?: boolean;
 }) {
   return (
-    <div className={`flex w-full ${dense ? "md:w-auto md:shrink-0 md:gap-1 md:rounded-pill md:bg-lilac/70 md:p-1" : ""} ${className}`} role="tablist">
+    <div className={`flex w-full ${dense ? "md:w-auto md:shrink-0 md:gap-1 md:rounded-pill md:bg-white/[0.72] md:p-1 md:shadow-glass md:backdrop-blur-[18px]" : ""} ${className}`} role="tablist">
       {tabs.map((t) => {
         const on = t.key === value;
         return (
@@ -126,13 +131,13 @@ export function Tabs<T extends string>({ tabs, value, onChange, className = "", 
               dense ? "md:flex-none md:rounded-pill md:border-b-0 md:px-3.5 md:py-1.5 md:text-body" : ""
             } ${
               on
-                ? `border-main font-semibold text-main ${dense ? "md:border-transparent md:bg-white md:shadow-card" : ""}`
+                ? `border-main font-semibold text-main ${dense ? "md:border-transparent md:bg-white md:text-ink md:shadow-lift" : ""}`
                 : `border-line font-normal text-ink-50 hover:text-ink-90 ${dense ? "md:border-transparent md:hover:bg-white/60" : ""}`
             }`}
           >
             {t.label}
             {t.count !== undefined && (
-              <span className={`${t.count === 0 ? "hidden md:grid" : "grid"} h-5 min-w-5 place-items-center rounded-pill px-1 text-tiny font-semibold ${on ? "bg-main text-white" : "bg-black/[0.06] text-ink-60"}`}>
+              <span className={`${t.count === 0 ? "hidden md:grid" : "grid"} h-5 min-w-5 place-items-center rounded-pill px-1 text-tiny font-semibold ${on ? (dense ? "bg-blush-deep text-white" : "bg-main text-white") : "bg-black/[0.06] text-ink-60"}`}>
                 {t.count}
               </span>
             )}
@@ -149,14 +154,14 @@ export function Segmented<T extends string>({ options, value, onChange }: {
   options: { key: T; label: string }[]; value: T; onChange: (t: T) => void;
 }) {
   return (
-    <div className="inline-flex rounded-pill bg-lilac p-1">
+    <div className="inline-flex rounded-pill bg-white/[0.72] p-1 shadow-glass backdrop-blur-[18px]">
       {options.map((o) => (
         <button
           key={o.key}
           onClick={() => onChange(o.key)}
           aria-pressed={o.key === value}
           className={`rounded-pill px-4 py-1.5 text-body font-semibold transition md:px-3 md:py-1 md:text-meta ${
-            o.key === value ? "bg-white text-main shadow-card" : "text-ink-50 hover:text-ink-90"
+            o.key === value ? "bg-white text-ink shadow-lift" : "text-ink-50 hover:text-ink-90"
           }`}
         >
           {o.label}
@@ -173,8 +178,8 @@ export function Segmented<T extends string>({ options, value, onChange }: {
    — and Escape closes only the one on top. */
 const openSheets: (() => void)[] = [];
 
-/** The file's bottom sheet: white, 32px top radius, a grabber, rising
-    from the bottom on a phone and centred on a desktop. */
+/** The bottom sheet, the brand's (ui.tsx Sheet): white, 28px radius, a
+    grabber, rising from the bottom on a phone and centred on a desktop. */
 export function Sheet({ open, onClose, title, children, labelledBy, wide }: {
   open: boolean; onClose: () => void; title?: string; children: ReactNode; labelledBy?: string;
   /** 512px on a desktop instead of 448, for a form with a drop zone. */
@@ -204,20 +209,20 @@ export function Sheet({ open, onClose, title, children, labelledBy, wide }: {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center sm:p-4">
-      <div className="absolute inset-0 bg-ink/45 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-[#141229]/30 backdrop-blur-sm" onClick={onClose} aria-hidden />
       <div
         ref={box}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
-        className={`animate-sheet-up relative max-h-[92vh] w-full overflow-y-auto rounded-t-sheet bg-white shadow-pop outline-none sm:rounded-tile ${wide ? "sm:max-w-lg" : "sm:max-w-md"}`}
+        className={`animate-fade-in relative max-h-[92vh] w-full overflow-y-auto rounded-t-[28px] bg-white shadow-pop outline-none sm:rounded-[28px] ${wide ? "sm:max-w-lg" : "sm:max-w-md"}`}
       >
-        <div aria-hidden className="mx-auto mt-3 h-1.5 w-10 rounded-pill bg-black/10 sm:hidden" />
+        <div aria-hidden className="mx-auto mt-3 h-1 w-10 rounded-full bg-neutral-200 sm:hidden" />
         {title && (
           <div className="flex items-center justify-between px-4 pb-2 pt-4">
             <p className="text-section font-semibold text-ink">{title}</p>
-            <button onClick={onClose} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-pill bg-lilac text-main transition hover:bg-main-10">
+            <button onClick={onClose} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-[12px] text-ink-50 transition hover:bg-black/[0.05] hover:text-ink">
               <X size={16} weight="bold" aria-hidden />
             </button>
           </div>
@@ -302,5 +307,20 @@ export function Facts({ items, even, className = "" }: { items: { k: string; v: 
         </div>
       ))}
     </dl>
+  );
+}
+
+/** A step that has been answered, folded to the line that says what was chosen: a frosted pill with a green tick, the
+    brand app's DonePill in this app's tokens, so an answered card folds the same way in both. `lead` sits before the
+    words, a logo or a thumbnail. */
+export function DonePill({ children, lead }: { children: ReactNode; lead?: ReactNode }) {
+  return (
+    <div className="glass flex items-center gap-2.5 !rounded-full py-2 pe-4 ps-2">
+      <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-green text-white">
+        <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 8.5l3 3 6-7" /></svg>
+      </span>
+      {lead}
+      <p className="min-w-0 text-meta font-medium text-ink-60">{children}</p>
+    </div>
   );
 }

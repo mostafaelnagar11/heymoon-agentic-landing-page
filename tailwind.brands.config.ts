@@ -84,6 +84,9 @@ const config: Config = {
         rail: "#FFFFFF",
         track: "#F1EEFB",
         deep: "#141229",
+        /* Aurora (11 Nov): the icon tile and chip ground, and the eyebrow violet. */
+        haze: "#F4F2FA",
+        orchid: "#7A47CE",
         night: "#161722",
         line: { DEFAULT: "#EBEBEB", soft: "#EEEEEE" },
         /* The far end of the landing's keyline gradient. */
@@ -118,6 +121,12 @@ const config: Config = {
         "hm-field": "0 2px 4px rgba(25,18,52,0.04), 0 20px 44px -18px rgba(25,18,52,0.22), 0 56px 90px -48px rgba(25,18,52,0.30)",
         "hm-card": "0 1px 2px rgba(25,18,52,0.04), 0 24px 48px -32px rgba(25,18,52,0.22)",
         "hm-mock": "0 2px 4px rgba(25,18,52,0.05), 0 20px 40px -16px rgba(25,18,52,0.22)",
+        /* Aurora (11 Nov). `glass` is the frosted card: a white inner edge, a violet hairline and a long violet
+           fall-off. `lift` is a white row or pill raised off glass, `pri` the primary pill's glow. */
+        glass: "inset 0 0 0 1px rgba(255,255,255,0.95), 0 0 0 1px rgba(77,47,176,0.06), 0 1px 2px rgba(25,18,52,0.04), 0 30px 60px -40px rgba(77,47,176,0.35)",
+        lift: "0 0 0 1px rgba(77,47,176,0.06), 0 1px 2px rgba(25,18,52,0.05), 0 8px 20px -10px rgba(77,47,176,0.28)",
+        pri: "0 8px 20px -8px rgba(77,47,176,0.6)",
+        soft: "0 0 0 1px rgba(77,47,176,0.1), 0 2px 6px -2px rgba(25,18,52,0.08)",
       },
       borderRadius: {
         chip: "8px",
@@ -125,6 +134,8 @@ const config: Config = {
         inner: "12px",
         card: "16px",
         tile: "24px",
+        glass: "24px",
+        row: "14px",
         sheet: "32px",
         pill: "100px",
       },

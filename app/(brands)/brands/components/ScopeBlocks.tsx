@@ -15,12 +15,14 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight, CheckCircle, Circle, EnvelopeSimple, Package, ShieldCheck, Sparkle, Storefront, Star,
+  ArrowRight, CheckCircle, Circle, EnvelopeSimple, Globe, MagnifyingGlass, Package, ShieldCheck, Sparkle, Storefront, Star,
+  Ticket,
 } from "@phosphor-icons/react";
 import type { BrandRead, Plan, ProductFocus } from "../lib/agent/types";
 import { marketName, PHASE1_BUDGET } from "../lib/agent/tools";
 import { fmtUSD } from "../lib/mock/campaigns";
-import { Btn, Card } from "./ui";
+import { Btn, Card, DonePill } from "./ui";
+import { Emblem } from "../../../_shared/Emblem";
 
 const listOf = (parts: string[]) =>
   parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
@@ -29,9 +31,34 @@ const listOf = (parts: string[]) =>
 /* Markets                                                             */
 /* ------------------------------------------------------------------ */
 
+const FLAGS = new Set(["ae", "bh", "eg", "jo", "kw", "om", "qa", "sa"]);
+const FlagDot = ({ code, size = 20 }: { code: string; size?: number }) => {
+  const c = code.toLowerCase();
+  return FLAGS.has(c) ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={`/flags/${c}.svg`} alt="" className="shrink-0 rounded-full object-cover ring-2 ring-white" style={{ width: size, height: size }} />
+  ) : (
+    <span aria-hidden className="grid shrink-0 place-items-center rounded-full bg-haze text-[8px] font-bold text-ink-soft ring-2 ring-white" style={{ width: size, height: size }}>{code}</span>
+  );
+};
+
+/* The head every picker opens with: what it asks, on a lit tile. */
+function PickHead({ icon: I, title, sub }: { icon: typeof Star; title: string; sub?: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span aria-hidden className="grad-tile grid h-10 w-10 shrink-0 place-items-center rounded-[12px] shadow-pri">
+        <I size={19} weight="fill" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[16px] font-semibold leading-6 text-ink">{title}</p>
+        {sub && <p className="text-meta leading-5 text-ink-soft">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
 export function MarketsPick({ read, chosen, onConfirm }: {
   read: BrandRead;
-  /** What the brand confirmed, once it has. */
   chosen: string[] | null;
   onConfirm: (codes: string[]) => void;
 }) {
@@ -39,23 +66,24 @@ export function MarketsPick({ read, chosen, onConfirm }: {
   const [on, setOn] = useState<Set<string>>(() => new Set(markets.map((m) => m.code)));
   const toggle = (c: string) => setOn((s) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n; });
   const picked = markets.filter((m) => on.has(m.code)).map((m) => m.code);
+  const top = Math.max(...markets.map((m) => m.share), 1);
 
   if (chosen) {
     return (
-      <Card className="flex items-center gap-2 px-3.5 py-2.5">
-        <CheckCircle size={14} weight="fill" className="shrink-0 text-good-deep" aria-hidden />
-        <p className="text-meta text-ink-soft">Runs in {listOf(chosen.map(marketName))}, from {read.url}.</p>
-      </Card>
+      <DonePill lead={<span className="flex -space-x-1.5 rtl:space-x-reverse">{chosen.map((c) => <FlagDot key={c} code={c} size={18} />)}</span>}>
+        Runs in {listOf(chosen.map(marketName))}, from {read.url}.
+      </DonePill>
     );
   }
 
   return (
-    <Card className="p-4">
-      <p className="text-body font-semibold text-ink">Where should this campaign run?</p>
-      <p className="mt-0.5 text-meta leading-5 text-ink-soft">
-        These are the markets {read.url} sells into, by share of its traffic. Keep the ones this store serves for you.
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Markets">
+    <Card className="p-5">
+      <PickHead
+        icon={Globe}
+        title="Where should this campaign run?"
+        sub={`These are the markets ${read.url} sells into, by share of its traffic. Keep the ones this store serves for you.`}
+      />
+      <div className="mt-4 grid gap-2 sm:grid-cols-2" role="group" aria-label="Markets">
         {markets.map((m) => {
           const sel = on.has(m.code);
           return (
@@ -64,29 +92,39 @@ export function MarketsPick({ read, chosen, onConfirm }: {
               type="button"
               aria-pressed={sel}
               onClick={() => toggle(m.code)}
-              className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-meta font-medium transition ${
-                sel ? "border-brand/40 bg-brand/[0.06] text-ink" : "border-hairline bg-white text-ink-soft hover:bg-wash"
+              className={`flex items-center gap-3 rounded-[16px] px-3.5 py-3 text-start transition ${
+                sel ? "bg-white shadow-lift ring-1 ring-brand/25" : "bg-haze/60 opacity-70 hover:opacity-100"
               }`}
             >
-              {sel ? <CheckCircle size={13} weight="fill" className="text-brand" aria-hidden /> : <Circle size={13} className="text-ink-faint" aria-hidden />}
-              {m.name}
-              <span className="tabular-nums text-ink-faint">{m.share}%</span>
+              <FlagDot code={m.code} size={26} />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="truncate text-body font-semibold text-ink">{m.name}</span>
+                  <span className="num shrink-0 text-meta font-semibold text-ink-soft">{m.share}%</span>
+                </span>
+                <span className="mt-1.5 block h-1 rounded-pill bg-track">
+                  <span className={`block h-full rounded-pill ${sel ? "bg-[linear-gradient(90deg,#6848D1,#A65FED)]" : "bg-ink/20"}`} style={{ width: `${(m.share / top) * 100}%` }} />
+                </span>
+              </span>
+              <span aria-hidden className={`grid h-6 w-6 shrink-0 place-items-center rounded-full transition ${sel ? "grad-tile" : "bg-white ring-1 ring-ink/10"}`}>
+                {sel && <CheckCircle size={14} weight="fill" />}
+              </span>
             </button>
           );
         })}
       </div>
       {/* The sephora.com vs sephora.me case: the same brand, a different store per region, and not always the same
           owner. HeyMoon reads the link it was given, so the way to the right store is to give it that link. */}
-      <p className="mt-3 flex items-start gap-2 rounded-control bg-wash px-2.5 py-2 text-[11px] leading-4 text-ink-soft">
-        <Storefront size={12} weight="fill" className="mt-0.5 shrink-0 text-ink-faint" aria-hidden />
+      <p className="mt-3 flex items-start gap-2.5 rounded-[14px] bg-haze/70 px-3.5 py-3 text-meta leading-5 text-ink-soft">
+        <Storefront size={14} weight="fill" className="mt-0.5 shrink-0 text-brand" aria-hidden />
         <span>
           Selling a country from a different site, like sephora.me rather than sephora.com? Paste that store&apos;s link
           in the message box and I&apos;ll read it instead.
         </span>
       </p>
-      <div className="mt-3">
-        <Btn size="sm" disabled={!picked.length} onClick={() => onConfirm(picked)}>
-          {/* Two words: the pills above already say where (Mostafa, 20 Oct: "only Run it or confirm"). */}
+      <div className="mt-4">
+        <Btn disabled={!picked.length} onClick={() => onConfirm(picked)}>
+          {/* Two words: the tiles above already say where (Mostafa, 20 Oct: "only Run it or confirm"). */}
           {picked.length ? "Run it" : "Pick a market"}
         </Btn>
       </div>
@@ -94,9 +132,9 @@ export function MarketsPick({ read, chosen, onConfirm }: {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Products                                                            */
-/* ------------------------------------------------------------------ */
+/* ══════════════════════════════════════════════════════════════════
+   What it pushes
+   ══════════════════════════════════════════════════════════════════ */
 
 export function focusText(f: ProductFocus | undefined, bestsellers: string[]): string {
   if (!f || f.kind === "bestsellers") return bestsellers.length ? `Your bestsellers: ${listOf(bestsellers)}` : "Your bestsellers";
@@ -117,11 +155,21 @@ export function ProductsPick({ read, chosen, onConfirm }: {
   const toggle = (n: string) => setPicked((s) => { const x = new Set(s); if (x.has(n)) x.delete(n); else x.add(n); return x; });
 
   if (chosen) {
+    const thumbs = (chosen.kind === "specific" ? all.filter((p) => chosen.products.includes(p.name)) : chosen.kind === "bestsellers" ? all.slice(0, 3) : [])
+      .filter((p) => p.img).slice(0, 3);
     return (
-      <Card className="flex items-center gap-2 px-3.5 py-2.5">
-        <CheckCircle size={14} weight="fill" className="shrink-0 text-good-deep" aria-hidden />
-        <p className="text-meta text-ink-soft">Pushes {focusText(chosen, top).replace(/^Your/, "your")}.</p>
-      </Card>
+      <DonePill
+        lead={thumbs.length ? (
+          <span className="flex -space-x-1.5 rtl:space-x-reverse">
+            {thumbs.map((p) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={p.name} src={p.img} alt="" className="h-[22px] w-[22px] rounded-[7px] object-cover ring-2 ring-white" />
+            ))}
+          </span>
+        ) : undefined}
+      >
+        Pushes {focusText(chosen, top).replace(/^Your/, "your")}.
+      </DonePill>
     );
   }
 
@@ -133,143 +181,177 @@ export function ProductsPick({ read, chosen, onConfirm }: {
     else onConfirm({ kind, products: all.map((p) => p.name).filter((n) => picked.has(n)) });
   };
 
-  const opt = (k: ProductFocus["kind"], Icon: typeof Star, title: string, sub: string) => (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={kind === k}
-      onClick={() => setKind(k)}
-      className={`flex w-full items-start gap-2.5 rounded-control border px-3 py-2.5 text-start transition ${
-        kind === k ? "border-brand/40 bg-brand/[0.05]" : "border-hairline bg-white hover:bg-wash"
-      }`}
-    >
-      <Icon size={15} weight={kind === k ? "fill" : "regular"} className={`mt-0.5 shrink-0 ${kind === k ? "text-brand" : "text-ink-faint"}`} aria-hidden />
-      <span className="min-w-0">
-        <span className="block text-meta font-semibold text-ink">{title}</span>
-        <span className="block text-[11px] leading-4 text-ink-soft">{sub}</span>
-      </span>
-    </button>
-  );
+  const opt = (k: ProductFocus["kind"], Icon: typeof Star, title: string, sub: string, extra?: React.ReactNode) => {
+    const on = kind === k;
+    return (
+      <button
+        type="button"
+        role="radio"
+        aria-checked={on}
+        onClick={() => setKind(k)}
+        className={`flex w-full flex-col rounded-[18px] p-4 text-start transition ${
+          on ? "bg-white shadow-lift ring-2 ring-brand/30" : "bg-haze/60 hover:bg-haze"
+        }`}
+      >
+        <span className="flex items-center gap-2.5">
+          <span aria-hidden className={`grid h-8 w-8 shrink-0 place-items-center rounded-[10px] ${on ? "grad-tile" : "bg-white text-ink-soft"}`}>
+            <Icon size={16} weight="fill" />
+          </span>
+          <span className="text-body font-semibold text-ink">{title}</span>
+        </span>
+        <span className="mt-2 block text-meta leading-5 text-ink-soft">{sub}</span>
+        {extra}
+      </button>
+    );
+  };
 
   return (
-    <Card className="p-4">
-      <p className="text-body font-semibold text-ink">What should the campaign push?</p>
-      <p className="mt-0.5 text-meta leading-5 text-ink-soft">The creators and the brief are built around it.</p>
-      <div className="mt-3 space-y-2" role="radiogroup" aria-label="Product focus">
-        {opt("bestsellers", Star, "Your bestsellers", top.length ? listOf(top) : "What sells most on your store today")}
+    <Card className="p-5">
+      <PickHead icon={Package} title="What should the campaign push?" sub="The creators and the brief are built around it." />
+      <div className="mt-4 grid gap-2.5 sm:grid-cols-3" role="radiogroup" aria-label="Product focus">
+        {opt("bestsellers", Star, "Your bestsellers", top.length ? listOf(top) : "What sells most on your store today",
+          all.some((p) => p.img) ? (
+            <span className="mt-3 flex gap-1.5" aria-hidden>
+              {all.slice(0, 3).filter((p) => p.img).map((p) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={p.name} src={p.img} alt="" className="h-11 w-11 rounded-[10px] object-cover" />
+              ))}
+            </span>
+          ) : undefined)}
         {opt("launch", Sparkle, "A new launch", "A product that is new or about to drop")}
-        {kind === "launch" && (
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Name the product, or paste its link"
-            aria-label="The new launch"
-            className="w-full rounded-control border border-black/[0.1] bg-white px-3 py-2.5 text-meta text-ink outline-none placeholder:text-ink-faint focus:border-ink/25"
-          />
-        )}
         {opt("specific", Package, "Specific products", "Pick them from your catalogue")}
-        {kind === "specific" && (
-          <div className="flex flex-wrap gap-2 ps-1">
-            {all.map((p) => {
-              const sel = picked.has(p.name);
-              return (
-                <button
-                  key={p.name}
-                  type="button"
-                  aria-pressed={sel}
-                  onClick={() => toggle(p.name)}
-                  className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-[11px] font-medium transition ${
-                    sel ? "border-brand/40 bg-brand/[0.06] text-ink" : "border-hairline bg-white text-ink-soft hover:bg-wash"
-                  }`}
-                >
-                  {sel ? <CheckCircle size={12} weight="fill" className="text-brand" aria-hidden /> : <Circle size={12} className="text-ink-faint" aria-hidden />}
-                  {p.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
-      <div className="mt-3">
-        <Btn size="sm" disabled={!ready} onClick={confirm}>Use this</Btn>
+      {kind === "launch" && (
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Name the product, or paste its link"
+          aria-label="The new launch"
+          className="mt-3 h-11 w-full rounded-[14px] border border-transparent bg-haze/70 px-3.5 text-body text-ink outline-none placeholder:text-ink-faint focus:border-brand/30 focus:bg-white"
+        />
+      )}
+      {kind === "specific" && (
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {all.map((p) => {
+            const sel = picked.has(p.name);
+            return (
+              <button
+                key={p.name}
+                type="button"
+                aria-pressed={sel}
+                onClick={() => toggle(p.name)}
+                className={`flex items-center gap-2.5 rounded-[14px] p-2 text-start transition ${sel ? "bg-white shadow-lift ring-1 ring-brand/30" : "bg-haze/60 hover:bg-haze"}`}
+              >
+                {p.img
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={p.img} alt="" className="h-9 w-9 shrink-0 rounded-[9px] object-cover" />
+                  : <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-[9px] bg-white text-ink-faint"><Package size={14} /></span>}
+                <span className="min-w-0 flex-1 truncate text-meta font-semibold text-ink">{p.name}</span>
+                {sel ? <CheckCircle size={16} weight="fill" className="shrink-0 text-brand" aria-hidden /> : <Circle size={16} className="shrink-0 text-ink-faint" aria-hidden />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="mt-4">
+        <Btn disabled={!ready} onClick={confirm}>Use this</Btn>
       </div>
     </Card>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* What the $1,000 includes                                            */
-/* ------------------------------------------------------------------ */
+/* ══════════════════════════════════════════════════════════════════
+   What the $1,000 buys
+   ══════════════════════════════════════════════════════════════════ */
 
 export function IncludesBlock({ plan, salesFirst = false }: {
   plan: Plan;
-  /** E-commerce managers and owners: the guarantee leads (brand team, 15 Oct). */
   salesFirst?: boolean;
 }) {
-  const crew = plan.creators.value.length;
   const budget = plan.budget.value || PHASE1_BUDGET;
   const target = plan.price.revenueTarget.value;
-  const row = (title: string, body: string) => (
-    <li className="flex gap-2.5">
-      <CheckCircle size={14} weight="fill" className="mt-0.5 shrink-0 text-good" aria-hidden />
-      <span className="min-w-0 text-meta leading-5 text-ink-soft">
-        <span className="font-semibold text-ink">{title}</span> {body}
+  const tile = (Icon: typeof Star, title: string, body: string, lit = false) => (
+    <li key={title} className={`rounded-[16px] p-3.5 ${lit ? "col-span-2 grad-ws sm:col-span-1 ring-1 ring-inset ring-brand/[0.1]" : "bg-haze/60"}`}>
+      <span aria-hidden className={`grid h-8 w-8 place-items-center rounded-[10px] ${lit ? "grad-tile" : "bg-white text-brand shadow-edge"}`}>
+        <Icon size={15} weight="fill" />
       </span>
+      <p className="mt-2.5 text-meta font-semibold text-ink">{title}</p>
+      <p className="mt-0.5 text-[11.5px] leading-4 text-ink-soft">{body}</p>
     </li>
   );
-  const qa = (q: string, a: string) => (
-    <div className="border-t border-hairline pt-2.5">
-      <p className="text-meta font-semibold text-ink">{q}</p>
-      <p className="mt-0.5 text-meta leading-5 text-ink-soft">{a}</p>
-    </div>
-  );
+  const guarantee = tile(ShieldCheck, "The guarantee", `${fmtUSD(target)} in sales, or the missed share back.`, true);
   return (
-    <Card className="p-4">
-      <p className="flex items-center gap-2 text-body font-semibold text-ink">
-        <ShieldCheck size={16} weight="fill" className="text-brand" aria-hidden />
-        What your {fmtUSD(budget)} includes
-      </p>
-      <ul className="mt-3 space-y-2">
-        {/* One line each (19 Oct: "no one is reading this much"). */}
-        {salesFirst && row("The guarantee.", `${fmtUSD(target)} in sales, or the missed share back.`)}
-        {row("Your creators.", `${crew} creator${crew === 1 ? "" : "s"}' fees, ${fmtUSD(plan.price.crewCost.value)} in all.`)}
-        {row("The work.", "Matching, vetting and the brief.")}
-        {row("Tracking.", "A code per creator, so every order counts.")}
-        {!salesFirst && row("The guarantee.", `${fmtUSD(target)} in sales, or the missed share back.`)}
+    <Card className="p-5">
+      <PickHead icon={ShieldCheck} title={`What your ${fmtUSD(budget)} includes`} />
+      {/* One line each (19 Oct: "no one is reading this much"). No creator fees: what creators are paid is never
+          shown to a brand, as a total or otherwise (12 Nov). On a phone the guarantee takes the full row. */}
+      <ul className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        {salesFirst && guarantee}
+        {tile(MagnifyingGlass, "The work", "Matching, vetting and the brief.")}
+        {tile(Ticket, "Tracking", "A code per creator, so every order counts.")}
+        {!salesFirst && guarantee}
       </ul>
-      <div className="mt-3 space-y-2.5">
-        {qa("Any other fees?", `Only VAT, ${fmtUSD(plan.price.vat.value)}.`)}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-[14px] bg-white/80 px-4 py-3 ring-1 ring-brand/[0.07]">
+        <p className="text-meta font-semibold text-ink">Any other fees?</p>
+        <p className="num text-meta text-ink-soft">Only VAT, {fmtUSD(plan.price.vat.value)}.</p>
       </div>
     </Card>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* The plan, emailed                                                   */
-/* ------------------------------------------------------------------ */
+/* ══════════════════════════════════════════════════════════════════
+   The plan, by email
+   ══════════════════════════════════════════════════════════════════
 
-/** What the email says, shown in the thread (brand flows, P0 "leaves" and P1). The prototype sends nothing, so the
-    card is the email; its button is the way back that the return visit starts from. */
+   The card is the email, drawn as one: who it is from, who it went to, the subject, the plan in it, and its button,
+   which is the way back that the return visit starts from. */
 export function EmailSentBlock({ to, plan }: { to: string; plan: Plan }) {
   const crew = plan.creators.value.length;
+  const budget = plan.budget.value || PHASE1_BUDGET;
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-hairline bg-wash px-4 py-2.5 text-meta text-ink-soft">
+      <div className="flex items-center gap-2 border-b border-brand/[0.07] bg-haze/60 px-4 py-2.5">
         <EnvelopeSimple size={14} weight="fill" className="shrink-0 text-brand" aria-hidden />
-        <span className="min-w-0 truncate">To {to}</span>
+        <span className="text-meta font-semibold text-ink-soft">Inbox</span>
+        <span className="ms-auto rounded-pill bg-white px-2 py-0.5 text-[11px] font-semibold text-good-deep shadow-edge">Sent</span>
       </div>
-      <div className="space-y-2 p-4">
-        <p className="text-body font-semibold text-ink">Your HeyMoon plan for {plan.brandName}</p>
-        <p className="text-meta leading-5 text-ink-soft">
-          Phase 1: {fmtUSD(plan.budget.value || PHASE1_BUDGET)}, with {fmtUSD(plan.price.revenueTarget.value)} in sales
+      <div className="p-5">
+        <div className="flex items-center gap-3">
+          <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,#6848D1,#C2418B)] text-white">
+            <Emblem size={17} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-body font-semibold text-ink">HeyMoon.AI</p>
+            <p className="truncate text-meta text-ink-faint" dir="ltr">to {to}</p>
+          </div>
+        </div>
+        <p className="mt-4 text-[17px] font-semibold leading-6 text-ink">Your HeyMoon plan for {plan.brandName}</p>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { k: "Phase 1", v: fmtUSD(budget) },
+            { k: "Guaranteed", v: fmtUSD(plan.price.revenueTarget.value) },
+            { k: "Creators", v: String(crew) },
+          ].map((f) => (
+            <div key={f.k} className="rounded-[14px] bg-haze/60 px-3 py-2.5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">{f.k}</p>
+              <p className="num mt-0.5 text-[17px] font-bold text-ink">{f.v}</p>
+            </div>
+          ))}
+          <div className="rounded-[14px] bg-haze/60 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">Markets</p>
+            <span className="mt-1.5 flex -space-x-1.5 rtl:space-x-reverse">{plan.markets.value.map((c) => <FlagDot key={c} code={c} size={20} />)}</span>
+          </div>
+        </div>
+        <p className="mt-3 text-meta leading-5 text-ink-soft">
+          Phase 1: {fmtUSD(budget)}, with {fmtUSD(plan.price.revenueTarget.value)} in sales
           guaranteed. {crew} creator{crew === 1 ? "" : "s"} in {listOf(plan.markets.value.map(marketName))}.
         </p>
         <Link
           href="/brands/c?back=1"
-          className="inline-flex items-center gap-1.5 text-meta font-semibold text-brand hover:underline"
+          className="btn-pri mt-4 inline-flex h-10 items-center gap-1.5 rounded-pill px-4 text-meta font-semibold"
         >
           Pick up where you left off
-          <ArrowRight size={12} weight="bold" aria-hidden className="rtl:rotate-180" />
+          <ArrowRight size={13} weight="bold" aria-hidden className="rtl:rotate-180" />
         </Link>
       </div>
     </Card>

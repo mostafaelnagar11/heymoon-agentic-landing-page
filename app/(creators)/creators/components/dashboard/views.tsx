@@ -11,9 +11,9 @@
  * Profile has a file of its own (components/profile), with the popups
  * each of its rows opens. */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  ArrowCounterClockwise, Bank, CaretRight, CheckCircle, Info, Lock, UploadSimple, WarningCircle,
+  ArrowClockwise, ArrowCounterClockwise, Bank, CaretDown, CaretRight, CheckCircle, Lock, Sliders, UploadSimple, WarningCircle,
 } from "@phosphor-icons/react";
 import { Btn, Card, Chip, Facts, H, Segmented, Sheet } from "../ui";
 import { CampaignRow, MatchChip, ProductTile, RowHeads, Soc, paceOf } from "../figma";
@@ -37,7 +37,7 @@ import {
   cancelAccept, confirmAccept, decideOffer, markDecisionSeen, openCampaign, pushToast, putAccept, redoActivity, selectOffer,
   setAccount, setAutonomy, setOfferState, undoActivity, useAccount, useActiveProfile, useActivity, useAutonomy,
   useConnected, useDecisions, useOffers, useSeenDecisions, useSelectedOfferId, useStore, viewingCampaign,
-  type AutonomyLevel,
+  type AutonomyLevel, type AutonomyRule,
 } from "../../lib/store";
 
 /* ══════════════════════════════════════════════════════════════════
@@ -101,19 +101,23 @@ export function DashboardView() {
   const upOffer = upSlot ? offerOf(upSlot.offerId) : undefined;
 
   return (
-    <div className="flex flex-col gap-7 md:gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-4 md:px-0">
-        <h2 className="text-title font-semibold tracking-[-0.02em] text-ink">{greet}{first ? `, ${first}` : ""}</h2>
-        <p className="text-body text-ink-50">{count ? `${count} ${count === 1 ? "thing" : "things"} to do` : "You're all caught up"}</p>
+    <div className="flex flex-col gap-6">
+      <div className="md:pt-1">
+        <h2 className="text-title font-semibold tracking-[-0.025em] text-ink md:text-[30px] md:leading-tight">{greet}{first ? `, ${first}` : ""}</h2>
+        <p className="mt-1 text-body text-ink-50 md:text-[15px] md:text-ink-60">{count ? `${count} ${count === 1 ? "thing" : "things"} to do` : "You're all caught up"}</p>
       </div>
 
+      {/* To do and the money side by side where the column has room for both (sized by the column, since Ask Moon
+          can take 400px of it): the list is still first and widest, the money is the thing a creator checks next
+          (Aurora, 11 Nov). Narrower, they stack in the review's order. */}
+      <div className="flex flex-wrap gap-x-5 gap-y-6">
       {/* ── To do ─────────────────────────────────────────────────── */}
-      <section className="px-4 md:px-0">
+      <section className="min-w-0 flex-[1.55_1_380px]">
         <H rule>To do</H>
         <Card edge className="mt-3 overflow-hidden md:mt-4">
           {count === 0 ? (
             <div className="flex items-start gap-3 px-4 py-4">
-              <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-inner bg-green-10 text-green"><CheckCircle size={20} weight="fill" /></span>
+              <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-[11px] bg-green-10 text-green"><CheckCircle size={20} weight="fill" /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-body font-semibold text-ink">Nothing to do right now</span>
                 <span className="mt-0.5 block text-meta text-ink-60">
@@ -132,7 +136,7 @@ export function DashboardView() {
                 const late = a.state === "overdue", back = a.state === "rejected";
                 return (
                   <TaskRow key={a.id} onClick={() => setUploading(a.id)}
-                    icon={<span className={`grid h-10 w-10 place-items-center rounded-inner ${late || back ? "bg-danger/10 text-danger" : "bg-lilac text-main"}`}>
+                    icon={<span className={`grid h-10 w-10 place-items-center rounded-[11px] ${late || back ? "bg-danger/10 text-danger" : "bg-haze text-main"}`}>
                       {back ? <ArrowCounterClockwise size={18} weight="bold" /> : late ? <WarningCircle size={20} weight="fill" /> : <UploadSimple size={18} weight="bold" />}
                     </span>}
                     title={back ? `Submit your ${what} again` : `Upload your ${what}`}
@@ -143,7 +147,7 @@ export function DashboardView() {
               })}
               {setup.map((t) => (
                 <TaskRow key={t.key} onClick={t.open}
-                  icon={t.platform ? <Soc platform={t.platform} size={40} /> : <span className="grid h-10 w-10 place-items-center rounded-inner bg-amber-soft text-amber"><Bank size={20} weight="fill" /></span>}
+                  icon={t.platform ? <Soc platform={t.platform} size={40} /> : <span className="grid h-10 w-10 place-items-center rounded-[11px] bg-amber-soft text-amber"><Bank size={20} weight="fill" /></span>}
                   title={t.title} line={t.line} action={t.action} quiet />
               ))}
             </ul>
@@ -151,9 +155,34 @@ export function DashboardView() {
         </Card>
       </section>
 
+      {/* ── Your money ────────────────────────────────────────────── */}
+      <section className="min-w-0 flex-[1_1_300px]">
+        <H rule aside={<button onClick={() => go("earnings")} className="text-body font-medium text-main">Earnings</button>}>Your money</H>
+        {/* What Friday's run pays, lit; what is already paid and the orders behind it beside it. The brand
+            dashboard's tiles (kit.tsx Tile): the hero on the promo gradient, the rest frosted, every figure 30px. */}
+        <div className="mt-3 grid grid-cols-2 gap-3 md:mt-4">
+          <button type="button" onClick={() => go("earnings")}
+            className="grad-promo col-span-2 min-w-0 rounded-glass p-5 text-start">
+            <span className="block text-[13px] font-medium text-white/75">Held for Friday</span>
+            <span className="num mt-2.5 block truncate text-[30px] font-bold leading-none tracking-[-0.03em] text-white">{money(held)}</span>
+            <span className="mt-1.5 block truncate text-meta text-white/75">Released in Friday&apos;s run</span>
+          </button>
+          {[
+            { k: "Paid to you", v: money(paid) },
+            { k: "Orders on your codes", v: String(orders) },
+          ].map((f) => (
+            <div key={f.k} className="glass min-w-0 p-5">
+              <p className="truncate text-[13px] font-medium text-ink-60">{f.k}</p>
+              <p className="num mt-2.5 truncate text-[30px] font-bold leading-none tracking-[-0.03em] text-ink">{f.v}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+      </div>
+
       {/* ── Active campaigns ──────────────────────────────────────── */}
       {active.length > 0 && (
-        <section className="px-4 md:px-0">
+        <section>
           <H rule aside={<button onClick={() => go("campaigns")} className="text-body font-medium text-main">All campaigns</button>}>Active campaigns</H>
           <div className="mt-3 grid gap-3 md:mt-4 md:grid-cols-[repeat(auto-fill,minmax(400px,1fr))] md:gap-4">
             {active.map((o) => <CampaignRow key={o.id} offer={o} onOpen={openCard(o)} trailing={<Chip tone="green">Active</Chip>} />)}
@@ -161,33 +190,17 @@ export function DashboardView() {
         </section>
       )}
 
-      {/* ── Your money, in one row ────────────────────────────────── */}
-      <section className="px-4 md:px-0">
-        <H rule aside={<button onClick={() => go("earnings")} className="text-body font-medium text-main">Earnings</button>}>Your money</H>
-        <Card edge className="mt-3 grid grid-cols-3 divide-x divide-hairline md:mt-4 rtl:divide-x-reverse">
-          {[
-            { k: "Paid to you", v: money(paid) },
-            { k: "Held for Friday", v: money(held) },
-            { k: "Orders on your codes", v: String(orders) },
-          ].map((f) => (
-            <div key={f.k} className="min-w-0 px-3 py-3 md:px-5 md:py-4">
-              <p className="text-meta leading-4 text-ink-50">{f.k}</p>
-              <p className="num mt-1 text-section font-semibold text-ink">{f.v}</p>
-            </div>
-          ))}
-        </Card>
-      </section>
 
       {/* ── Pre-qualified, as rows ────────────────────────────────── */}
       {featured.length > 0 && (
-        <section className="px-4 md:px-0">
+        <section>
           <H rule aside={<span className="text-meta text-ink-50">No brand review</span>}>You&apos;re Pre-qualified</H>
           <Card edge className="mt-3 overflow-hidden md:mt-4">
             <ul className="divide-y divide-hairline">
               {featured.map((o) => (
                 <li key={o.id}>
-                  <button type="button" onClick={openCard(o)} className="flex w-full items-center gap-3 px-4 py-3 text-start transition hover:bg-lilac/30">
-                    <span className="h-12 w-12 shrink-0 overflow-hidden rounded-inner bg-lilac">
+                  <button type="button" onClick={openCard(o)} className="flex w-full items-center gap-3.5 px-4 py-3.5 text-start transition hover:bg-white/60 md:px-5">
+                    <span className="h-12 w-12 shrink-0 overflow-hidden rounded-[14px] bg-lilac shadow-edge">
                       {o.image
                         // eslint-disable-next-line @next/next/no-img-element
                         ? <img src={o.image} alt="" className="h-full w-full object-cover" />
@@ -198,7 +211,7 @@ export function DashboardView() {
                       <span className="block truncate text-meta text-ink-50">{o.brand} · {paceOf(o).big}</span>
                     </span>
                     <span className="shrink-0 text-end">
-                      <span className="num block text-row font-semibold text-main">{o.commissionPct}%</span>
+                      <span className="num grad-text block text-[18px] font-bold">{o.commissionPct}%</span>
                       <span className="block text-tiny text-ink-50">of every order</span>
                     </span>
                     <CaretRight size={14} aria-hidden className="shrink-0 text-ink-40 rtl:rotate-180" />
@@ -230,7 +243,7 @@ function TaskRow({ icon, title, line, action, short, tone, quiet, onClick }: {
 }) {
   return (
     <li>
-      <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-start transition hover:bg-lilac/30">
+      <button type="button" onClick={onClick} className="flex w-full items-center gap-3.5 px-4 py-3.5 text-start transition hover:bg-white/60 md:px-5">
         <span className="shrink-0">{icon}</span>
         <span className="min-w-0 flex-1">
           {/* Two lines on a phone rather than "Upload your Re…": the
@@ -238,7 +251,7 @@ function TaskRow({ icon, title, line, action, short, tone, quiet, onClick }: {
           <span className="line-clamp-2 text-body font-semibold leading-5 text-ink">{title}</span>
           <span className={`mt-0.5 line-clamp-2 text-meta leading-4 ${tone === "danger" ? "text-danger" : "text-ink-50"}`}>{line}</span>
         </span>
-        <span className={`inline-flex h-8 shrink-0 items-center rounded-pill px-3.5 text-meta font-semibold ${quiet ? "bg-lilac text-main" : "g-button border border-white/50 text-[#FBF8FE]"}`}>
+        <span className={`inline-flex h-8 shrink-0 items-center rounded-pill px-3.5 text-meta font-semibold ${quiet ? "btn-soft" : "btn-pri"}`}>
           {short ? <><span className="sm:hidden">{short}</span><span className="hidden sm:inline">{action}</span></> : action}
         </span>
       </button>
@@ -288,7 +301,7 @@ export function CampaignsView() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h2 className="hidden px-4 md:block md:px-0 md:text-head md:font-semibold md:tracking-[-0.01em] md:text-ink-90">Your campaigns · {offers.length}</h2>
+      <h2 className="hidden md:block md:text-head md:font-semibold md:tracking-[-0.01em] md:text-ink-90">Your campaigns · {offers.length}</h2>
 
       {active.length > 0 && (
         <CampaignSection title="Active" count={active.length} line="The work you have taken on.">
@@ -335,7 +348,7 @@ export function CampaignsView() {
         </CampaignSection>
       )}
 
-      {offers.length === 0 && <Card edge className="mx-4 p-6 text-center md:mx-0 md:p-8"><p className="text-body text-ink-60">No campaigns yet.</p></Card>}
+      {offers.length === 0 && <Card edge className="p-6 text-center md:p-8"><p className="text-body text-ink-60">No campaigns yet.</p></Card>}
     </div>
   );
 }
@@ -344,10 +357,10 @@ function CampaignSection({ title, count, line, aside, children }: {
   title: string; count: number; line: string; aside?: React.ReactNode; children: React.ReactNode;
 }) {
   return (
-    <section className="px-4 md:px-0">
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 md:border-b md:border-hairline md:pb-2.5">
+    <section>
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
-          <h3 className="flex items-center gap-2 text-section font-semibold text-ink md:text-head md:tracking-[-0.01em]">
+          <h3 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.01em] text-ink">
             {title}
             <span className="num grid h-5 min-w-5 place-items-center rounded-pill bg-black/[0.06] px-1.5 text-tiny font-semibold text-ink-60">{count}</span>
           </h3>
@@ -379,7 +392,7 @@ function CampaignList({ items, onOpen, trailing }: {
         </div>
       </div>
       <div className="hidden lg:block">
-        <div className="overflow-hidden rounded-card border border-hairline bg-white shadow-edge">
+        <div className="glass overflow-hidden">
           <div className="overflow-x-auto">
             <RowHeads last="State" />
             <div className="divide-y divide-hairline">
@@ -449,7 +462,7 @@ export function CampaignView() {
   const toTop = () => root.current?.closest("main")?.scrollTo({ top: 0, behavior: "smooth" });
 
   return (
-    <div ref={root} className="-mx-4 flex flex-col gap-4 sm:mx-0">
+    <div ref={root} className="flex flex-col gap-4">
       {/* No back circle: the topbar already has one, and the page
           title says where you are. */}
       <CampaignDetail key={offer.id} offer={offer} embedded
@@ -517,40 +530,126 @@ export function CampaignView() {
    Activity
    ══════════════════════════════════════════════════════════════════ */
 
+/* A list of cards, one under the other (12 Nov: "activity should be a list of cards not a grid"), carrying what the
+   brand's log carries: who did it, what, when, and the undo on the card; why, what changed and which permission one
+   press away under "Why". Above it, the brand's two figures and the line of what no agent may ever do. */
+const ago = (ts: number, now: number) => {
+  const m = Math.round((now - ts) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
+};
+const LEVEL_WORD: Record<AutonomyLevel, string> = { alone: "On its own", ask: "Asks first", never: "Never" };
+
+function Why({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-main hover:underline">
+        Why
+        <CaretDown size={10} weight="bold" aria-hidden className={`transition ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="mt-2 text-meta leading-5 text-ink-60">{children}</div>}
+    </div>
+  );
+}
+
 export function ActivityView() {
+  /* Read once after mount, never during render, so the server and the browser never disagree about a time. */
+  const [now, setNow] = useState(0);
+  useEffect(() => { setNow(Date.now()); }, []);
+  const go = useGo();
   const activity = useActivity();
   const autonomy = useAutonomy();
-  const label = (k: string) => autonomy.find((r) => r.key === k)?.label ?? k;
-  /* Each entry is a paragraph, so these go two across rather than one
-     wide: a 1200px line of body copy is unreadable however much room
-     there is for it. */
+  const ruleOf = (k: string) => autonomy.find((r) => r.key === k);
+  /* Newest first: the log is the one list where the order is the information. */
+  const rows = [...activity].sort((a, b) => b.at - a.at);
+  const undoneCount = rows.filter((a) => a.undone).length;
+  const reversible = rows.filter((a) => a.undoable && !a.undone).length;
+  const agents = new Set(rows.map((a) => a.agent).filter(Boolean)).size;
+  const locked = autonomy.filter((r) => r.locked);
+
   return (
-    <div className="flex flex-col gap-3 xl:grid xl:grid-cols-2 xl:items-start">
-      <div className="flex items-start gap-3 rounded-inner bg-lilac px-4 py-3 xl:col-span-2">
-        <Info size={16} weight="fill" aria-hidden className="mt-0.5 shrink-0 text-main" />
-        <p className="dash-measure text-body leading-5 text-ink-60">Everything an agent did without asking, what let it, and the way back. None of it posted anything, joined anything or changed what a campaign pays.</p>
+    <div className="flex max-w-[880px] flex-col gap-6">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grad-promo min-w-0 rounded-glass p-5">
+          <p className="text-[13px] font-medium text-white/75">Done on its own</p>
+          <p className="num mt-2.5 text-[30px] font-bold leading-none tracking-[-0.03em] text-white">{rows.length}</p>
+          <p className="mt-1.5 truncate text-meta text-white/75">{agents ? `by ${agents} agents` : "logged here"}</p>
+        </div>
+        <div className="glass min-w-0 p-5">
+          <p className="text-[13px] font-medium text-ink-60">Undone by you</p>
+          <p className="num mt-2.5 text-[30px] font-bold leading-none tracking-[-0.03em] text-ink">{undoneCount}</p>
+          <p className="mt-1.5 truncate text-meta text-ink-60">{reversible} can be undone</p>
+        </div>
       </div>
-      {activity.map((a) => (
-        <Card key={a.id} className={`overflow-hidden ${a.undone ? "opacity-60" : ""}`}>
-          <div className="flex flex-wrap items-start gap-x-3 gap-y-1 border-b border-line px-4 py-3">
-            <p className="min-w-0 flex-1 text-body font-semibold text-ink">{a.title}</p>
-            <Chip tone="ink">{a.agent}</Chip>
+
+      {/* What no agent may do, above the log rather than in a settings screen nobody opens. */}
+      <div className="glass flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3">
+        <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.09em] text-ink-50">
+          <Lock size={12} weight="fill" className="text-main" aria-hidden />
+          Never
+        </span>
+        <span className="text-meta text-ink-60">{locked.map((r) => r.label.toLowerCase()).join(" · ")}</span>
+      </div>
+
+      <section>
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">Log</h2>
+          <button onClick={() => go("autonomy")} className="btn-soft ms-auto inline-flex h-8 items-center gap-1.5 rounded-pill px-3.5 text-meta font-semibold">
+            <Sliders size={12} weight="bold" aria-hidden /> Permissions
+          </button>
+        </div>
+        {rows.length === 0 ? (
+          <div className="glass px-4 py-10 text-center">
+            <p className="text-body text-ink-60">Nothing yet. Anything an agent does on its own shows up here first.</p>
           </div>
-          <div className="space-y-2.5 px-4 py-3">
-            <p className="text-body leading-5 text-ink-60">{a.because}</p>
-            <p className="rounded-chip bg-lilac/60 px-3 py-2 text-body leading-5 text-ink-60"><span className="font-semibold text-ink">What changed: </span>{a.effect}</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-meta text-ink-50">Allowed by “{label(a.ruleKey)}”</span>
-              <span className="ms-auto">
-                {a.undoable
-                  ? (a.undone ? <Btn variant="quiet" size="sm" onClick={() => redoActivity(a.id)}>Redo</Btn> : <Btn variant="quiet" size="sm" onClick={() => undoActivity(a.id)}>Undo</Btn>)
-                  : <span className="text-meta text-ink-50">Cannot be undone</span>}
-              </span>
-            </div>
-            {!a.undoable && a.undoNote && <p className="text-meta leading-4 text-ink-50">{a.undoNote}</p>}
-          </div>
-        </Card>
-      ))}
+        ) : (
+          <ol className="flex flex-col gap-3">
+            {rows.map((a) => {
+              const rule = ruleOf(a.ruleKey);
+              return (
+                <li key={a.id} className={`glass p-4 transition ${a.undone ? "opacity-70" : ""}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                        <Chip tone={a.undone ? "ink" : "main"}>{a.agent}</Chip>
+                        <span className="text-meta text-ink-50">{ago(a.at, now)}</span>
+                        {a.undone && <span className="text-meta font-semibold text-danger">Undone</span>}
+                      </div>
+                      <p className={`mt-2 text-body font-semibold ${a.undone ? "text-ink-50 line-through" : "text-ink"}`}>{a.title}</p>
+                      {rule && <p className="mt-0.5 text-meta text-ink-50">Allowed by “{rule.label}”</p>}
+                      <div className="mt-2">
+                        <Why>
+                          <p>{a.because}</p>
+                          <p className="mt-2 rounded-[12px] bg-haze/70 px-3 py-2"><span className="font-medium text-ink">What changed: </span>{a.effect}</p>
+                          {rule && <p className="mt-2"><span className="font-medium text-ink">Permission: </span>{rule.label}. {LEVEL_WORD[rule.level]}</p>}
+                          {!a.undoable && a.undoNote && <p className="mt-2">{a.undoNote}</p>}
+                          {rule && (
+                            <button onClick={() => go("autonomy")} className="mt-2 inline-flex items-center gap-1 text-meta font-semibold text-main hover:underline">
+                              Stop me doing this <CaretRight size={11} weight="bold" aria-hidden className="rtl:rotate-180" />
+                            </button>
+                          )}
+                        </Why>
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      {a.undoable ? (
+                        a.undone
+                          ? <Btn variant="quiet" size="sm" onClick={() => redoActivity(a.id)}><ArrowClockwise size={12} weight="bold" aria-hidden />Redo</Btn>
+                          : <Btn variant="quiet" size="sm" onClick={() => undoActivity(a.id)}><ArrowCounterClockwise size={12} weight="bold" aria-hidden />Undo</Btn>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 py-1.5 text-meta font-medium text-ink-50"><Lock size={11} weight="fill" aria-hidden />Locked</span>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </section>
     </div>
   );
 }
@@ -559,47 +658,90 @@ export function ActivityView() {
    What HeyMoon may do alone
    ══════════════════════════════════════════════════════════════════ */
 
+/* Least trust first, the brand's order (AutonomyView.tsx), so the control reads as a dial rather than as three
+   unrelated options. */
 const LEVELS: { key: AutonomyLevel; label: string }[] = [
-  { key: "alone", label: "On its own" }, { key: "ask", label: "Ask me" }, { key: "never", label: "Never" },
+  { key: "never", label: "Never" }, { key: "ask", label: "Ask me" }, { key: "alone", label: "On its own" },
 ];
 
+/* The brand's settings table rather than a grid of cards: each rule one row on a frosted surface, the dial in the
+   row, and the reasoning behind "Why", because a settings list is scanned and a rule is only read on the day you
+   disagree with it. The locked group stays first and stays visibly a lock. */
 export function AutonomyView() {
   const autonomy = useAutonomy();
   return (
     <div className="flex flex-col gap-6">
       <section>
         <H>Locked shut</H>
-        <div className="mt-3 grid gap-2 xl:grid-cols-3">
-          {autonomy.filter((r) => r.locked).map((r) => (
-            <Card key={r.key} className="flex items-start gap-3 p-4">
-              <Lock size={16} weight="fill" aria-hidden className="mt-0.5 shrink-0 text-main" />
-              <span className="min-w-0 flex-1">
-                <span className="block text-body font-semibold text-ink">{r.label}</span>
-                <span className="mt-0.5 block text-body leading-5 text-ink-60">{r.detail}</span>
-              </span>
-              <Chip tone="ink">Never</Chip>
-            </Card>
-          ))}
+        <div className="glass mt-3 overflow-hidden">
+          <ul className="divide-y divide-hairline">
+            {autonomy.filter((r) => r.locked).map((r) => <li key={r.key}><RuleRow rule={r} /></li>)}
+          </ul>
         </div>
         <p className="dash-measure mt-2 text-meta leading-4 text-ink-50">Not preferences, and there is no screen that moves them. They are the reason a text box can sit this close to your accounts.</p>
       </section>
       <section>
         <H>Everything else is yours to set</H>
-        <div className="mt-3 grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
-          {autonomy.filter((r) => !r.locked).map((r) => (
-            <Card key={r.key} className="p-4">
-              <p className="text-body font-semibold text-ink">{r.label}</p>
-              <p className="mt-0.5 text-body leading-5 text-ink-60">{r.detail}</p>
-              <div className="mt-3 inline-flex rounded-pill bg-lilac p-1">
-                {LEVELS.map((l) => (
-                  <button key={l.key} onClick={() => setAutonomy(r.key, l.key)} aria-pressed={r.level === l.key}
-                    className={`rounded-pill px-3.5 py-1.5 text-meta font-semibold transition ${r.level === l.key ? "bg-white text-main shadow-card" : "text-ink-50 hover:text-ink"}`}>{l.label}</button>
-                ))}
-              </div>
-            </Card>
-          ))}
+        <div className="glass mt-3 overflow-hidden">
+          <ul className="divide-y divide-hairline">
+            {autonomy.filter((r) => !r.locked).map((r) => <li key={r.key}><RuleRow rule={r} /></li>)}
+          </ul>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** One rule: what it is, the dial, and why behind a disclosure. One line at dashboard width, two on a phone. */
+function RuleRow({ rule }: { rule: AutonomyRule }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+      {rule.locked && <Lock size={14} weight="fill" aria-hidden className="shrink-0 text-ink-50" />}
+      <div className="min-w-[11rem] flex-1">
+        <p className="text-body font-medium text-ink">{rule.label}</p>
+        <div className="mt-0.5"><Why>{rule.detail}</Why></div>
+      </div>
+      <Dial rule={rule} />
+    </div>
+  );
+}
+
+/** The three-way dial, the brand's. A locked rule draws the same shape in text rather than buttons: nothing to
+    press, nothing to mistake for a switch someone left off. 240px rather than the brand's 228, because "On its own"
+    is longer than the brand's "Auto" and would break onto two lines. */
+function Dial({ rule }: { rule: AutonomyRule }) {
+  const shell = "glass grid w-full shrink-0 grid-cols-3 gap-1 !rounded-full p-1 sm:w-[240px]";
+  const seat = "whitespace-nowrap rounded-[9px] px-2 py-1.5 text-center text-meta font-semibold transition";
+
+  if (rule.locked) {
+    return (
+      <div className={shell} role="group" aria-label={`${rule.label}: Never, locked`}>
+        {LEVELS.map((l) => (
+          <span key={l.key} aria-hidden={rule.level !== l.key}
+            className={`${seat} ${rule.level === l.key ? "inline-flex items-center justify-center gap-1 bg-white text-danger shadow-card" : "text-ink-40"}`}>
+            {rule.level === l.key && <Lock size={11} weight="fill" aria-hidden />}
+            {l.label}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div role="radiogroup" aria-label={rule.label} className={shell}>
+      {LEVELS.map((l) => (
+        <button key={l.key} type="button" role="radio" aria-checked={rule.level === l.key}
+          onClick={() => setAutonomy(rule.key, l.key)}
+          className={`${seat} ${
+            rule.level === l.key
+              ? l.key === "never" ? "bg-white text-danger shadow-card"
+                : l.key === "ask" ? "bg-white text-ink shadow-lift"
+                : "bg-main text-white shadow-card"
+              : "text-ink-50 hover:text-ink"
+          }`}>
+          {l.label}
+        </button>
+      ))}
     </div>
   );
 }

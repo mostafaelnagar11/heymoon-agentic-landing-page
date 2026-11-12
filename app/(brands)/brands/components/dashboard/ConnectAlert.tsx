@@ -51,7 +51,7 @@ export function ConnectAlert() {
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-controls="connect-alert-body"
-          className="g-button flex h-10 w-full shrink-0 items-center justify-center gap-1.5 rounded-pill border border-white/50 px-4 text-body font-semibold text-[#FBF8FE] transition sm:w-auto"
+          className="btn-pri flex h-10 w-full shrink-0 items-center justify-center gap-1.5 rounded-pill px-4 text-body font-semibold sm:w-auto"
         >
           {open ? "Not now" : "Connect store"}
           <CaretDown

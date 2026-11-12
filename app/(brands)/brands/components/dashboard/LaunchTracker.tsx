@@ -20,9 +20,9 @@ import { LAUNCH_BY_DAYS, PHASE_START_DAYS, PROFILE_BY_DAYS, plusDays, type Stage
 import { dayIn, useT } from "../../lib/i18n";
 
 const OWNER_TONE: Record<StageOwner, string> = {
-  You: "text-brand",
-  Moontech: "text-amber",
-  Creators: "text-good-deep",
+  You: "bg-haze text-brand",
+  Moontech: "bg-amber-soft text-amber",
+  Creators: "bg-good/[0.09] text-good-deep",
 };
 
 const NOTE: Partial<Record<StageKey, string>> = {
@@ -67,15 +67,15 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
       {!compact && (
         <header className="flex flex-wrap items-end gap-x-6 gap-y-3">
           <div className="min-w-0 flex-1 basis-[22rem]">
-            <p className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-brand-500">{t("lt.title")}</p>
-            <h2 className="mt-1.5 text-greet font-semibold text-ink sm:text-section">{heading}</h2>
-            <p className="mt-1 text-body text-ink-soft">
+            <p className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-orchid">{t("lt.title")}</p>
+            <h2 className="mt-2 text-[26px] font-semibold leading-tight tracking-[-0.025em] text-ink sm:text-[30px]">{heading}</h2>
+            <p className="mt-1.5 text-[15px] text-ink-60">
               {sub}
               {!camp.connectedStore && !team ? t("lt.refund") : ""}
             </p>
           </div>
           {brandStep && (
-            <Link href="/brands/c" className="inline-flex items-center gap-1.5 text-body font-semibold text-brand hover:underline">
+            <Link href="/brands/c" className="btn-pri inline-flex h-[42px] items-center gap-1.5 rounded-pill px-5 text-body font-semibold">
               {t("lt.continue")}
               <ArrowRight size={13} weight="bold" aria-hidden className="rtl:rotate-180" />
             </Link>
@@ -84,7 +84,7 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
             <button
               type="button"
               onClick={() => setDashboardView("business")}
-              className="inline-flex items-center gap-1.5 rounded-pill bg-brand px-4 py-2 text-body font-semibold text-white transition hover:bg-brand-hover"
+              className="btn-pri inline-flex h-[42px] items-center gap-1.5 rounded-pill px-5 text-body font-semibold"
             >
               {t("lt.openProfile")}
               <ArrowRight size={13} weight="bold" aria-hidden className="rtl:rotate-180" />
@@ -93,18 +93,24 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
         </header>
       )}
 
-      <div className="overflow-hidden rounded-card border border-hairline bg-white shadow-card">
+      <div className="glass overflow-hidden">
         {compact && (
-          <p className="border-b border-hairline px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.14em] text-ink-faint">
+          <p className="border-b border-brand/[0.07] px-4 py-2.5 text-eyebrow font-semibold uppercase tracking-[0.12em] text-ink-faint">
             {l.launchedAt ? tf("lt.compactLaunched", { date: day(l.launchedAt) }) : tf("lt.compact", { date: day(launchBy) })}
           </p>
         )}
-        <div role="progressbar" aria-label="Launch" aria-valuemin={0} aria-valuemax={rows.length} aria-valuenow={doneCount} className="flex gap-1 px-4 pt-3">
+        <div role="progressbar" aria-label="Launch" aria-valuemin={0} aria-valuemax={rows.length} aria-valuenow={doneCount} className={`flex items-center gap-1.5 ${compact ? "px-4 pt-3" : "px-5 pt-5 sm:px-6"}`}>
           {rows.map((r, i) => (
-            <span key={r.stage.key} className={`h-1.5 flex-1 rounded-full ${r.doneAt !== null ? "bg-good" : i === currentAt ? "bg-brand/40" : "bg-black/[0.07]"}`} />
+            <span
+              key={r.stage.key}
+              className={`h-2 flex-1 rounded-full ${
+                r.doneAt !== null ? "bg-good" : i === currentAt ? "animate-live bg-[linear-gradient(90deg,#6848D1,#A65FED)] motion-reduce:animate-none" : "bg-track"
+              }`}
+            />
           ))}
+          {!compact && <span className="num ms-2 shrink-0 text-meta font-semibold text-ink-60">{doneCount}/{rows.length}</span>}
         </div>
-        <ol className="divide-y divide-hairline">
+        <ol className={compact ? "divide-y divide-brand/[0.07]" : "mt-2 divide-y divide-brand/[0.07] px-2 pb-2"}>
           {rows.map((r, i) => {
             const done = r.doneAt !== null;
             const now = i === currentAt;
@@ -116,11 +122,11 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
               : now ? (owner === "You" ? t("lt.waiting") : t("lt.inProgress"))
               : tf("lt.by", { date: day(r.dueAt) });
             return (
-              <li key={r.stage.key} className={`flex items-center gap-3 ${compact ? "px-4 py-2.5" : "px-4 py-3 sm:px-5"} ${now ? "bg-brand/[0.025]" : ""}`}>
+              <li key={r.stage.key} className={`flex items-center gap-3 ${compact ? "px-4 py-2.5" : "rounded-[16px] px-3 py-3 sm:px-4"} ${now ? (compact ? "bg-brand/[0.03]" : "my-1 border-0 bg-white shadow-lift") : ""}`}>
                 <span
                   aria-hidden
-                  className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${
-                    done ? "bg-good text-white" : now ? "bg-brand text-white" : "border border-hairline bg-white text-ink-faint"
+                  className={`grid shrink-0 place-items-center font-bold ${compact ? "h-6 w-6 rounded-full text-meta" : "h-8 w-8 rounded-[10px] text-[13px]"} ${
+                    done ? "bg-good/[0.12] text-good-deep" : now ? "grad-tile" : "bg-haze text-ink-faint"
                   }`}
                 >
                   {done ? <Check size={12} weight="bold" /> : now && owner !== "You" ? <CircleNotch size={12} weight="bold" className="animate-spin motion-reduce:animate-none" /> : i + 1}
@@ -129,7 +135,7 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
                   <span className={`block text-body ${done ? "text-ink-soft" : "font-semibold text-ink"}`}>{t(`lt.stage.${r.stage.key}`)}</span>
                   {now && NOTE[r.stage.key] && <span className="block text-meta text-ink-faint">{t(NOTE[r.stage.key]!)}</span>}
                 </span>
-                <span className={`hidden shrink-0 text-[11px] font-semibold uppercase tracking-[0.06em] sm:inline ${OWNER_TONE[owner]}`}>{t(`lt.owner.${owner}`)}</span>
+                <span className={`hidden shrink-0 rounded-pill px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] sm:inline ${OWNER_TONE[owner]}`}>{t(`lt.owner.${owner}`)}</span>
                 <span className={`w-[104px] shrink-0 text-end text-meta ${now ? "font-semibold text-ink" : "text-ink-faint"}`}>{status}</span>
               </li>
             );
@@ -144,7 +150,7 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
             <button
               type="button"
               onClick={() => advanceLaunch(camp.id, Date.now())}
-              className="rounded-pill border border-dashed border-brand/40 px-3 py-1.5 text-meta font-semibold text-brand hover:bg-brand/[0.04]"
+              className="rounded-pill border border-dashed border-brand/40 bg-white/60 px-3.5 py-1.5 text-meta font-semibold text-brand hover:bg-white"
             >
               {t("lt.demoNext")}
             </button>
@@ -152,7 +158,7 @@ export function LaunchTracker({ compact = false, campaign }: { compact?: boolean
             <button
               type="button"
               onClick={() => recordFirstSale(camp.id, 242, Date.now())}
-              className="rounded-pill border border-dashed border-brand/40 px-3 py-1.5 text-meta font-semibold text-brand hover:bg-brand/[0.04]"
+              className="rounded-pill border border-dashed border-brand/40 bg-white/60 px-3.5 py-1.5 text-meta font-semibold text-brand hover:bg-white"
             >
               {t("lt.demoSale")}
             </button>

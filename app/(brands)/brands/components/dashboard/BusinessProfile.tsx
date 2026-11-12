@@ -86,7 +86,7 @@ export function BusinessProfile({ onBack, onDone }: { onBack: () => void; onDone
     </span>
   );
   const section = (n: number, title: string, required: boolean, state: React.ReactNode, body: React.ReactNode) => (
-    <section className="rounded-card bg-white p-5 shadow-card sm:p-6" aria-labelledby={`bp-${n}`}>
+    <section className="glass p-5 sm:p-6" aria-labelledby={`bp-${n}`}>
       <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h3 id={`bp-${n}`} className="text-[17px] font-semibold text-ink">
           {n} · {title}{required && <span aria-hidden className="ms-1 text-danger">*</span>}
@@ -118,7 +118,7 @@ export function BusinessProfile({ onBack, onDone }: { onBack: () => void; onDone
         </p>
         <div className="shrink-0 text-end">
           <p className="text-[30px] font-bold leading-none text-brand tabular-nums">{done}/3</p>
-          <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-500">Sections done</p>
+          <p className="mt-1.5 text-meta font-semibold uppercase tracking-[0.14em] text-brand-500">Sections done</p>
         </div>
       </div>
 

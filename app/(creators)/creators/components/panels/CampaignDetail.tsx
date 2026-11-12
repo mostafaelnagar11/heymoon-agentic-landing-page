@@ -109,10 +109,21 @@ export function CampaignDetail({ offer, onBack, onJoin, onDecline, embedded }: {
      Its offset cancels the padding exactly. On a phone it then runs on
      down behind the tab bar, and its own bottom padding keeps the
      button clear above it. In the panel it is the foot of the screen. */
-  const bar = `${embedded ? "sticky -bottom-28 pb-[98px] md:-bottom-10 md:pb-4" : "fixed bottom-0 pb-4 sm:sticky"} inset-x-0 z-10 border-t border-line-soft bg-white/95 px-4 pt-3 backdrop-blur-[2px] sm:px-6`;
+  const bar = `${embedded ? "sticky -bottom-28 rounded-b-glass pb-[98px] md:-bottom-10 md:pb-4" : "fixed bottom-0 pb-4 sm:sticky"} inset-x-0 z-10 border-t border-line-soft bg-white/95 px-4 pt-3 backdrop-blur-[2px] sm:px-6`;
+  const tabs: { key: CampaignTab; label: string; count?: number }[] = [
+    { key: "details", label: "Details" },
+    { key: "stats", label: "Stats" },
+    { key: "content", label: "Ad Content", count: slots.filter(needsYou).length || undefined },
+  ];
 
   return (
-    <div className={`relative flex min-h-full flex-col bg-white ${embedded ? "rounded-tile shadow-card" : ""}`}>
+    <div className={`relative flex min-h-full flex-col ${embedded ? "" : "bg-white"}`}>
+      {/* ON THE DASHBOARD IT IS ONE FROSTED CARD, the brand's campaign page's surface. The glass is a layer behind the
+          content rather than a class on this box: `.glass` carries a backdrop-filter, which would make this box the
+          containing block of every fixed sheet inside it (they would open inside the card, not over the page), and
+          an overflow clip here would stop the pinned code and the action bar sticking. Every child after it is
+          positioned, so they all paint above it. */}
+      {embedded && <div aria-hidden className="glass pointer-events-none absolute inset-0" />}
       {/* Hero */}
       <div className={`relative w-full overflow-hidden bg-lilac ${embedded ? "h-[200px] rounded-t-tile lg:h-[240px]" : "h-[250px]"}`}>
         {offer.image
@@ -123,7 +134,7 @@ export function CampaignDetail({ offer, onBack, onJoin, onDecline, embedded }: {
         {/* Hidden below 768px, where the panel header's back already goes
             to the list — see PanelFrame. Two arrows fifty pixels apart
             that did different things. */}
-        {onBack && <div className="absolute start-4 top-4 hidden md:block"><BackButton onClick={onBack} light={!offer.image} /></div>}
+        {onBack && <div className="absolute start-4 top-4 hidden md:block"><BackButton onClick={onBack} onMedia /></div>}
         {lip && <div className="absolute inset-x-0 bottom-0"><CountdownBar within={offer.bonus!.within} tall /></div>}
       </div>
 
@@ -134,7 +145,8 @@ export function CampaignDetail({ offer, onBack, onJoin, onDecline, embedded }: {
           1440px window the column is 680px, so the split put the ad
           list in 276px. On this box, not the page, because containment
           would trap the sheets and the fixed bar below it. */}
-      <div className={`@container relative flex flex-1 flex-col gap-6 bg-white px-4 pt-4 sm:px-6 ${lip ? "" : "-mt-5 rounded-t-tile"} ${embedded ? "pb-8 lg:px-8" : "pb-28"}`}>
+      {/* Embedded, the sheet is clear and does not lap: the card under it is the surface. */}
+      <div className={`@container relative flex flex-1 flex-col gap-6 px-4 sm:px-6 ${embedded ? "pb-8 pt-5 lg:px-8" : `bg-white pb-28 pt-4 ${lip ? "" : "-mt-5 rounded-t-tile"}`}`}>
         {/* Pinned the moment the campaign is the creator's, so it stays
             on screen while the brief and the ads scroll under it. Before
             approval the code is not theirs to use, and it is not shown:
@@ -167,17 +179,30 @@ export function CampaignDetail({ offer, onBack, onJoin, onDecline, embedded }: {
           </div>
         )}
 
-        {worked && (
-          <Tabs<CampaignTab>
-            value={tab}
-            onChange={setTab}
-            tabs={[
-              { key: "details", label: "Details" },
-              { key: "stats", label: "Stats" },
-              { key: "content", label: "Ad Content", count: slots.filter(needsYou).length || undefined },
-            ]}
-            className="-mx-4 sm:-mx-6"
-          />
+        {/* On the dashboard, the brand campaign page's tab bar: a frosted pill with the open tab raised in white and
+            the count in the rail's pink. In the panel, the file's underlined phone tabs. */}
+        {worked && embedded && (
+          <div role="tablist" aria-label="Campaign" className="glass inline-flex max-w-full gap-1 self-start overflow-x-auto !rounded-full p-1">
+            {tabs.map((t) => {
+              const on = tab === t.key;
+              return (
+                <button key={t.key} type="button" role="tab" aria-selected={on} onClick={() => setTab(t.key)}
+                  className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-body transition ${
+                    on ? "bg-white font-semibold text-ink shadow-lift" : "font-medium text-ink-60 hover:text-ink"
+                  }`}>
+                  {t.label}
+                  {!!t.count && (
+                    <span className="grid h-[18px] min-w-[18px] place-items-center rounded-pill bg-blush-deep px-1 text-[10.5px] font-semibold text-white">
+                      {t.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {worked && !embedded && (
+          <Tabs<CampaignTab> value={tab} onChange={setTab} tabs={tabs} className="-mx-4 sm:-mx-6" />
         )}
 
         {/* TWO COLUMNS ON THE DASHBOARD, one in the panel.
@@ -254,13 +279,13 @@ export function CampaignDetail({ offer, onBack, onJoin, onDecline, embedded }: {
               {/* Nothing here is a forecast. A campaign joined today reads
                   zero until its code carries an order, and says why. */}
               <div className="grid grid-cols-2 gap-2 md:gap-3">
-                <StatTile label="Total Earnings" icon="money" value={money(earned)}
+                <StatTile label="Total Earnings" value={money(earned)}
                   delta={orders ? `on ${orders} order${orders === 1 ? "" : "s"}` : sum.accepted ? "Your first orders land here" : "Counts from your first accepted ad"} quiet={!orders} />
-                <StatTile label="Orders" icon="orders" value={String(orders)}
+                <StatTile label="Orders" value={String(orders)}
                   delta={orders ? `on ${offer.code}` : sum.accepted ? `Counting on ${offer.code}` : `Nothing on ${offer.code} yet`} quiet={!orders} />
-                <StatTile label="Payments" icon="payments" value={money(paidOut || held)}
+                <StatTile label="Payments" value={money(paidOut || held)}
                   delta={paidOut ? "Paid to you" : held ? "Held · paid Friday" : "Paid every Friday"} quiet={!paidOut} />
-                <StatTile label="Completed Ads" icon="done" value={`${delivered}/${total}`}
+                <StatTile label="Completed Ads" value={`${delivered}/${total}`}
                   delta={offer.state === "completed" || delivered === total ? "All accepted" : sum.review ? `${sum.review} in review` : `${total - delivered} to go`}
                   quiet={delivered < total} />
               </div>

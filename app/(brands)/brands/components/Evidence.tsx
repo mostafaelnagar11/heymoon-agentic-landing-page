@@ -11,8 +11,9 @@
    number": the sentence, the arithmetic if there is any, and the pieces
    of evidence it rests on. */
 
-import { useId, useState, type ReactNode } from "react";
-import { CaretDown, Info } from "@phosphor-icons/react";
+import { useRef, useState, type ReactNode } from "react";
+import { Info } from "@phosphor-icons/react";
+import { GlassPopover } from "../../../_shared/GlassPopover";
 import type { Evidence, Sourced } from "../lib/agent/types";
 import { useT } from "../lib/i18n";
 
@@ -67,10 +68,35 @@ export function Why({ src, open, onClose }: { src: Sourced<unknown>; open: boole
         </button>
       </div>
       {src.computedFrom && (
-        <p className="mt-2 rounded bg-white px-2 py-1.5 font-mono text-[11px] text-ink-soft">{src.computedFrom}</p>
+        <p className="mt-2 rounded bg-white px-2 py-1.5 font-mono text-meta text-ink-soft">{src.computedFrom}</p>
       )}
       {src.evidence.length > 0 && (
         <ul className="mt-1 divide-y divide-hairline">
+          {src.evidence.map((e) => <EvidenceRow key={e.id} e={e} />)}
+        </ul>
+      )}
+      <p className="mt-2 text-[10px] uppercase tracking-wide text-ink-faint">
+        {src.setBy === "brand" ? "Set by you" : "Proposed by HeyMoon"}
+      </p>
+    </div>
+  );
+}
+
+/** What "why" says, as it reads inside the glass popover (12 Nov: "when I click on evidence, instead of expanding,
+    show a glassy tooltip with the info in it"). The same parts as the inline panel: the sentence, the arithmetic, the
+    evidence and who set it. */
+function WhyPop({ src }: { src: Sourced<unknown> }) {
+  return (
+    <div className="text-start">
+      <p className="flex items-start gap-2 text-meta leading-5 text-ink-soft">
+        <Info size={14} weight="fill" className="mt-0.5 shrink-0 text-brand" aria-hidden />
+        <span className="min-w-0 flex-1">{src.why}</span>
+      </p>
+      {src.computedFrom && (
+        <p className="mt-2 rounded-[10px] bg-white/80 px-2 py-1.5 font-mono text-[11px] text-ink-soft">{src.computedFrom}</p>
+      )}
+      {src.evidence.length > 0 && (
+        <ul className="mt-1.5 divide-y divide-hairline">
           {src.evidence.map((e) => <EvidenceRow key={e.id} e={e} />)}
         </ul>
       )}
@@ -87,12 +113,12 @@ export function Figure({
 }: {
   src: Sourced<unknown> | undefined;
   render: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "display";
   className?: string;
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const id = useId();
+  const ref = useRef<HTMLButtonElement>(null);
   const { t } = useT();
 
   if (!src || src.evidence.length === 0) {
@@ -110,24 +136,27 @@ export function Figure({
     md: "text-title font-semibold",
     lg: "text-figure font-bold",
     xl: "text-hero font-bold",
+    /* The dashboard's figure (Aurora, 11 Nov): the money a card is about. */
+    display: "text-[30px] font-bold tracking-[-0.03em]",
   }[size];
 
   return (
     <span className={className}>
       <button
+        ref={ref}
         type="button"
         aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="dialog"
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
         className={`sourced tabular-nums leading-none text-ink ${s} text-start`}
         title={t("why")}
       >
         {render}
       </button>
       {label && <span className="ms-1.5 text-meta text-ink-faint">{label}</span>}
-      <span id={id}>
-        <Why src={src} open={open} onClose={() => setOpen(false)} />
-      </span>
+      <GlassPopover anchor={ref} open={open} onClose={() => setOpen(false)} label="Why this number">
+        <WhyPop src={src} />
+      </GlassPopover>
     </span>
   );
 }
@@ -135,7 +164,7 @@ export function Figure({
 /** A sentence the agent is asserting, with the same affordance. */
 export function Claim({ src, children, className = "" }: { src: Sourced<unknown>; children?: ReactNode; className?: string }) {
   const [open, setOpen] = useState(false);
-  const id = useId();
+  const ref = useRef<HTMLButtonElement>(null);
   /* A Sourced value that is not a string has to be given its own
      rendering. Falling through to String(value) prints "[object Object]",
      so the fallback is the sentence behind the value rather than the
@@ -146,22 +175,25 @@ export function Claim({ src, children, className = "" }: { src: Sourced<unknown>
   return (
     <div className={className}>
       <button
+        ref={ref}
         type="button"
         aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="dialog"
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
         className="group flex w-full items-start gap-1.5 text-start"
       >
         <span className="flex-1 text-body leading-6 text-ink-soft">{body}</span>
-        <CaretDown
-          size={12}
-          className={`mt-1.5 shrink-0 text-ink-faint transition-transform group-hover:text-brand ${open ? "rotate-180" : ""}`}
+        {/* The cue that there is a "why" behind it: it opens over the page, not under the line. */}
+        <Info
+          size={13}
+          weight={open ? "fill" : "regular"}
+          className={`mt-1.5 shrink-0 transition-colors group-hover:text-brand ${open ? "text-brand" : "text-ink-faint"}`}
           aria-hidden
         />
       </button>
-      <div id={id}>
-        <Why src={src} open={open} onClose={() => setOpen(false)} />
-      </div>
+      <GlassPopover anchor={ref} open={open} onClose={() => setOpen(false)} label="Why HeyMoon says this">
+        <WhyPop src={src} />
+      </GlassPopover>
     </div>
   );
 }

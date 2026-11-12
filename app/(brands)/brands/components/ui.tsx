@@ -10,7 +10,9 @@ export function Card({ children, className = "", as: As = "div", ...rest }: {
   children: ReactNode; className?: string; as?: "div" | "section" | "article";
 } & React.HTMLAttributes<HTMLElement>) {
   return (
-    <As className={`rounded-card border border-hairline bg-white shadow-card ${className}`} {...rest}>
+    /* The dashboard's frosted card (Aurora, 11 Nov), so a block in the conversation and a card on the dashboard are
+       one object. */
+    <As className={`glass ${className}`} {...rest}>
       {children}
     </As>
   );
@@ -49,8 +51,8 @@ export function Btn({
   dense?: boolean;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const v = {
-    primary: "g-button text-[#FBF8FE] border border-white/50 disabled:opacity-40",
-    quiet: "bg-lilac text-main hover:bg-main-10 disabled:text-ink-40",
+    primary: "btn-pri disabled:opacity-40",
+    quiet: "btn-soft disabled:text-ink-40",
     ghost: "text-ink-60 hover:bg-black/[0.04] disabled:text-ink-40",
     danger: "bg-danger/[0.08] text-danger hover:bg-danger/[0.12]",
   }[variant];
@@ -91,12 +93,12 @@ export function Sheet({ open, onClose, labelledBy, children, wide }: {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center sm:p-4">
-      <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-[#141229]/30 backdrop-blur-sm" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
-        className={`animate-fade-in relative max-h-[92vh] w-full overflow-y-auto rounded-t-[20px] border border-hairline bg-white shadow-pop sm:rounded-card ${wide ? "sm:max-w-2xl" : "sm:max-w-md"}`}
+        className={`animate-fade-in relative max-h-[92vh] w-full overflow-y-auto rounded-t-[28px] bg-white shadow-pop sm:rounded-[28px] ${wide ? "sm:max-w-2xl" : "sm:max-w-md"}`}
       >
         <div aria-hidden className="mx-auto mt-3 h-1 w-10 rounded-full bg-neutral-200 sm:hidden" />
         {children}
@@ -118,5 +120,20 @@ export function Avatar({ src, name, size = 32, className = "" }: { src?: string;
         name.split(" ").map((w) => w[0]).slice(0, 2).join("")
       )}
     </span>
+  );
+}
+
+/** A step that has been answered, folded to the line that says what was chosen: a frosted pill with a green tick, the
+    shape every answered card in the conversation takes (Aurora, 11 Nov). `lead` sits before the words, a flag stack
+    or a thumbnail. */
+export function DonePill({ children, lead }: { children: ReactNode; lead?: ReactNode }) {
+  return (
+    <div className="glass flex items-center gap-2.5 !rounded-full py-2 pe-4 ps-2">
+      <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-good text-white">
+        <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 8.5l3 3 6-7" /></svg>
+      </span>
+      {lead}
+      <p className="min-w-0 text-meta font-medium text-ink-soft">{children}</p>
+    </div>
   );
 }

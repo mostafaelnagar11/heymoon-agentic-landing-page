@@ -69,18 +69,19 @@ export function DashboardTopbar({
   }, [menu]);
 
   return (
-    <header className="sticky top-0 z-20 flex h-[67px] shrink-0 items-center gap-3 border-b border-hairline bg-white/80 px-4 backdrop-blur-sm">
+    /* No bar, no rule: the controls sit on the page's light, and the frosted ask field is the one surface. */
+    <header className="relative z-20 flex h-[72px] shrink-0 items-center gap-2.5 px-4 sm:px-6 lg:px-8">
       <button
         onClick={onBack ?? onToggleNav}
         aria-label={onBack ? "Back" : "Menu"}
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-control text-ink-faint transition-colors hover:bg-wash hover:text-ink-soft"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-60 transition-colors hover:bg-white/70 hover:text-ink"
       >
         {onBack
           ? <ArrowLeft size={17} weight="bold" aria-hidden className="rtl:rotate-180" />
           : <List size={18} aria-hidden />}
       </button>
 
-      <h1 className="min-w-0 truncate text-head font-semibold text-ink">{title}</h1>
+      <h1 className="min-w-0 truncate text-[15px] font-semibold text-ink-60">{title}</h1>
 
       <div className="ms-auto flex shrink-0 items-center gap-2">
         {/* HeyMoon, asked in words. It used to be a toggle for a chat rail; the agents work in the page now and
@@ -93,19 +94,19 @@ export function DashboardTopbar({
              drops the brand back into the conversation that built the
              campaign they are already looking at. */
           onClick={() => startConversation()}
-          className="g-button inline-flex h-10 items-center gap-2 rounded-pill border border-white/50 px-4 text-meta font-semibold text-[#FBF8FE] transition"
+          className="btn-pri inline-flex h-[42px] items-center gap-2 rounded-pill px-3.5 text-body font-semibold sm:px-4"
         >
-          <Plus size={13} weight="bold" aria-hidden />
+          <Plus size={15} weight="bold" aria-hidden />
           <span className="hidden sm:inline">{t("dash.build")}</span>
         </Link>
 
         <span
-          className="relative grid h-10 w-10 place-items-center rounded-pill bg-lilac text-main"
+          className="glass relative hidden h-[42px] w-[42px] place-items-center !rounded-full text-ink-60 sm:grid"
           title={waiting ? `${waiting} waiting on you` : "Nothing waiting"}
         >
-          <Bell size={17} weight="fill" aria-hidden />
+          <Bell size={18} aria-hidden />
           {waiting > 0 && (
-            <span className="absolute -end-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-pill bg-danger px-1 text-tiny font-semibold text-white ring-2 ring-white">
+            <span className="absolute -end-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-pill bg-blush-deep px-1 text-[10px] font-semibold text-white ring-2 ring-white">
               {waiting}
             </span>
           )}
@@ -117,18 +118,18 @@ export function DashboardTopbar({
             onClick={() => setMenu((o) => !o)}
             aria-expanded={menu}
             aria-label="Your account"
-            className="grid h-9 w-9 place-items-center rounded-full bg-brand text-meta font-medium text-white"
+            className="grid h-[42px] w-[42px] place-items-center rounded-full bg-[linear-gradient(135deg,#7A47CE,#C2418B)] text-meta font-semibold text-white ring-[3px] ring-white shadow-lift"
           >
             {mark}
           </button>
           {menu && (
-            <div className="absolute end-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-control border border-hairline bg-white shadow-float">
-              <div className="border-b border-hairline px-3 py-2.5">
+            <div className="absolute end-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-[16px] border border-hairline bg-white p-1 shadow-float">
+              <div className="border-b border-hairline px-3 pb-2.5 pt-2">
                 <p className="truncate text-body font-semibold text-ink">{who}</p>
                 <p className="truncate text-[11px] text-ink-faint">{what}</p>
               </div>
               {/* The same sign-out as the rail's: it clears this browser's work. */}
-              <a href="/brands" onClick={() => resetAll()} className="block px-3 py-2.5 text-body font-medium text-danger transition hover:bg-danger/[0.06]">
+              <a href="/brands" onClick={() => resetAll()} className="mt-1 block rounded-[12px] px-3 py-2 text-body font-medium text-danger transition hover:bg-danger/[0.06]">
                 {t("dash.signOut")}
               </a>
             </div>

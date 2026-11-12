@@ -13,7 +13,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowSquareOut, CheckCircle, CircleNotch, FileArrowUp, LockSimple, Paperclip, Warning,
+  ArrowSquareOut, Check, CheckCircle, CircleNotch, FileArrowUp, LockSimple, Notepad, Paperclip, ShoppingCartSimple,
+  Storefront, Ticket, Warning, X, type Icon,
 } from "@phosphor-icons/react";
 import {
   LIMITS, PLATFORMS, PLATFORM_ORDER, enforces, platformFor, siteOfferFor,
@@ -54,11 +55,68 @@ export function couponText(c: Pick<CouponRules, "discount" | "limits" | "minOrde
 }
 
 const Done = ({ children }: { children: React.ReactNode }) => (
-  <Card className="flex items-center gap-2 px-3.5 py-2.5">
-    <CheckCircle size={14} weight="fill" className="shrink-0 text-good-deep" aria-hidden />
-    <p className="text-meta text-ink-soft">{children}</p>
+  <Card className="flex items-center gap-2.5 !rounded-full py-2 pe-4 ps-2">
+    <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-good text-white"><Check size={12} weight="bold" /></span>
+    <p className="text-meta font-medium text-ink-soft">{children}</p>
   </Card>
 );
+
+/* The four steps' shared head (Aurora, 11 Nov): where the brand is in the four, and what this step is, on a tile
+   that carries the platform's own mark when there is one. Numerals only, so it reads the same in both languages. */
+const LOGO: Partial<Record<PlatformKey, string>> = {
+  salla: "/platforms/salla.png", zid: "/platforms/zid.png", shopify: "/platforms/shopify.png", magento: "/platforms/magento.png",
+};
+function StepHead({ n, icon: I, title, sub, logo }: { n: number; icon: Icon; title: string; sub?: React.ReactNode; logo?: string }) {
+  return (
+    <div>
+      <div className="flex items-center gap-1.5" aria-hidden>
+        {[1, 2, 3, 4].map((i) => (
+          <span key={i} className={`h-1.5 w-7 rounded-pill ${i < n ? "bg-good" : i === n ? "bg-[linear-gradient(90deg,#6848D1,#A65FED)]" : "bg-track"}`} />
+        ))}
+        <span className="num ms-1 text-[11px] font-semibold text-ink-faint">{n}/4</span>
+      </div>
+      <div className="mt-3.5 flex items-center gap-3">
+        {logo ? (
+          <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-[14px] bg-white p-1.5 shadow-lift">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logo} alt="" className="h-full w-full object-contain" />
+          </span>
+        ) : (
+          <span aria-hidden className="grad-tile grid h-11 w-11 shrink-0 place-items-center rounded-[14px] shadow-pri">
+            <I size={20} weight="fill" />
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-[17px] font-semibold leading-6 tracking-[-0.01em] text-ink">{title}</p>
+          {sub && <div className="text-meta leading-5 text-ink-soft">{sub}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* A step that runs on its own, said as a timeline: done, running, still to come. */
+function Steps({ labels, at }: { labels: string[]; at: number | null }) {
+  return (
+    <ol className="relative mt-4 space-y-3 ps-1">
+      <span aria-hidden className="absolute bottom-2 start-[13px] top-2 w-px bg-brand/[0.12]" />
+      {labels.map((label, i) => {
+        const done = at !== null && i < at;
+        const now = at === i;
+        return (
+          <li key={label} className="relative flex items-center gap-3">
+            <span aria-hidden className={`grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full ring-4 ring-white ${
+              done ? "bg-good text-white" : now ? "grad-tile" : "bg-haze text-ink-faint"
+            }`}>
+              {done ? <Check size={12} weight="bold" /> : now ? <CircleNotch size={13} weight="bold" className="animate-spin motion-reduce:animate-none" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+            </span>
+            <span className={`text-body ${done || now ? "font-medium text-ink" : "text-ink-faint"}`}>{label}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
 /* ── 6a · Connect the store ───────────────────────────────────────── */
 
@@ -100,17 +158,25 @@ export function ConnectBlock({ camp, onConnected, onTeam, onNotNow }: {
 
   if (choosing || !p) {
     return (
-      <Card className="p-4">
-        <p className="text-body font-semibold text-ink">{t("mc.where")}</p>
-        <div className="mt-3 flex flex-wrap gap-2">
+      <Card className="p-5">
+        <StepHead n={1} icon={Storefront} title={t("mc.where")} />
+        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {PLATFORM_ORDER.map((k) => (
             <button
               key={k}
               type="button"
               onClick={() => { setPicked(k); setChoosing(false); }}
-              className="rounded-pill border border-hairline bg-white px-3 py-1.5 text-meta font-semibold text-ink transition hover:border-brand/40"
+              className="flex items-center gap-2.5 rounded-[16px] bg-white/80 p-3 text-start ring-1 ring-brand/[0.08] transition hover:shadow-lift hover:ring-brand/20"
             >
-              {k === "custom" ? (locale === "ar" ? PLATFORMS.custom.ar.name : "Something else") : pname(k, locale)}
+              {LOGO[k] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={LOGO[k]} alt="" className="h-8 w-8 shrink-0 rounded-[9px] object-contain" />
+              ) : (
+                <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-haze text-brand"><Storefront size={15} weight="bold" /></span>
+              )}
+              <span className="min-w-0 truncate text-meta font-semibold text-ink">
+                {k === "custom" ? (locale === "ar" ? PLATFORMS.custom.ar.name : "Something else") : pname(k, locale)}
+              </span>
             </button>
           ))}
         </div>
@@ -120,35 +186,22 @@ export function ConnectBlock({ camp, onConnected, onTeam, onNotNow }: {
 
   if (step !== null) {
     return (
-      <Card className="p-4">
-        <p className="text-body font-semibold text-ink">{tf("mc.connecting", { name: pn })}</p>
-        <ol className="mt-2.5 space-y-1.5">
-          {steps.map((label, i) => (
-            <li key={label} className={`flex items-center gap-2 text-meta ${i <= step ? "text-ink" : "text-ink-faint"}`}>
-              {i < step
-                ? <CheckCircle size={14} weight="fill" className="text-good" aria-hidden />
-                : i === step
-                  ? <CircleNotch size={14} className="animate-spin text-brand motion-reduce:animate-none" aria-hidden />
-                  : <span aria-hidden className="h-3.5 w-3.5 rounded-full border border-black/15" />}
-              {label}
-            </li>
-          ))}
-        </ol>
+      <Card className="p-5">
+        <StepHead n={1} icon={Storefront} logo={LOGO[p.key]} title={tf("mc.connecting", { name: pn })} />
+        <Steps labels={steps} at={step} />
       </Card>
     );
   }
 
   return (
-    <Card className="p-4">
-      <p className="text-body font-semibold text-ink">{tf("mc.connectTitle", { name: pn })}</p>
-      <p className="mt-0.5 text-meta leading-5 text-ink-soft">{pc!.how}</p>
-      <p className="mt-2 flex items-center gap-1.5 text-[11px] text-ink-faint">
-        <LockSimple size={11} weight="fill" aria-hidden />
+    <Card className="p-5">
+      <StepHead n={1} icon={Storefront} logo={LOGO[p.key]} title={tf("mc.connectTitle", { name: pn })} sub={pc!.how} />
+      <p className="mt-4 flex items-start gap-2.5 rounded-[14px] bg-haze/70 px-3.5 py-3 text-meta leading-5 text-ink-soft">
+        <LockSimple size={14} weight="fill" className="mt-0.5 shrink-0 text-brand" aria-hidden />
         {p.route === "legacy" ? t("mc.lockTeam") : tf("mc.lock", { name: pn })}
       </p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <Btn
-          size="sm"
           onClick={() => {
             clicked(camp, p.route === "legacy" ? "TEAM_ROUTE" : "CONNECT", "6a");
             if (p.route === "legacy") { onTeam(); return; }
@@ -159,7 +212,7 @@ export function ConnectBlock({ camp, onConnected, onTeam, onNotNow }: {
           {pc!.cta}
           {p.route !== "legacy" && <ArrowSquareOut size={12} weight="bold" aria-hidden className="rtl:-scale-x-100" />}
         </Btn>
-        <Btn size="sm" variant="ghost" onClick={() => { clicked(camp, "NOT_NOW", "6a"); onNotNow(); }}>{t("mc.notNow")}</Btn>
+        <Btn variant="ghost" onClick={() => { clicked(camp, "NOT_NOW", "6a"); onNotNow(); }}>{t("mc.notNow")}</Btn>
       </div>
     </Card>
   );
@@ -168,7 +221,7 @@ export function ConnectBlock({ camp, onConnected, onTeam, onNotNow }: {
 /* ── 6b · Discount rules ──────────────────────────────────────────── */
 
 const PRESETS = [10, 15, 20, 25, 35];
-const chipOn = (on: boolean) => (on ? "border-brand/40 bg-brand/[0.06] text-ink" : "border-hairline bg-white text-ink-soft hover:bg-wash");
+const chipOn = (on: boolean) => (on ? "grad-promo shadow-pri" : "bg-white/80 text-ink ring-1 ring-brand/[0.08] hover:ring-brand/25 hover:shadow-lift");
 
 export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
   camp: Campaign;
@@ -203,11 +256,17 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
 
   if (preview) {
     return (
-      <Card className="p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">{t("mc.preview")}</p>
-        <p className="mt-1 text-body font-semibold text-ink">{couponText(rules, currency, t, tf)}</p>
+      <Card className="p-5">
+        <StepHead n={2} icon={Ticket} title={t("mc.preview")} />
+        {/* The code as a coupon: the one number creators will say, and the terms under it. */}
+        <div className="relative mt-4 overflow-hidden rounded-[18px] border-2 border-dashed border-brand/25 bg-[linear-gradient(135deg,#F5F3FD,#FBF1F8)] px-5 py-4">
+          <span aria-hidden className="absolute -start-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-canvas" />
+          <span aria-hidden className="absolute -end-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-canvas" />
+          <p className="num grad-text text-[34px] font-bold leading-none tracking-[-0.03em]">{rules.discount}%</p>
+          <p className="mt-2 text-body font-semibold text-ink">{couponText(rules, currency, t, tf)}</p>
+        </div>
         {/* What the platform will hold at checkout, and what creators are told instead (H3). */}
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-3 space-y-1.5">
           {LIMITS.filter((x) => limits[x.key]).map((x) => (
             <li key={x.key} className={`flex items-start gap-1.5 text-meta ${enforces(platform, x.key) ? "text-good-deep" : "text-amber"}`}>
               {enforces(platform, x.key)
@@ -217,31 +276,31 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
             </li>
           ))}
         </ul>
-        <p className="mt-2 text-meta text-ink-soft">{t("mc.oneCode")}</p>
-        <div className="mt-3 flex gap-2">
-          <Btn size="sm" onClick={() => { clicked(camp, "CONFIRM", "6b"); onConfirmed({ ...rules, bestOfferBy: account?.email ?? "the brand", at: Date.now() }); }}>{t("mc.confirm")}</Btn>
-          <Btn size="sm" variant="ghost" onClick={() => { clicked(camp, "CANCEL", "6b"); setPreview(false); }}>{t("mc.cancel")}</Btn>
+        <p className="mt-3 text-meta text-ink-soft">{t("mc.oneCode")}</p>
+        <div className="mt-4 flex gap-2">
+          <Btn onClick={() => { clicked(camp, "CONFIRM", "6b"); onConfirmed({ ...rules, bestOfferBy: account?.email ?? "the brand", at: Date.now() }); }}>{t("mc.confirm")}</Btn>
+          <Btn variant="ghost" onClick={() => { clicked(camp, "CANCEL", "6b"); setPreview(false); }}>{t("mc.cancel")}</Btn>
         </div>
       </Card>
     );
   }
 
   return (
-    <Card className="p-4">
-      <p className="text-body font-semibold text-ink">{t("mc.codeTitle")}</p>
-      <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label={t("mc.codeTitle")}>
+    <Card className="p-5">
+      <StepHead n={2} icon={Ticket} title={t("mc.codeTitle")} />
+      <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6" role="group" aria-label={t("mc.codeTitle")}>
         {PRESETS.map((d) => (
           <button
             key={d}
             type="button"
             aria-pressed={!custom && discount === d}
             onClick={() => { setCustom(false); setCustomText(""); setDiscount(d); setBest(false); }}
-            className={`rounded-pill border px-3 py-1.5 text-meta font-semibold transition ${chipOn(!custom && discount === d)}`}
+            className={`num grid h-14 place-items-center rounded-[14px] text-[18px] font-bold tracking-[-0.02em] transition ${chipOn(!custom && discount === d)}`}
           >
             {d}%
           </button>
         ))}
-        <label className="ms-1 flex items-center gap-1.5 text-meta text-ink-soft">
+        <label className={`flex h-14 flex-col items-center justify-center rounded-[14px] px-1 text-[11px] font-semibold transition ${custom ? "bg-white text-ink ring-2 ring-brand/40" : "bg-white/80 text-ink-soft ring-1 ring-brand/[0.08]"}`}>
           {t("mc.other")}
           <input
             aria-label={t("mc.otherDiscount")}
@@ -249,27 +308,25 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
             onFocus={() => setCustom(true)}
             onChange={(e) => { setCustom(true); setCustomText(e.target.value.replace(/\D/g, "").slice(0, 2)); setBest(false); }}
             onBlur={() => { if (Number(customText) > 90) setCustomText("90"); }}
-            className={`h-8 w-16 rounded-control border px-2 text-meta text-ink outline-none focus:border-brand/50 ${
-              custom ? "border-brand/40 bg-brand/[0.06]" : "border-hairline bg-white"
-            }`}
+            placeholder="—"
+            className="num w-12 bg-transparent text-center text-[15px] font-bold text-ink outline-none placeholder:text-ink-faint"
           />
-          %
         </label>
       </div>
       {low && (
-        <p className="mt-2 flex items-start gap-1.5 text-meta text-amber">
+        <p className="mt-3 flex items-start gap-2 rounded-[14px] bg-amber-soft px-3.5 py-2.5 text-meta leading-5 text-amber">
           <Warning size={13} weight="fill" className="mt-0.5 shrink-0" aria-hidden />
           {tf("mc.siteOffer", { n: siteOffer ?? 0 })}
         </p>
       )}
 
-      <ul className="mt-3 space-y-1.5">
+      <ul className="mt-4 space-y-2">
         {LIMITS.map((l) => {
           const on = !!limits[l.key];
           const ok = enforces(platform, l.key);
           return (
-            <li key={l.key} className="flex flex-col gap-1 rounded-control border border-hairline px-3 py-2">
-              <label className="flex min-w-0 flex-wrap items-center gap-2 text-meta text-ink">
+            <li key={l.key} className={`flex flex-col gap-1 rounded-[14px] px-3.5 py-2.5 transition ${on ? "bg-white/85 ring-1 ring-brand/[0.1]" : "bg-haze/50"}`}>
+              <label className="flex min-w-0 flex-wrap items-center gap-2.5 text-body text-ink">
                 <input
                   type="checkbox" checked={on}
                   onChange={(e) => setLimits((x) => ({ ...x, [l.key]: e.target.checked }))}
@@ -281,14 +338,15 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
                     <input
                       type="number" min={0} value={minOrder} aria-label={t("mc.limit.minOrder")}
                       onChange={(e) => setMinOrder(Math.max(0, Number(e.target.value) || 0))}
-                      className="h-7 w-20 rounded-control border border-hairline bg-white px-2 text-meta text-ink outline-none"
+                      className="num h-8 w-20 rounded-[10px] bg-haze px-2.5 text-meta font-semibold text-ink outline-none focus:bg-white focus:ring-2 focus:ring-brand/30"
                     />
                     {currency}
                   </span>
                 )}
               </label>
               {on && (
-                <span className={`ps-6 text-[11px] font-semibold ${ok ? "text-good-deep" : "text-amber"}`}>
+                <span className={`ms-6 inline-flex w-fit items-center gap-1 rounded-pill px-2 py-0.5 text-[11.5px] font-semibold ${ok ? "bg-good/[0.09] text-good-deep" : "bg-amber-soft text-amber"}`}>
+                  {ok ? <CheckCircle size={12} weight="fill" aria-hidden /> : <Warning size={12} weight="fill" aria-hidden />}
                   {ok ? tf("mc.enforces", { name }) : tf("mc.cant", { name })}
                 </span>
               )}
@@ -297,14 +355,14 @@ export function DiscountBlock({ camp, currency, onConfirmed, onCancel }: {
         })}
       </ul>
 
-      <label className="mt-3 flex items-start gap-2 rounded-control bg-lilac px-3 py-2.5 text-meta text-ink">
+      <label className="grad-ws mt-3 flex cursor-pointer items-start gap-2.5 rounded-[14px] px-3.5 py-3 text-body text-ink ring-1 ring-inset ring-brand/[0.1]">
         <input type="checkbox" checked={best} onChange={(e) => setBest(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#4D2FB0]" />
         <span>{custom && !typed ? t("mc.bestOfferAny") : tf("mc.bestOffer", { n: value })}</span>
       </label>
 
-      <div className="mt-3 flex gap-2">
-        <Btn size="sm" disabled={!best || (custom && !typed)} onClick={() => setPreview(true)}>{t("mc.preview")}</Btn>
-        <Btn size="sm" variant="ghost" onClick={() => { clicked(camp, "NOT_NOW", "6b"); onCancel(); }}>{t("mc.notNow")}</Btn>
+      <div className="mt-4 flex gap-2">
+        <Btn disabled={!best || (custom && !typed)} onClick={() => setPreview(true)}>{t("mc.preview")}</Btn>
+        <Btn variant="ghost" onClick={() => { clicked(camp, "NOT_NOW", "6b"); onCancel(); }}>{t("mc.notNow")}</Btn>
       </div>
     </Card>
   );
@@ -350,33 +408,18 @@ export function StoreCheckBlock({ camp, onResult, onNotNow }: {
   const failedOnce = !!l && l.checkAttempts === 1;
 
   return (
-    <Card className="p-4">
-      <p className="text-body font-semibold text-ink">{t("mc.checkTitle")}</p>
+    <Card className="p-5">
+      <StepHead
+        n={3}
+        icon={ShoppingCartSimple}
+        title={t("mc.checkTitle")}
+        sub={step === null ? (failedOnce ? t("mc.checkFailed") : tf("mc.checkDesc", { name })) : undefined}
+      />
+      <Steps labels={steps} at={step} />
       {step === null && (
-        <p className="mt-0.5 text-meta leading-5 text-ink-soft">
-          {failedOnce ? t("mc.checkFailed") : tf("mc.checkDesc", { name })}
-        </p>
-      )}
-      <ol className="mt-2.5 space-y-1.5">
-        {steps.map((label, i) => {
-          const done = step !== null && i < step;
-          const now = step === i;
-          return (
-            <li key={label} className={`flex items-center gap-2 text-meta ${step === null ? "text-ink-faint" : done || now ? "text-ink" : "text-ink-faint"}`}>
-              {done
-                ? <CheckCircle size={14} weight="fill" className="text-good" aria-hidden />
-                : now
-                  ? <CircleNotch size={14} className="animate-spin text-brand motion-reduce:animate-none" aria-hidden />
-                  : <span aria-hidden className="h-3.5 w-3.5 rounded-full border border-black/15" />}
-              {label}
-            </li>
-          );
-        })}
-      </ol>
-      {step === null && (
-        <div className="mt-3 flex gap-2">
-          <Btn size="sm" onClick={() => { clicked(camp, failedOnce ? "TRY_AGAIN" : "RUN_TEST", "6c"); setStep(0); }}>{failedOnce ? t("mc.retry") : t("mc.run")}</Btn>
-          <Btn size="sm" variant="ghost" onClick={() => { clicked(camp, "NOT_NOW", "6c"); onNotNow(); }}>{t("mc.notNow")}</Btn>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Btn onClick={() => { clicked(camp, failedOnce ? "TRY_AGAIN" : "RUN_TEST", "6c"); setStep(0); }}>{failedOnce ? t("mc.retry") : t("mc.run")}</Btn>
+          <Btn variant="ghost" onClick={() => { clicked(camp, "NOT_NOW", "6c"); onNotNow(); }}>{t("mc.notNow")}</Btn>
           {/* The prototype's check always passes; this shows the retry and the hand-off to the team (6c). */}
           <button
             type="button"
@@ -416,32 +459,46 @@ export function BriefReviewBlock({ camp, plan, onApprove }: { camp: Campaign; pl
     );
   }
 
-  const row = (label: string, value: React.ReactNode) => (
-    <div className="grid gap-1 border-t border-hairline py-2 sm:grid-cols-[120px_minmax(0,1fr)]">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint">{label}</p>
-      <div className="min-w-0 text-meta text-ink">{value}</div>
+  const fact = (label: string, value: React.ReactNode) => (
+    <div className="min-w-0 rounded-[14px] bg-haze/60 px-3.5 py-2.5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">{label}</p>
+      <div className="mt-0.5 min-w-0 text-meta font-medium text-ink">{value}</div>
     </div>
   );
 
   return (
-    <Card className="p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-500">{t("mc.briefEyebrow")}</p>
+    <Card className="p-5">
+      <StepHead n={4} icon={Notepad} title={t("mc.briefEyebrow")} />
       {/* The brief's own lines are MoonWriter's content, in the language it drafted them; `dir="auto"` keeps an English
           line reading left to right inside an Arabic card. */}
-      <p dir="auto" className="mt-1 text-body font-semibold text-ink">{b.headline.value}</p>
-      <div className="mt-2">
-        {row(t("mc.row.say"), <ul className="space-y-0.5">{b.mustSay.value.map((x, i) => <li key={i} dir="auto" className="text-start">· {briefLine(x)}</li>)}</ul>)}
-        {row(t("mc.row.dont"), <ul className="space-y-0.5">{b.mustNotSay.value.map((x, i) => <li key={i} dir="auto" className="text-start">· {briefLine(x)}</li>)}</ul>)}
-        {row(t("mc.row.products"), products)}
-        {row(t("mc.row.markets"), markets)}
-        {platforms && row(t("mc.row.platforms"), platforms)}
-        {row(t("mc.row.languages"), t("mc.languages"))}
-        {files.length > 0 && row(t("mc.row.files"), <ul className="space-y-0.5">{files.map((x) => <li key={x} dir="auto" className="flex items-center gap-1.5"><Paperclip size={11} aria-hidden />{x}</li>)}</ul>)}
+      <p dir="auto" className="grad-ws mt-4 rounded-[16px] px-4 py-3.5 text-[17px] font-semibold leading-6 text-ink ring-1 ring-inset ring-brand/[0.08]">{b.headline.value}</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-[16px] bg-white/85 p-4 ring-1 ring-good/[0.18]">
+          <p className="flex items-center gap-1.5 text-meta font-semibold text-good-deep">
+            <span aria-hidden className="grid h-5 w-5 place-items-center rounded-full bg-good text-white"><Check size={11} weight="bold" /></span>
+            {t("mc.row.say")}
+          </p>
+          <ul className="mt-2.5 space-y-1.5">{b.mustSay.value.map((x, i) => <li key={i} dir="auto" className="text-start text-meta leading-5 text-ink">{briefLine(x)}</li>)}</ul>
+        </div>
+        <div className="rounded-[16px] bg-white/85 p-4 ring-1 ring-danger/[0.15]">
+          <p className="flex items-center gap-1.5 text-meta font-semibold text-danger">
+            <span aria-hidden className="grid h-5 w-5 place-items-center rounded-full bg-danger text-white"><X size={11} weight="bold" /></span>
+            {t("mc.row.dont")}
+          </p>
+          <ul className="mt-2.5 space-y-1.5">{b.mustNotSay.value.map((x, i) => <li key={i} dir="auto" className="text-start text-meta leading-5 text-ink">{briefLine(x)}</li>)}</ul>
+        </div>
       </div>
-      <p className="mt-2 text-[11px] leading-4 text-ink-faint">{t("mc.briefNote")}</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {fact(t("mc.row.products"), products)}
+        {fact(t("mc.row.markets"), markets)}
+        {platforms && fact(t("mc.row.platforms"), platforms)}
+        {fact(t("mc.row.languages"), t("mc.languages"))}
+        {files.length > 0 && fact(t("mc.row.files"), <ul className="space-y-0.5">{files.map((x) => <li key={x} dir="auto" className="flex items-center gap-1.5"><Paperclip size={11} aria-hidden />{x}</li>)}</ul>)}
+      </div>
+      <p className="mt-3 text-meta leading-4 text-ink-faint">{t("mc.briefNote")}</p>
       {canApprove ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Btn size="sm" onClick={() => { clicked(camp, "APPROVE", "6d"); onApprove(); }}>{t("mc.approve")}</Btn>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Btn onClick={() => { clicked(camp, "APPROVE", "6d"); onApprove(); }}>{t("mc.approve")}</Btn>
           <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-pill px-3 py-2 text-meta font-semibold text-ink-soft transition hover:bg-black/[0.04] focus-within:ring-2 focus-within:ring-brand/30">
             <FileArrowUp size={13} weight="fill" aria-hidden />
             {t("mc.addFiles")}

@@ -6,7 +6,7 @@
  * get_design_context and reproduced at its measured sizes: the 160px
  * image box with 12px radius inside a 4px-padded 16px card, the 28px
  * countdown bar at 80% Main, the 20px platform squares, the tinted
- * chips at 10%, the lilac stat tile with its icon top-right. Where the
+ * chips at 10%. (The stat tile is the brand dashboard's now.) Where the
  * file used an exported asset for a logo the project's own image or a
  * Phosphor glyph stands in; nothing is hand-drawn.
  */
@@ -14,7 +14,7 @@
 import { useState, type ReactNode } from "react";
 import {
   ArrowUpRight, InstagramLogo, SnapchatLogo, TiktokLogo, YoutubeLogo,
-  Wallet, MoneyWavy, ShoppingCart, CreditCard, CheckCircle, Bird, ArrowLeft, Info, SealCheck, Warning,
+  Wallet, Bird, ArrowLeft, Info, SealCheck, Warning,
   ImageSquare, PlusCircle, VideoCamera, House, Megaphone, Money, User, CalendarBlank, Check, X
 } from "@phosphor-icons/react";
 import type { Deliverable, Format, Offer, Platform } from "../lib/agent/types";
@@ -265,9 +265,9 @@ export function CampaignCard({ offer, onOpen, className = "" }: { offer: Offer; 
   return (
     <Root
       onClick={onOpen}
-      className={`flex w-full flex-col gap-2 rounded-card bg-white p-1 text-start shadow-card transition ${onOpen ? "hover:shadow-float" : ""} ${className}`}
+      className={`flex w-full flex-col gap-2 rounded-[22px] bg-white p-1.5 text-start shadow-glass transition ${onOpen ? "hover:-translate-y-0.5 hover:shadow-lift motion-reduce:hover:translate-y-0" : ""} ${className}`}
     >
-      <div className="relative h-36 w-full overflow-hidden rounded-inner bg-lilac">
+      <div className="relative h-40 w-full overflow-hidden rounded-[17px] bg-lilac">
         {offer.image
           // eslint-disable-next-line @next/next/no-img-element
           ? <img src={offer.image} alt="" className="h-full w-full object-cover" />
@@ -278,23 +278,23 @@ export function CampaignCard({ offer, onOpen, className = "" }: { offer: Offer; 
         {/* Where it runs, on the end side, clear of the product name. */}
         <div className="absolute bottom-2 end-2"><SocRow platforms={offer.platforms} /></div>
         {offer.match.level === "prequalified" && offer.state === "open" && (
-          <span className={`absolute end-2 inline-flex h-6 items-center gap-1 rounded-[6px] bg-white/95 px-1.5 text-meta font-semibold text-green shadow-card ${offer.bonus && offer.state === "open" ? "top-9" : "top-2"}`}>
+          <span className={`absolute end-2 inline-flex h-6 items-center gap-1 rounded-pill bg-white/95 px-2 text-meta font-semibold text-green shadow-card backdrop-blur ${offer.bonus && offer.state === "open" ? "top-9" : "top-2"}`}>
             <SealCheck size={12} weight="fill" aria-hidden />Pre-qualified
           </span>
         )}
       </div>
-      <div className="flex flex-col gap-2.5 px-2 pb-2">
+      <div className="flex flex-col gap-3 px-2 pb-2">
         <div className="min-w-0">
           <BrandMark name={offer.brand} logo={offer.brandLogo} size={16} />
-          <p className="mt-1 truncate text-body font-semibold text-ink">{offer.title}</p>
+          <p className="mt-1 truncate text-[15px] font-semibold text-ink">{offer.title}</p>
         </div>
-        <div className="grid grid-cols-2 divide-x divide-hairline rounded-inner bg-lilac/60 rtl:divide-x-reverse">
-          <div className="min-w-0 px-3 py-2">
-            <p className="num text-section font-semibold leading-6 text-main">{offer.commissionPct}%</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          <div className="min-w-0 rounded-[14px] bg-haze px-3 py-2">
+            <p className="num grad-text text-[20px] font-bold leading-6 tracking-[-0.02em]">{offer.commissionPct}%</p>
             <p className="text-meta leading-4 text-ink-60">of every order</p>
           </div>
-          <div className="min-w-0 px-3 py-2">
-            <p className="text-section font-semibold leading-6 text-ink">{pace.big}</p>
+          <div className="min-w-0 rounded-[14px] bg-haze px-3 py-2">
+            <p className="text-[20px] font-bold leading-6 tracking-[-0.02em] text-ink">{pace.big}</p>
             <p className="text-meta leading-4 text-ink-60">{pace.small}</p>
           </div>
         </div>
@@ -325,7 +325,7 @@ export const ROW = {
     every head sits 84px off the cell it names. */
 export function RowHeads({ last = "State" }: { last?: string }) {
   return (
-    <div aria-hidden className="flex min-w-[540px] items-center gap-3 border-b border-hairline bg-lilac/40 px-4 py-2 text-eyebrow font-semibold uppercase text-ink-50">
+    <div aria-hidden className="flex min-w-[540px] items-center gap-3 border-b border-hairline px-4 py-2 text-eyebrow font-semibold uppercase text-ink-50">
       <span className={ROW.thumb} />
       <span className={ROW.name}>Campaign</span>
       <span className={ROW.share}>Payout</span>
@@ -349,7 +349,7 @@ export function CampaignRow({ offer, onOpen, trailing, dense }: {
   const posts = offer.deliverables.reduce((n, d) => n + d.count, 0);
 
   if (dense) return (
-    <button onClick={onOpen} className="group flex w-full min-w-[540px] items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-lilac/30">
+    <button onClick={onOpen} className="group flex w-full min-w-[540px] items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-white/60">
       <span className={`relative h-[72px] overflow-hidden rounded-inner bg-lilac ${ROW.thumb}`}>
         {offer.image
           // eslint-disable-next-line @next/next/no-img-element
@@ -409,34 +409,21 @@ export function CampaignRow({ offer, onOpen, trailing, dense }: {
 
 /* ── Stat tile ───────────────────────────────────────────────────── */
 
-const TILE_ICON = {
-  money: MoneyWavy, orders: ShoppingCart, payments: CreditCard, done: CheckCircle,
-} as const;
-
-/** The lilac tile: label in Main with its icon top-right, the figure,
-    and a green delta. bg #f3effc, radius 24, padding 16. */
-export function StatTile({ label, value, delta, icon = "money", hero, quiet }: {
-  label: string; value: ReactNode; delta?: string; icon?: keyof typeof TILE_ICON; hero?: boolean;
+/** One figure: the brand dashboard's Tile (kit.tsx), so a number reads
+    the same in both apps. A frosted card with a 13px label, the figure
+    at 30px and a line under it; `hero` is the one number the page is
+    about, lit with the promo gradient. */
+export function StatTile({ label, value, delta, hero, quiet }: {
+  label: string; value: ReactNode; delta?: string; hero?: boolean;
   /** The line under the figure is a note rather than a gain — "Counts
-      from your first live ad" — so it is grey, not the file's green. */
+      from your first live ad" — so it is grey, not green. */
   quiet?: boolean;
 }) {
-  const I = TILE_ICON[icon];
   return (
-    /* WHITE, with the tint kept for the icon and the label. The lilac
-       fill was the Figma's, drawn on a white phone screen where it is
-       what separates a tile from the page. On the desktop's canvas
-       ground the objects are white and the ground carries the tint, so
-       a lilac tile there is the one thing on the page fighting it. */
-    <div className={`flex min-w-0 flex-1 flex-col gap-4 rounded-tile p-4 ${hero ? "g-header text-white" : "border border-hairline bg-white shadow-edge"}`}>
-      <div className="flex items-center justify-between">
-        <span className={`text-body font-medium ${hero ? "text-white/80" : "text-main"}`}>{label}</span>
-        <I size={16} weight="fill" aria-hidden className={hero ? "text-white/80" : "text-main"} />
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className={`num text-title font-semibold ${hero ? "text-white" : "text-ink"}`}>{value}</span>
-        {delta && <span className={`text-meta font-medium ${hero ? "text-lime" : quiet ? "text-ink-50" : "text-green"}`}>{delta}</span>}
-      </div>
+    <div className={`min-w-0 flex-1 p-5 ${hero ? "grad-promo rounded-glass" : "glass"}`}>
+      <p className={`text-[13px] font-medium ${hero ? "text-white/75" : "text-ink-60"}`}>{label}</p>
+      <p className={`num mt-2.5 truncate text-[30px] font-bold leading-none tracking-[-0.03em] ${hero ? "text-white" : "text-ink"}`}>{value}</p>
+      {delta && <p className={`mt-1.5 truncate text-meta ${hero ? "text-white/75" : quiet ? "text-ink-60" : "text-green"}`}>{delta}</p>}
     </div>
   );
 }
@@ -586,15 +573,20 @@ export function DeliverablesCard({ deliverables }: { deliverables: Deliverable[]
 
 /* ── Header and chrome ───────────────────────────────────────────── */
 
-/** The 40px circular back button on #fafafa. */
-export function BackButton({ onClick, light }: { onClick: () => void; light?: boolean }) {
+/** The back arrow, the brand top bar's: no fill and no ring on the
+    page's light, a white wash on hover. `onMedia` is the one place it
+    sits over a picture (a campaign's hero), where it needs a white
+    disc to be seen at all. */
+export function BackButton({ onClick, onMedia }: { onClick: () => void; onMedia?: boolean }) {
   return (
     <button
       onClick={onClick}
       aria-label="Back"
-      className={`grid h-10 w-10 place-items-center rounded-pill border ${light ? "border-white/20 bg-white/90 text-ink" : "border-black/[0.02] bg-paper text-ink"}`}
+      className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors ${
+        onMedia ? "bg-white/90 text-ink shadow-lift backdrop-blur hover:bg-white" : "text-ink-60 hover:bg-white/70 hover:text-ink"
+      }`}
     >
-      <ArrowLeft size={16} weight="bold" aria-hidden />
+      <ArrowLeft size={17} weight="bold" aria-hidden className="rtl:rotate-180" />
     </button>
   );
 }
@@ -613,7 +605,7 @@ export type TabKey = (typeof TABS)[number]["key"];
 export function MobileTabBar({ value, onChange }: { value: TabKey; onChange: (k: TabKey) => void }) {
   return (
     <nav aria-label="Sections" className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4 md:hidden">
-      <div className="pointer-events-auto flex w-full max-w-[420px] items-center justify-between rounded-pill border border-white/60 bg-white/85 p-1.5 shadow-float backdrop-blur-md">
+      <div className="glass pointer-events-auto flex w-full max-w-[420px] items-center justify-between !rounded-full p-1.5">
         {TABS.map((t) => {
           const on = t.key === value;
           const I = t.icon;
@@ -622,7 +614,7 @@ export function MobileTabBar({ value, onChange }: { value: TabKey; onChange: (k:
               key={t.key}
               onClick={() => onChange(t.key)}
               aria-current={on ? "page" : undefined}
-              className={`flex flex-1 flex-col items-center gap-1 rounded-pill py-2 text-tiny font-medium transition ${on ? "bg-lilac text-main" : "text-ink-60"}`}
+              className={`flex flex-1 flex-col items-center gap-1 rounded-pill py-2 text-tiny font-medium transition ${on ? "bg-white text-ink shadow-lift" : "text-ink-60"}`}
             >
               <I size={20} weight={on ? "fill" : "regular"} aria-hidden />
               {t.label}

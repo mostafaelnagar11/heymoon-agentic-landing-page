@@ -55,7 +55,7 @@ export function PanelHost() {
           </p>
           <Link
             href="/brands/dashboard"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-control bg-brand px-3.5 py-2 text-body font-semibold text-white transition hover:bg-brand-hover"
+            className="btn-pri mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 text-body font-semibold rounded-pill"
           >
             Go to the dashboard <ArrowRight size={13} weight="bold" aria-hidden className="rtl:rotate-180" />
           </Link>
