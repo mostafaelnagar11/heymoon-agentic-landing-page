@@ -380,9 +380,15 @@ function Conversation() {
   /* "Did I get you right?" is answered from the chips, as the brand's "Does this look right?" is, while it is the
      last thing said. */
   const checkOpen = !profile && buildRun.status === "idle" && !!lastSay && isCheck(lastSay.text) && thread[thread.length - 1]?.id === lastSay.id;
-  const chips = pending ?? (checkOpen ? ["Yes, that's me", "Not quite"] : !profile ? [] : offers.some((o) => o.state === "approved")
+  /* A question or a change already sent is not offered again, as in the brand's conversation (its liveChips): the
+     answer is in the thread, and the chip sitting under it read as if it had not been asked (12 Nov). What goes
+     somewhere or answers a step stays, because pressing it twice still does something. */
+  const asked = new Set(thread.filter((i) => i.kind === "user").map((i) => (i as { text: string }).text));
+  const REPEATABLE = new Set(["Go to the dashboard", "Show me my profile", "Read it again", "Work with this", "Build my profile", "Yes, that's me", "Not quite"]);
+  const fresh = (list: string[]) => list.filter((c) => REPEATABLE.has(c) || !asked.has(c));
+  const chips = fresh(pending ?? (checkOpen ? ["Yes, that's me", "Not quite"] : !profile ? [] : offers.some((o) => o.state === "approved")
     ? ["Go to the dashboard", "When do I get paid?", "Show me my profile"]
-    : ["When do I get paid?", "Why did this match me?", "No gambling or vaping"]);
+    : ["When do I get paid?", "Why did this match me?", "No gambling or vaping"]));
   /* A chip is an answer, so it sends, as in the brand's conversation; it used to only fill the box. */
   const onChip = (c: string) => {
     if (c === "Yes, that's me") return looksRight();
